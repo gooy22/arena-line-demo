@@ -1,0 +1,70 @@
+name: Repair and unpack Arena Line Demo v32
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/unpack-v32-repair.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  unpack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Repair chunks and extract
+        shell: bash
+        run: |
+          set -euxo pipefail
+          for f in .v32/chunk-*.b64; do
+            raw=$(wc -c < "$f")
+            clean=$(tr -cd 'A-Za-z0-9+/=' < "$f" | wc -c)
+            echo "$f raw=$raw clean=$clean removed=$((raw-clean))"
+          done
+          cat .v32/chunk-*.b64 | tr -cd 'A-Za-z0-9+/=' > /tmp/v32.clean.b64
+          n=$(wc -c < /tmp/v32.clean.b64)
+          rem=$((n % 4))
+          echo "clean_length=$n mod4=$rem"
+          if [ "$rem" -eq 2 ]; then printf '==' >> /tmp/v32.clean.b64; fi
+          if [ "$rem" -eq 3 ]; then printf '=' >> /tmp/v32.clean.b64; fi
+          if [ "$rem" -eq 1 ]; then exit 11; fi
+          base64 -d /tmp/v32.clean.b64 > /tmp/v32.tar.xz
+          xz -t /tmp/v32.tar.xz
+          rm -rf /tmp/v32 && mkdir -p /tmp/v32
+          tar -xJf /tmp/v32.tar.xz -C /tmp/v32
+          DIST_INDEX="$(find /tmp/v32 -type f -path '*/dist/index.html' -print -quit)"
+          test -n "$DIST_INDEX"
+          ROOT="$(dirname "$(dirname "$DIST_INDEX")")"
+          echo "Source root: $ROOT"
+          rm -rf dist scripts tests worker
+          cp -a "$ROOT/dist" ./dist
+          [ ! -d "$ROOT/scripts" ] || cp -a "$ROOT/scripts" ./scripts
+          [ ! -d "$ROOT/tests" ] || cp -a "$ROOT/tests" ./tests
+          [ ! -d "$ROOT/worker" ] || cp -a "$ROOT/worker" ./worker
+          for f in README.md DESIGN.md package.json .gitignore; do [ ! -f "$ROOT/$f" ] || cp -a "$ROOT/$f" "./$f"; done
+          cat > server.mjs <<'EOF'
+          import http from 'node:http';
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import { fileURLToPath } from 'node:url';
+          const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'dist');
+          const types={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.webmanifest':'application/manifest+json; charset=utf-8','.png':'image/png','.svg':'image/svg+xml','.woff2':'font/woff2','.ttf':'font/ttf'};
+          const port=Number(process.env.PORT||3000);
+          http.createServer((req,res)=>{const u=new URL(req.url,'http://localhost');let p=decodeURIComponent(u.pathname);if(p==='/')p='/index.html';let f=path.join(root,p);try{if(!f.startsWith(root)||!fs.existsSync(f)||fs.statSync(f).isDirectory()){if(p==='/lucide.min.js'){res.setHeader('content-type','text/javascript');return res.end('window.lucide={createIcons(){}}');}if(p.startsWith('/assets/icons/')&&fs.existsSync(path.join(root,'assets/icons/esports.png'))){f=path.join(root,'assets/icons/esports.png');}else{f=path.join(root,'index.html');}}res.statusCode=200;res.setHeader('content-type',types[path.extname(f).toLowerCase()]||'application/octet-stream');fs.createReadStream(f).pipe(res);}catch(e){res.statusCode=500;res.end(String(e));}}).listen(port,'0.0.0.0',()=>console.log(`Arena Line listening on ${port}`));
+          EOF
+          node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));p.scripts={...(p.scripts||{}),start:'node server.mjs'};fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n')"
+          test -f dist/index.html
+          node --check server.mjs
+      - name: Commit restored files
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add dist scripts tests worker README.md DESIGN.md package.json .gitignore server.mjs || true
+          if ! git diff --cached --quiet; then git commit -m 'Restore Arena Line Demo v32 source tree'; git push origin HEAD:main; fi
