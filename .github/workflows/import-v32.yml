@@ -1,83 +1,42 @@
-name: Import Arena Line Demo v32 assets
+name: Diagnose Arena Line Demo v32 source
 
 on:
   push:
     branches: [main]
     paths:
       - '.github/workflows/import-v32.yml'
-  pull_request:
-    branches: [main]
 
 permissions:
   contents: write
 
 jobs:
-  import:
-    if: github.actor != 'github-actions[bot]'
+  diagnose:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Download exact v32 static assets
+      - name: Probe source and save result
         shell: bash
         run: |
-          set -euo pipefail
-          BASE='https://arena-line-demo.sanekganggsta.chatgpt.site'
-          fetch() {
-            local path="$1" sha="$2" rel="${1#dist/}"
-            mkdir -p "$(dirname "$path")"
-            curl -fsSL --retry 3 --retry-delay 2 "$BASE/$rel" -o "$path"
-            echo "$sha  $path" | sha256sum -c -
-          }
-          fetch dist/account.mjs d55ca57084ea7b8119f6fc59db3efdb1e992e13bcedf43b135f590a19d7540e9
-          fetch dist/app.css 75809df24d7137ca0445a5f4aab3948aa34563ce3900dcbd2549180687d86906
-          fetch dist/app.js ec8dff783cf3cb550a52ea0482d5b7bb82dbd28e5953b9120122092a82248039
-          fetch dist/assets/fonts/roboto-regular.ttf dece7c71bbe61710787f0839c722c65e87355dd2eb4a823e6b5488121ff81e4b
-          fetch dist/assets/fonts/roboto-semibold.woff2 cc1d9a3eef562fcbd4868c4ed65df8921c3d16773749e2425fbe85172d204abb
-          fetch dist/assets/icons/basketball.png 04287873e0fd5356188f9a857d0d5a72a0b0bd926bb1bee55b1b59a288be2493
-          fetch dist/assets/icons/counter-strike.png 4c467d565f2939fd2558ad983f8433cba3d9b875b11296320431e2f71ccc3f3f
-          fetch dist/assets/icons/dota.png 1ee21b6cf00fca39c8154e2100f883e4489168af1077852ea314f1c35507dc87
-          fetch dist/assets/icons/esports-transparent.png 1171705ec95d44e5145a67f2828f4e260d318e999ce5a0bac8afdabeddd27d9d
-          fetch dist/assets/icons/esports.png 4a99ac41b9605a9bddc7b130b61e92094c8b4671e2027004103090e464b8cc2a
-          fetch dist/assets/icons/favorite.png efcaae5837218fa210bc8e20a31a198c5db8f843a1e61280b34ec822bc14a07a
-          fetch dist/assets/icons/football.png 0e31c3a58534405f76a012c5015b92d97fbcdffccfeafb97600ea7614ada8005
-          fetch dist/assets/icons/hockey.png c0f8bb0d3007ece5bb7aa0f0cbcc16377bbe38e6305b8a33917eee857a06652c
-          fetch dist/assets/icons/lol.png a5dca83979b42cd15c7de5829e32ce2f5648aeda1eaef421ccc7c405b8a4aff3
-          fetch dist/assets/icons/snooker.png ff30320d0f775b54edf0a94534869a834dfdb54647059eff98839ec6d3c3e010
-          fetch dist/assets/icons/table-tennis.png 9afee01c69cf1892c26d0b4f5228f31a1de6fe162b84485c36f5198ec3d32f60
-          fetch dist/assets/icons/tennis.png 0f38065c8e1727ed116579e0e7540d9df576e103cab673f352b4effc9bef6678
-          fetch dist/assets/icons/volleyball.png 0cd9580dbde6c6232de7ffdfea79f44805d900357037879240aaa7d2d7f61ef4
-          fetch dist/assets/wordmark.png 407cb54ce94b104d5e28fee8fa95e3c58aae6a6a24ba1aa40f1e31470b326b3f
-          fetch dist/bet-view.css e6ba8a44e4e4a66e816cf3c094774906df5ba5846aa53ee4c18436346c0ab773
-          fetch dist/bet-view.mjs 13bace4f789cd900e662f78aa56b5eaf2684b86dcfc6147f5c516ba74e802825
-          fetch dist/event-view.css e8acfc93e11f47cf215d512d8b98ce8ada3f5f74274964cff15eabf0ea6a91f4
-          fetch dist/event-view.mjs 528b90c8ff91d0277443372e58f68d98796a39f18e43377b69ce9ecf03727658
-          fetch dist/feed.mjs 5df63c906d87a795419ed6311f8e57c1d5afc9d2a0c1d41e35bee3fbe52b09cf
-          fetch dist/i18n.mjs 280bf411184317a4f677826c574bbfecc03e3317e802fcef1bd1d6b846a78c95
-          fetch dist/index.html cff153b4adc41b26f9d35c4effdd3d7013f5c77c8ef493bb69508dd5ffabd60e
-          fetch dist/lucide-LICENSE.txt b495047bd93a9b06913511076f504daba17d5bbeb3e0650f3bb53a4220329c57
-          fetch dist/lucide.min.js ab85225ecc1daa2033607856f03dd2dabcbc08e2d260a5b97e17c690aa929766
-          fetch dist/manifest.webmanifest a0e8337ac45f54806ab85235903255a2257d3157ee093fb3fd2b5eaa4d372489
-          fetch dist/match-filter.mjs ef23e7ab2270dbedd6b23833fa52bca322c3d20232841177ca173b34b4fefd2b
-          fetch dist/profile.html 961628806331be73917faee32d71be3568a774b9d6be2015e8f2dee1567c8757
-          fetch dist/results.mjs f0265fdf03be7d445d57a7e3a6e9ed3f56495d7a858d9065a723de6aae764672
-          fetch dist/settings.css 6a853fd39789f065cb7347cdb73b7eb26ac501c488b62397e9d949b8f4531392
-          fetch dist/settlement.mjs ab2f6e8969e1adbd6d7e9f4a29426ed860758cbff155e5672544e8fa825a6560
-          fetch dist/share-coupon.css 3e878cc937ca2977a01d4c059dcad77d72f0a0c7de1855ee9c34477509260aaa
-          fetch dist/share-coupon.mjs a07d402e8f31c9b35c872020ae3313dc0f6dc1aa55e9d32121671ae384d12723
-          fetch dist/sports.css 29e6437babad84bc816c7fc4c3c9dbca0e5163e9bdfe544c8f8ad1d424d22705
-          fetch dist/sports.mjs f13ef018d9c98f29b073098d79d70a8bd1efeb83d6d803c5e46950835ae2ec5a
-          fetch dist/sw.js f6662579d5b28612dc09f3674aa1c539f14e33ce727e9f5083cf56de4954f052
-          fetch dist/team-emblem.mjs 876b91abb7989beab3519d244a4cd092b846d985c3274bec5a1479c9445de6b4
-          fetch dist/theme.css 15276092490bb7c90c0dd97f7b33ff3fcbb22ea5679e0799770b52fa5518f2eb
-          fetch dist/theme.mjs beacd280a4692813ce7e3298d7a7e78ef3b4e6b3eb07c74fc4a27233229f7aff
-          fetch dist/ui.mjs eabfdf90a0865efe53297019d23a6ee5fe0add205913549b3019260e97635139
-      - name: Commit imported assets
-        shell: bash
+          set +e
+          URL='https://arena-line-demo.sanekganggsta.chatgpt.site/account.mjs'
+          code=$(curl -sS -L --max-time 20 -o /tmp/account.mjs -w '%{http_code}' "$URL")
+          curl_ec=$?
+          bytes=$(wc -c </tmp/account.mjs 2>/dev/null || echo 0)
+          sha=$(sha256sum /tmp/account.mjs 2>/dev/null | awk '{print $1}')
+          {
+            echo "http_code=$code"
+            echo "curl_exit=$curl_ec"
+            echo "bytes=$bytes"
+            echo "sha256=$sha"
+            echo "expected=d55ca57084ea7b8119f6fc59db3efdb1e992e13bcedf43b135f590a19d7540e9"
+            echo '--- first 200 bytes ---'
+            head -c 200 /tmp/account.mjs 2>/dev/null | tr '\n' ' '
+            echo
+          } > .github/import-diagnostic.txt
+      - name: Commit diagnostic
         run: |
-          set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add dist
-          git rm .github/workflows/import-v32.yml
-          git commit -m 'Import Arena Line Demo v32 static assets'
+          git add .github/import-diagnostic.txt
+          git commit -m 'Record v32 import diagnostic' || exit 0
           git push
