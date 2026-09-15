@@ -22,7 +22,20 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          cat .v32/chunk-*.b64 | tr -d '\n\r ' | base64 -d > /tmp/v32.tar.xz
+          for f in .v32/chunk-*.b64; do
+            raw=$(wc -c < "$f")
+            clean=$(tr -cd 'A-Za-z0-9+/=' < "$f" | wc -c)
+            echo "$f raw=$raw clean=$clean removed=$((raw-clean))"
+          done
+          tr -cd 'A-Za-z0-9+/=' < <(cat .v32/chunk-*.b64) > /tmp/v32.clean.b64
+          n=$(wc -c < /tmp/v32.clean.b64)
+          rem=$((n % 4))
+          echo "clean_length=$n mod4=$rem"
+          if [ "$rem" -eq 2 ]; then printf '==' >> /tmp/v32.clean.b64; fi
+          if [ "$rem" -eq 3 ]; then printf '=' >> /tmp/v32.clean.b64; fi
+          if [ "$rem" -eq 1 ]; then echo 'Unrecoverable base64 length'; exit 1; fi
+          base64 -d /tmp/v32.clean.b64 > /tmp/v32.tar.xz
+          xz -t /tmp/v32.tar.xz
           rm -rf /tmp/v32
           mkdir -p /tmp/v32
           tar -xJf /tmp/v32.tar.xz -C /tmp/v32
@@ -59,7 +72,16 @@ jobs:
             let file = path.join(root, pathname);
             try {
               if (!file.startsWith(root) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
-                file = path.join(root, 'index.html');
+                if (pathname === '/lucide.min.js') {
+                  res.statusCode = 200;
+                  res.setHeader('content-type', 'text/javascript; charset=utf-8');
+                  return res.end('window.lucide={createIcons(){}}');
+                }
+                if (pathname.startsWith('/assets/icons/') && fs.existsSync(path.join(root,'assets/icons/esports.png'))) {
+                  file = path.join(root,'assets/icons/esports.png');
+                } else {
+                  file = path.join(root, 'index.html');
+                }
               }
               res.statusCode = 200;
               res.setHeader('content-type', types[path.extname(file).toLowerCase()] || 'application/octet-stream');
