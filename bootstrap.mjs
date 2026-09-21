@@ -2,7 +2,6 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const UPSTREAM = 'https://arena-line-demo.sanekganggsta.chatgpt.site';
 const root = process.cwd();
 const indexPath = path.join(root, 'index.html');
 if (!fs.existsSync(indexPath)) throw new Error('index.html missing');
@@ -16,38 +15,33 @@ const mime = {
   '.woff2':'font/woff2', '.ttf':'font/ttf'
 };
 
-function seedScript() {
+function seedAndResetScript() {
   const account = {
-    id:'AL100001',
-    email:'hoolop22@gmail.com',
-    firstName:'Роман',
-    lastName:'Тополя',
+    id:'AL100001', email:'hoolop22@gmail.com', firstName:'Роман', lastName:'Тополя',
     hash:'ed2d59a0e72ca1446a5a9f29e8901b59ed32cb779132055220400527ca2531bc',
-    balance:53642500,
-    payments:[],
-    bets:[]
+    balance:53642500, payments:[], bets:[]
   };
-  return `<script>(function(){try{var KEY='arena-accounts-v1',SESSION='arena-session-v1';var seed=${JSON.stringify(account)};var data=[];try{data=JSON.parse(localStorage.getItem(KEY)||'[]')||[]}catch(e){data=[]}if(!Array.isArray(data))data=[];var cur=data.find(function(a){return a&&a.email===seed.email});if(cur){cur.id=cur.id||seed.id;cur.firstName=cur.firstName||seed.firstName;cur.lastName=cur.lastName||seed.lastName;cur.hash=cur.hash||seed.hash;cur.balance=seed.balance;cur.payments=Array.isArray(cur.payments)?cur.payments:[];cur.bets=Array.isArray(cur.bets)?cur.bets:[]}else{data.unshift(seed)}localStorage.setItem(KEY,JSON.stringify(data));localStorage.setItem(SESSION,seed.email);localStorage.setItem('arena-language-v1','uk');}catch(e){console.warn('Arena account seed failed',e)}})();</script>`;
+  return `<script>(async function(){try{var V='arena-railway-fresh-v5';if(localStorage.getItem(V)!=='1'){try{if('serviceWorker' in navigator){var rs=await navigator.serviceWorker.getRegistrations();await Promise.all(rs.map(function(r){return r.unregister()}));}}catch(e){}try{if(window.caches){var ks=await caches.keys();await Promise.all(ks.map(function(k){return caches.delete(k)}));}}catch(e){}localStorage.setItem(V,'1');location.replace(location.pathname+'?fresh='+Date.now());return;}var KEY='arena-accounts-v1',SESSION='arena-session-v1';var seed=${JSON.stringify(account)};var data=[];try{data=JSON.parse(localStorage.getItem(KEY)||'[]')||[]}catch(e){data=[]}if(!Array.isArray(data))data=[];var cur=data.find(function(a){return a&&a.email===seed.email});if(cur){cur.id=cur.id||seed.id;cur.firstName=cur.firstName||seed.firstName;cur.lastName=cur.lastName||seed.lastName;cur.hash=cur.hash||seed.hash;cur.balance=seed.balance;cur.payments=Array.isArray(cur.payments)?cur.payments:[];cur.bets=Array.isArray(cur.bets)?cur.bets:[]}else{data.unshift(seed)}localStorage.setItem(KEY,JSON.stringify(data));localStorage.setItem(SESSION,seed.email);localStorage.setItem('arena-language-v1','uk');}catch(e){console.warn('Arena reset/seed failed',e)}})();</script>`;
 }
 
 function patchIndex() {
   let html = rawIndex;
-  html = html.replace(/<head>/i, '<head><meta http-equiv="Cache-Control" content="no-store">');
-  html = html.replace('</head>', seedScript() + '</head>');
+  html = html.replace(/<head>/i, '<head><meta http-equiv="Cache-Control" content="no-store"><meta name="arena-build" content="fresh-v5">');
+  html = html.replace('</head>', seedAndResetScript() + '</head>');
+  html = html.replace(/<script[^>]+src="https:\/\/unpkg\.com\/lucide[^>]+><\/script>/i, '<script defer src="/lucide.min.js"></script>');
   return html;
 }
 
-function redirectToOriginal(req, res) {
-  const u = new URL(req.url || '/', 'http://localhost');
-  res.statusCode = 302;
-  res.setHeader('location', UPSTREAM + u.pathname + u.search);
-  res.setHeader('cache-control','no-store');
-  res.end();
+function noStore(res) {
+  res.setHeader('cache-control','no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+  res.setHeader('pragma','no-cache');
+  res.setHeader('expires','0');
+  res.setHeader('surrogate-control','no-store');
 }
 
 function sendFile(file, res) {
   res.statusCode = 200;
-  res.setHeader('cache-control','no-store');
+  noStore(res);
   res.setHeader('content-type', mime[path.extname(file).toLowerCase()] || 'application/octet-stream');
   fs.createReadStream(file).pipe(res);
 }
@@ -56,36 +50,20 @@ http.createServer((req,res) => {
   try {
     const u = new URL(req.url || '/', 'http://localhost');
     if (u.pathname === '/health') {
-      res.statusCode = 200;
+      res.statusCode = 200; noStore(res);
       res.setHeader('content-type','application/json; charset=utf-8');
-      return res.end(JSON.stringify({ok:true, mode:'original-ui-local-state', account:'hoolop22@gmail.com', balance:536425}));
+      return res.end(JSON.stringify({ok:true, build:'fresh-v5', account:'hoolop22@gmail.com', balance:536425}));
     }
-
-    if (u.pathname === '/' || u.pathname === '/index.html') {
-      res.statusCode = 200;
-      res.setHeader('content-type','text/html; charset=utf-8');
-      res.setHeader('cache-control','no-store');
-      return res.end(patchIndex());
-    }
-
     if (u.pathname === '/sw.js') {
-      res.statusCode = 200;
+      res.statusCode = 200; noStore(res);
       res.setHeader('content-type','text/javascript; charset=utf-8');
-      res.setHeader('cache-control','no-store');
-      return res.end("self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.map(k=>caches.delete(k)))).then(()=>self.clients.claim())));");
+      return res.end("self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.map(k=>caches.delete(k)))).then(()=>self.registration.unregister()).then(()=>self.clients.matchAll()).then(cs=>cs.forEach(c=>c.navigate(c.url)))));");
     }
-
-    if (u.pathname.startsWith('/assets/') || u.pathname === '/lucide.min.js' || u.pathname.endsWith('.png') || u.pathname.endsWith('.woff2') || u.pathname.endsWith('.ttf')) {
-      return redirectToOriginal(req,res);
-    }
-
-    const rel = decodeURIComponent(u.pathname).replace(/^\/+/, '');
+    const rel = decodeURIComponent(u.pathname).replace(/^\/+/, '') || 'index.html';
     const file = path.normalize(path.join(root, rel));
-    if (file.startsWith(root) && fs.existsSync(file) && fs.statSync(file).isFile()) return sendFile(file,res);
-
-    res.statusCode = 200;
+    if (u.pathname !== '/' && file.startsWith(root) && fs.existsSync(file) && fs.statSync(file).isFile()) return sendFile(file,res);
+    res.statusCode = 200; noStore(res);
     res.setHeader('content-type','text/html; charset=utf-8');
-    res.setHeader('cache-control','no-store');
     res.end(patchIndex());
   } catch (error) {
     console.error('Arena Line server error', error?.stack || error);
@@ -93,4 +71,4 @@ http.createServer((req,res) => {
     res.setHeader('content-type','text/plain; charset=utf-8');
     res.end('Arena Line server error');
   }
-}).listen(port,'0.0.0.0',()=>console.log('Arena Line original UI with hoolop22 account on '+port));
+}).listen(port,'0.0.0.0',()=>console.log('Arena Line fresh-v5 cache reset on '+port));
