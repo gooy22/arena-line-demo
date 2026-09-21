@@ -23,8 +23,13 @@ jobs:
         run: |
           set -euxo pipefail
           test -f .github/workflows/publish-onefile.yml
-          awk 'BEGIN{flag=0} /cat > \/tmp\/site\.b64 <<\x27EOF\x27/{flag=1; next} /^EOF$/{if(flag){exit}} flag{print}' .github/workflows/publish-onefile.yml > /tmp/site.b64
+          awk 'BEGIN{flag=0} /cat > \/tmp\/site\.b64 <<.EOF./{flag=1; next} /^[[:space:]]*EOF[[:space:]]*$/{if(flag){exit}} flag{print}' .github/workflows/publish-onefile.yml | tr -cd 'A-Za-z0-9+/=' > /tmp/site.b64
           test -s /tmp/site.b64
+          n=$(wc -c < /tmp/site.b64)
+          rem=$((n % 4))
+          if [ "$rem" -eq 2 ]; then printf '==' >> /tmp/site.b64; fi
+          if [ "$rem" -eq 3 ]; then printf '=' >> /tmp/site.b64; fi
+          if [ "$rem" -eq 1 ]; then echo 'Unrecoverable base64 length'; exit 1; fi
           base64 -d /tmp/site.b64 > /tmp/site.tar.xz
           xz -t /tmp/site.tar.xz
           rm -rf /tmp/site
