@@ -1,8 +1,8 @@
 {
-  "name": "arena-line-demo-public",
+  "name": "arena-line",
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node bootstrap.mjs"
+    "start": "node server.mjs"
   }
 }
