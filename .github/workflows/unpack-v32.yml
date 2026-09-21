@@ -18,19 +18,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Rebuild v32 source tree
+      - name: Rebuild exact v32 source tree from packaged chunks
         shell: bash
         run: |
           set -euxo pipefail
-          for f in .v32/chunk-*.b64; do
-            raw=$(wc -c < "$f")
-            clean=$(tr -cd 'A-Za-z0-9+/=' < "$f" | wc -c)
-            echo "$f raw=$raw clean=$clean removed=$((raw-clean))"
-          done
+          test -d .v32
           tr -cd 'A-Za-z0-9+/=' < <(cat .v32/chunk-*.b64) > /tmp/v32.clean.b64
           n=$(wc -c < /tmp/v32.clean.b64)
           rem=$((n % 4))
-          echo "clean_length=$n mod4=$rem"
           if [ "$rem" -eq 2 ]; then printf '==' >> /tmp/v32.clean.b64; fi
           if [ "$rem" -eq 3 ]; then printf '=' >> /tmp/v32.clean.b64; fi
           if [ "$rem" -eq 1 ]; then echo 'Unrecoverable base64 length'; exit 1; fi
@@ -43,7 +38,8 @@ jobs:
           test -n "$DIST_INDEX"
           ROOT="$(dirname "$(dirname "$DIST_INDEX")")"
           echo "Source root: $ROOT"
-          rm -rf dist scripts tests worker
+
+          rm -rf dist scripts tests worker server.mjs
           cp -a "$ROOT/dist" ./dist
           [ ! -d "$ROOT/scripts" ] || cp -a "$ROOT/scripts" ./scripts
           [ ! -d "$ROOT/tests" ] || cp -a "$ROOT/tests" ./tests
@@ -51,61 +47,79 @@ jobs:
           for f in README.md DESIGN.md package.json .gitignore; do
             [ ! -f "$ROOT/$f" ] || cp -a "$ROOT/$f" "./$f"
           done
+
+          test -f dist/index.html
+          test -f dist/assets/wordmark.png
+          test -f dist/assets/icons/favorite.png
+          test -f dist/account.mjs
+          grep -q "hoolop22@gmail.com" dist/account.mjs
+          grep -q "wordmark.png" dist/index.html
+
           cat > server.mjs <<'EOF'
           import http from 'node:http';
-          import fs from 'node:fs';
-          import path from 'node:path';
-          import { fileURLToPath } from 'node:url';
+          import { Readable } from 'node:stream';
+          import app from './dist/server/index.js';
 
-          const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'dist');
-          const types = {
-            '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8',
-            '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
-            '.json': 'application/json; charset=utf-8', '.webmanifest': 'application/manifest+json; charset=utf-8',
-            '.png': 'image/png', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.ttf': 'font/ttf'
-          };
           const port = Number(process.env.PORT || 3000);
-          http.createServer((req, res) => {
-            const url = new URL(req.url, 'http://localhost');
-            let pathname = decodeURIComponent(url.pathname);
-            if (pathname === '/') pathname = '/index.html';
-            let file = path.join(root, pathname);
-            try {
-              if (!file.startsWith(root) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
-                if (pathname === '/lucide.min.js') {
-                  res.statusCode = 200;
-                  res.setHeader('content-type', 'text/javascript; charset=utf-8');
-                  return res.end('window.lucide={createIcons(){}}');
-                }
-                if (pathname.startsWith('/assets/icons/') && fs.existsSync(path.join(root,'assets/icons/esports.png'))) {
-                  file = path.join(root,'assets/icons/esports.png');
-                } else {
-                  file = path.join(root, 'index.html');
-                }
-              }
-              res.statusCode = 200;
-              res.setHeader('content-type', types[path.extname(file).toLowerCase()] || 'application/octet-stream');
-              fs.createReadStream(file).pipe(res);
-            } catch (error) {
-              res.statusCode = 500;
-              res.end(String(error));
-            }
-          }).listen(port, '0.0.0.0', () => console.log(`Arena Line listening on ${port}`));
-          EOF
-          node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('package.json','utf8')); p.scripts={...(p.scripts||{}),start:'node server.mjs'}; fs.writeFileSync('package.json', JSON.stringify(p,null,2)+'\n')"
-          test -f dist/index.html
-          node --check server.mjs
+          const env = {};
+          const ctx = { waitUntil(promise) { Promise.resolve(promise).catch(() => {}); } };
 
-      - name: Commit unpacked v32
+          async function readBody(req, limit = 2_000_000) {
+            const chunks = [];
+            let size = 0;
+            for await (const chunk of req) {
+              size += chunk.length;
+              if (size > limit) throw new Error('Request body too large');
+              chunks.push(chunk);
+            }
+            return Buffer.concat(chunks);
+          }
+
+          http.createServer(async (req, res) => {
+            try {
+              if (req.url === '/health') {
+                res.statusCode = 200;
+                res.setHeader('content-type', 'application/json; charset=utf-8');
+                return res.end(JSON.stringify({ ok:true, app:'Arena Line Demo', source:'exact-v32-unpacked' }));
+              }
+
+              const method = req.method || 'GET';
+              const body = ['GET','HEAD'].includes(method) ? undefined : await readBody(req);
+              const request = new Request('http://localhost' + (req.url || '/'), {
+                method,
+                headers:req.headers,
+                ...(body ? { body } : {})
+              });
+
+              const response = await app.fetch(request, env, ctx);
+              res.statusCode = response.status;
+              response.headers.forEach((value, key) => res.setHeader(key, value));
+              res.setHeader('cache-control', 'no-store');
+              if (method === 'HEAD' || response.status === 204 || !response.body) return res.end();
+              Readable.fromWeb(response.body).pipe(res);
+            } catch (error) {
+              console.error('Arena Line exact v32 server error', error?.stack || error);
+              res.statusCode = 500;
+              res.setHeader('content-type', 'text/plain; charset=utf-8');
+              res.end('Arena Line server error');
+            }
+          }).listen(port, '0.0.0.0', () => console.log(`Arena Line exact v32 listening on ${port}`));
+          EOF
+
+          node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('package.json','utf8')); p.type='module'; p.scripts={...(p.scripts||{}), start:'node server.mjs'}; fs.writeFileSync('package.json', JSON.stringify(p,null,2)+'\n')"
+          node --check server.mjs
+          node --check dist/server/index.js
+
+      - name: Commit exact v32 source tree
         shell: bash
         run: |
           set -euxo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add dist scripts tests worker README.md DESIGN.md package.json .gitignore server.mjs || true
+          git add dist scripts tests worker README.md DESIGN.md package.json .gitignore server.mjs .github/workflows/unpack-v32.yml || true
           if git diff --cached --quiet; then
             echo 'No changes to commit'
           else
-            git commit -m 'Restore Arena Line Demo v32 source tree'
+            git commit -m 'Restore exact Arena Line Demo v32 source tree'
             git push origin HEAD:main
           fi
