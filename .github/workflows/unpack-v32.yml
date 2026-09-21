@@ -18,23 +18,19 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Rebuild exact v32 source tree from packaged chunks
+      - name: Rebuild exact v32 source tree from embedded archive
         shell: bash
         run: |
           set -euxo pipefail
-          test -d .v32
-          tr -cd 'A-Za-z0-9+/=' < <(cat .v32/chunk-*.b64) > /tmp/v32.clean.b64
-          n=$(wc -c < /tmp/v32.clean.b64)
-          rem=$((n % 4))
-          if [ "$rem" -eq 2 ]; then printf '==' >> /tmp/v32.clean.b64; fi
-          if [ "$rem" -eq 3 ]; then printf '=' >> /tmp/v32.clean.b64; fi
-          if [ "$rem" -eq 1 ]; then echo 'Unrecoverable base64 length'; exit 1; fi
-          base64 -d /tmp/v32.clean.b64 > /tmp/v32.tar.xz
-          xz -t /tmp/v32.tar.xz
-          rm -rf /tmp/v32
-          mkdir -p /tmp/v32
-          tar -xJf /tmp/v32.tar.xz -C /tmp/v32
-          DIST_INDEX="$(find /tmp/v32 -type f -path '*/dist/index.html' -print -quit)"
+          test -f .github/workflows/publish-onefile.yml
+          awk 'BEGIN{flag=0} /cat > \/tmp\/site\.b64 <<\x27EOF\x27/{flag=1; next} /^EOF$/{if(flag){exit}} flag{print}' .github/workflows/publish-onefile.yml > /tmp/site.b64
+          test -s /tmp/site.b64
+          base64 -d /tmp/site.b64 > /tmp/site.tar.xz
+          xz -t /tmp/site.tar.xz
+          rm -rf /tmp/site
+          mkdir -p /tmp/site
+          tar -xJf /tmp/site.tar.xz -C /tmp/site
+          DIST_INDEX="$(find /tmp/site -type f -path '*/dist/index.html' -print -quit)"
           test -n "$DIST_INDEX"
           ROOT="$(dirname "$(dirname "$DIST_INDEX")")"
           echo "Source root: $ROOT"
@@ -52,6 +48,7 @@ jobs:
           test -f dist/assets/wordmark.png
           test -f dist/assets/icons/favorite.png
           test -f dist/account.mjs
+          test -f dist/server/index.js
           grep -q "hoolop22@gmail.com" dist/account.mjs
           grep -q "wordmark.png" dist/index.html
 
