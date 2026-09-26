@@ -1,8 +1,11 @@
 import http from 'node:http';
 import { Readable } from 'node:stream';
+import { readFileSync } from 'node:fs';
 import app from './dist/server/index.js';
 
 const port = Number(process.env.PORT || 3000);
+const feedOverride = readFileSync(new URL('./overrides/feed.mjs', import.meta.url), 'utf8');
+const teamOverride = readFileSync(new URL('./overrides/team-emblem.mjs', import.meta.url), 'utf8');
 const env = {};
 const ctx = { waitUntil(p) { Promise.resolve(p).catch(() => {}); } };
 const LIVE_SOURCE = 'https://parik24.me/uk/all-live/';
@@ -117,6 +120,11 @@ async function loadLiveLine(force=false) {
 const server=http.createServer(async(req,res)=>{
   try{
     const requestUrl=new URL(req.url||'/','http://localhost');
+    if(requestUrl.pathname==='/feed.mjs' || requestUrl.pathname==='/team-emblem.mjs'){
+      res.statusCode=200; res.setHeader('content-type','text/javascript; charset=utf-8');
+      res.setHeader('cache-control','no-store, max-age=0');
+      return res.end(requestUrl.pathname==='/feed.mjs'?feedOverride:teamOverride);
+    }
     if(requestUrl.pathname==='/health'){
       res.statusCode=200;res.setHeader('content-type','application/json; charset=utf-8');res.setHeader('cache-control','no-store');
       return res.end(JSON.stringify({ok:true,source:'arena-line-site.zip-exact-worker-v32',liveSource:LIVE_SOURCE,
