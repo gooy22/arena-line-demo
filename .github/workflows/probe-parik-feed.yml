@@ -20,69 +20,95 @@ jobs:
         shell: bash
         run: |
           set -uo pipefail
-          node <<'NODE'
-          const { execFileSync } = require('child_process');
+          python3 - <<'PY'
+          import re, subprocess
+          from urllib.parse import urljoin
 
-          const pages = [
-            'https://www.parik24.org/uk/all-live/',
-            'https://parik24.org/uk/all-live/',
-            'https://parik24.me/uk/all-live/',
-            'https://parikbet24.net/',
-            'https://parik24.new/'
-          ];
+          pages = [
+              'https://www.parik24.org/uk/all-live/',
+              'https://parik24.org/uk/all-live/',
+              'https://parik24.me/uk/all-live/',
+              'https://parikbet24.net/',
+              'https://parik24.new/',
+          ]
 
-          function curl(url) {
-            try {
-              return execFileSync('curl', [
-                '-L','-sS','--compressed',
-                '--connect-timeout','10','--max-time','25',
-                '-A','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/153 Safari/537.36',
-                url
-              ], {encoding:'utf8', maxBuffer:50*1024*1024});
-            } catch {
-              return '';
-            }
-          }
+          def curl(url):
+              try:
+                  p = subprocess.run([
+                      'curl','-L','-sS','--compressed',
+                      '--connect-timeout','10','--max-time','25',
+                      '-A','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/153 Safari/537.36',
+                      url
+                  ], capture_output=True, timeout=35)
+                  return p.stdout.decode('utf-8','ignore')
+              except Exception:
+                  return ''
 
-          function abs(base, src) {
-            try { return new URL(src, base).href; } catch { return ''; }
-          }
+          def mask(text):
+              text = re.sub(r'(X-Api-Key[=:\'"\\s]+)[A-Za-z0-9._-]{8,}', r'\1<masked>', text, flags=re.I)
+              text = re.sub(r'(X-Api-Key=)[^&\'"\\s]+', r'\1<masked>', text, flags=re.I)
+              return text
 
-          function mask(text) {
-            return text
-              .replace(/(X-Api-Key[=:'"\\s]+)[A-Za-z0-9._-]{8,}/gi,'$1<masked>')
-              .replace(/(X-Api-Key=)[^&"'\\s]+/gi,'$1<masked>');
-          }
+          markers = [
+              'direct-feed/feed','getlivericheventsbysport','getmarketsbyeventids',
+              'x-api-key','websocket','eventsource','graphql','/api/',
+              'signalr','hubconnection','socket.io','sports','events'
+          ]
 
-          for (const page of pages) {
-            const html = curl(page);
-            console.log('\nPAGE', page, 'bytes=' + html.length);
-            if (!html) continue; for (const marker of ['__NEXT_DATA__','__NUXT__','graphql','/api/','WebSocket','EventSource','socket.io']) { const i=html.toLowerCase().indexOf(marker.toLowerCase()); if(i>=0){ console.log('HTML_MARKER',marker); console.log(mask(html.slice(Math.max(0,i-800),Math.min(html.length,i+3000)))); } }
+          for page in pages:
+              html = curl(page)
+              print('\nPAGE', page, 'bytes='+str(len(html)))
+              if not html:
+                  continue
 
-            const scripts = [...html.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)]
-              .map(m => abs(page, m[1]))
-              .filter(Boolean);
+              lower_html = html.lower()
+              for marker in ['__next_data__','__nuxt__','graphql','/api/','websocket','eventsource','socket.io','direct-feed','signalr']:
+                  i = lower_html.find(marker)
+                  if i >= 0:
+                      print('HTML_MARKER', marker)
+                      print(mask(html[max(0,i-600):min(len(html),i+2200)]))
 
-            console.log('SCRIPTS', scripts.length); for (const s of scripts) console.log('SCRIPT_URL', s);
+              scripts = []
+              for m in re.finditer(r'<script[^>]+src=["\']([^"\']+)["\']', html, re.I):
+                  u = urljoin(page, m.group(1))
+                  if u not in scripts:
+                      scripts.append(u)
 
-            for (const script of scripts.slice(0,120)) {
-              const js = curl(script);
-              if (!js) continue;
+              print('SCRIPTS', len(scripts))
+              for u in scripts:
+                  print('SCRIPT_URL', u)
 
-              const needles = ['direct-feed/feed','GetLiveRichEventsBySport','GetMarketsByEventIds','X-Api-Key','WebSocket','EventSource','graphql','/api/','signalr','hubConnection','socket.io'];
-              const hasNeedle = needles.some(n => js.toLowerCase().includes(n.toLowerCase())); const urls=[...js.matchAll(/https?:\\/\\/[^\"'\\s)]+/g)].map(m=>m[0]); if (!hasNeedle && !urls.some(u=>/parik|sport|feed|api|socket|hub/i.test(u))) continue;
+              for script in scripts[:120]:
+                  js = curl(script)
+                  if not js:
+                      continue
+                  normalized = js.replace('\\/','/')
+                  low = normalized.lower()
+                  hits = [x for x in markers if x in low]
 
-              console.log('\nMATCHING_BUNDLE', script);
-              for (const needle of needles) {
-                const lower = js.toLowerCase(); const i = lower.indexOf(needle.toLowerCase());
-                if (i >= 0) {
-                  console.log('NEEDLE', needle);
-                  console.log(mask(js.slice(Math.max(0,i-500), Math.min(js.length,i+1500))));
-                }
-              }
+                  urls = re.findall(r'(?:https?|wss?)://[^"\'\\s)<>]+', normalized, re.I)
+                  interesting_urls = [u for u in urls if re.search(r'parik|sport|feed|api|socket|hub|event|line|bet', u, re.I)]
 
-              for (const u of urls.filter(u=>/parik|sport|feed|api|socket|hub/i.test(u)).slice(0,50)) console.log('HTTP_URL', mask(u)); const wss = [...js.matchAll(/wss:\/\/[^\"'\\\s)]+/g)].map(m=>m[0]);
-              for (const u of wss) console.log('WSS', mask(u));
-            }
-          }
-          NODE
+                  paths = re.findall(r'["\']([^"\']{1,240})["\']', normalized)
+                  interesting_paths = []
+                  for p in paths:
+                      if re.search(r'/(?:api|graphql|sport|event|feed|socket|hub|line|live)[/?A-Za-z0-9_.=&%:-]*', p, re.I):
+                          if p not in interesting_paths:
+                              interesting_paths.append(p)
+
+                  if not hits and not interesting_urls and not interesting_paths:
+                      continue
+
+                  print('\nMATCHING_BUNDLE', script, 'bytes='+str(len(js)))
+                  print('HITS', ','.join(hits))
+                  for u in interesting_urls[:80]:
+                      print('URL', mask(u))
+                  for p in interesting_paths[:100]:
+                      print('PATH', mask(p))
+
+                  for needle in ['direct-feed/feed','websocket','graphql','socket.io','signalr','hubconnection','/api/']:
+                      i = low.find(needle)
+                      if i >= 0:
+                          print('AROUND', needle)
+                          print(mask(normalized[max(0,i-500):min(len(normalized),i+1800)]))
+          PY
