@@ -16,6 +16,20 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+      - name: Save esports page
+        shell: bash
+        run: |
+          mkdir -p /tmp/parik-prematch
+          curl -L -sS --compressed --connect-timeout 10 --max-time 25 \
+            -A 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/153 Safari/537.36' \
+            'https://parik24.me/uk/esports' -o /tmp/parik-prematch/esports.html
+          wc -c /tmp/parik-prematch/esports.html
+      - name: Upload esports page
+        uses: actions/upload-artifact@v4
+        with:
+          name: parik-esports-page
+          path: /tmp/parik-prematch/esports.html
+          retention-days: 1
       - name: Probe prematch pages
         shell: bash
         run: |
