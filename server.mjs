@@ -481,5 +481,6 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(port, '0.0.0.0', () => {
   console.log('Arena Line exact ZIP v32 listening on ' + port + ' with current Parik24 live bridge');
-  currentLiveEvents().catch(() => {});\n  currentEsportsEvents().catch(() => {});
+  currentLiveEvents().catch(() => {});
+  currentEsportsEvents().catch(() => {});
 });
