@@ -19,16 +19,16 @@ function decodeEntities(value='') {
     .replace(/&#39;|&apos;/gi,"'")
     .replace(/&lt;/gi,'<')
     .replace(/&gt;/gi,'>')
-    .replace(/&#(\\d+);/g, (_,n) => String.fromCodePoint(Number(n)))
+    .replace(/&#(\d+);/g, (_,n) => String.fromCodePoint(Number(n)))
     .replace(/&#x([0-9a-f]+);/gi, (_,n) => String.fromCodePoint(parseInt(n,16)));
 }
 
 function htmlText(value='') {
   return decodeEntities(String(value)
-    .replace(/<script[\\s\\S]*?<\\/script>/gi,' ')
-    .replace(/<style[\\s\\S]*?<\\/style>/gi,' ')
+    .replace(/<script[\s\S]*?<\/script>/gi,' ')
+    .replace(/<style[\s\S]*?<\/style>/gi,' ')
     .replace(/<[^>]+>/g,' ')
-    .replace(/\\s+/g,' ')
+    .replace(/\s+/g,' ')
     .trim());
 }
 
@@ -73,11 +73,11 @@ function categoryFromTournament(name='', sport='F') {
 function parseParikLive(html) {
   const tournaments = [];
   let m;
-  const tournamentRe = /<span[^>]*data-id=["']events-title["'][^>]*>([\\s\\S]*?)<\\/span>/gi;
+  const tournamentRe = /<span[^>]*data-id=["']events-title["'][^>]*>([\s\S]*?)<\/span>/gi;
   while ((m = tournamentRe.exec(html))) tournaments.push({ pos:m.index, name:htmlText(m[1]) });
 
   const markers = [];
-  const eventRe = /<div[^>]*data-anchor=["']event_(\\d+)["'][^>]*>/gi;
+  const eventRe = /<div[^>]*data-anchor=["']event_(\d+)["'][^>]*>/gi;
   while ((m = eventRe.exec(html))) markers.push({ pos:m.index, end:m.index + m[0].length, id:m[1] });
 
   let tournamentIndex = 0;
@@ -94,18 +94,18 @@ function parseParikLive(html) {
     const end = markers[i + 1]?.pos ?? html.length;
     const block = html.slice(marker.end, end);
 
-    const names = matches(/<span[^>]*class=["'][^"']*styles_name__[^"']*["'][^>]*>([\\s\\S]*?)<\\/span>/gi, block)
+    const names = matches(/<span[^>]*class=["'][^"']*styles_name__[^"']*["'][^>]*>([\s\S]*?)<\/span>/gi, block)
       .map(x => htmlText(x[1])).filter(Boolean).slice(0,2);
     if (names.length < 2) continue;
 
-    const time = htmlText((block.match(/<span[^>]*class=["'][^"']*styles_time__[^"']*["'][^>]*>([\\s\\S]*?)<\\/span>/i) || [])[1] || 'ЛАЙВ');
-    const scoreBlock = (block.match(/<div[^>]*class=["'][^"']*styles_scores__[^"']*["'][^>]*>([\\s\\S]*?)<\\/div>\\s*<\\/div>/i) || [])[1] || '';
-    const scores = matches(/<span[^>]*class=["'][^"']*subhead-semibold[^"']*["'][^>]*>([\\s\\S]*?)<\\/span>/gi, scoreBlock)
-      .map(x => htmlText(x[1])).filter(x => /^\\d+$/.test(x)).slice(0,2);
+    const time = htmlText((block.match(/<span[^>]*class=["'][^"']*styles_time__[^"']*["'][^>]*>([\s\S]*?)<\/span>/i) || [])[1] || 'ЛАЙВ');
+    const scoreBlock = (block.match(/<div[^>]*class=["'][^"']*styles_scores__[^"']*["'][^>]*>([\s\S]*?)<\/div>\s*<\/div>/i) || [])[1] || '';
+    const scores = matches(/<span[^>]*class=["'][^"']*subhead-semibold[^"']*["'][^>]*>([\s\S]*?)<\/span>/gi, scoreBlock)
+      .map(x => htmlText(x[1])).filter(x => /^\d+$/.test(x)).slice(0,2);
 
-    const oddValues = matches(/<span[^>]*data-id=["']odds-value["'][^>]*>([\\s\\S]*?)<\\/span>/gi, block)
+    const oddValues = matches(/<span[^>]*data-id=["']odds-value["'][^>]*>([\s\S]*?)<\/span>/gi, block)
       .map(x => Number(htmlText(x[1]).replace(',','.')));
-    const oddNames = matches(/<span[^>]*data-id=["']outcome-name-value["'][^>]*>([\\s\\S]*?)<\\/span>/gi, block)
+    const oddNames = matches(/<span[^>]*data-id=["']outcome-name-value["'][^>]*>([\s\S]*?)<\/span>/gi, block)
       .map(x => htmlText(x[1]));
 
     const sport = sportFromTournament(currentTournament);
