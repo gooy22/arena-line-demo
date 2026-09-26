@@ -57,31 +57,31 @@ jobs:
           for (const page of pages) {
             const html = curl(page);
             console.log('\nPAGE', page, 'bytes=' + html.length);
-            if (!html) continue;
+            if (!html) continue; for (const marker of ['__NEXT_DATA__','__NUXT__','graphql','/api/','WebSocket','EventSource','socket.io']) { const i=html.toLowerCase().indexOf(marker.toLowerCase()); if(i>=0){ console.log('HTML_MARKER',marker); console.log(mask(html.slice(Math.max(0,i-800),Math.min(html.length,i+3000)))); } }
 
             const scripts = [...html.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)]
               .map(m => abs(page, m[1]))
               .filter(Boolean);
 
-            console.log('SCRIPTS', scripts.length);
+            console.log('SCRIPTS', scripts.length); for (const s of scripts) console.log('SCRIPT_URL', s);
 
             for (const script of scripts.slice(0,120)) {
               const js = curl(script);
               if (!js) continue;
 
-              const needles = ['direct-feed/feed','GetLiveRichEventsBySport','GetMarketsByEventIds','X-Api-Key'];
-              if (!needles.some(n => js.includes(n))) continue;
+              const needles = ['direct-feed/feed','GetLiveRichEventsBySport','GetMarketsByEventIds','X-Api-Key','WebSocket','EventSource','graphql','/api/','signalr','hubConnection','socket.io'];
+              const hasNeedle = needles.some(n => js.toLowerCase().includes(n.toLowerCase())); const urls=[...js.matchAll(/https?:\\/\\/[^\"'\\s)]+/g)].map(m=>m[0]); if (!hasNeedle && !urls.some(u=>/parik|sport|feed|api|socket|hub/i.test(u))) continue;
 
               console.log('\nMATCHING_BUNDLE', script);
               for (const needle of needles) {
-                const i = js.indexOf(needle);
+                const lower = js.toLowerCase(); const i = lower.indexOf(needle.toLowerCase());
                 if (i >= 0) {
                   console.log('NEEDLE', needle);
                   console.log(mask(js.slice(Math.max(0,i-500), Math.min(js.length,i+1500))));
                 }
               }
 
-              const wss = [...js.matchAll(/wss:\/\/[^"'\\\s)]+/g)].map(m=>m[0]);
+              for (const u of urls.filter(u=>/parik|sport|feed|api|socket|hub/i.test(u)).slice(0,50)) console.log('HTTP_URL', mask(u)); const wss = [...js.matchAll(/wss:\/\/[^\"'\\\s)]+/g)].map(m=>m[0]);
               for (const u of wss) console.log('WSS', mask(u));
             }
           }
