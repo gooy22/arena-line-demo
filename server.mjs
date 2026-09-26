@@ -51,7 +51,7 @@ function stableHash(value='') {
 
 function sportFromTournament(name='') {
   const v = name.toLowerCase();
-  if (/кіберфутбол|esportsbattle|efootball/.test(v)) return 'CS';
+  if (/кіберфутбол|esportsbattle|efootball/.test(v)) return 'F';
   if (/кіберспорт|counter[- ]?strike|dota|league of legends|valorant/.test(v)) return 'CS';
   if (/настільн/.test(v)) return 'TT';
   if (/теніс/.test(v)) return 'T';
