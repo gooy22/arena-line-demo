@@ -20,8 +20,7 @@ jobs:
         shell: bash
         run: |
           python3 - <<'PY'
-          import subprocess,re
-          from bs4 import BeautifulSoup
+          import subprocess,re,html as H
           urls=[
             'https://parik24.me/uk/football',
             'https://parik24.me/uk/go',
@@ -33,21 +32,30 @@ jobs:
               '-A','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/153 Safari/537.36',url],
               capture_output=True)
             return p.stdout.decode('utf-8','ignore')
+          def text(x):
+            x=re.sub(r'<[^>]+>',' ',x)
+            return ' '.join(H.unescape(x).split())
           for url in urls:
-            html=curl(url)
-            print('\nURL',url,'bytes',len(html))
-            if not html: continue
-            title=re.search(r'<title[^>]*>(.*?)</title>',html,re.I|re.S)
-            print('TITLE',re.sub('<[^>]+>',' ',title.group(1)).strip() if title else '')
-            print('event_anchors',len(re.findall(r'data-anchor=["\']event_\d+',html,re.I)))
+            src=curl(url)
+            print('\nURL',url,'bytes',len(src))
+            if not src: continue
+            title=re.search(r'<title[^>]*>(.*?)</title>',src,re.I|re.S)
+            print('TITLE',text(title.group(1)) if title else '')
+            print('EVENT_ANCHORS',len(re.findall(r'data-anchor=["\']event_\d+',src,re.I)))
             for needle in ['Кіберспорт','Counter-Strike','Dota','League of Legends','Valorant','ESportsBattle','Найближчі події']:
-              print(needle, html.lower().count(needle.lower()))
-            soup=BeautifulSoup(html,'html.parser')
-            hits=[]
-            for a in soup.find_all('a'):
-              txt=' '.join(a.get_text(' ',strip=True).split())
-              href=a.get('href')
-              if re.search(r'кіберспорт|counter|dota|league of legends|valorant',txt,re.I):
-                hits.append((txt,href))
-            for x in hits[:30]: print('LINK',x)
+              print('COUNT',needle,src.lower().count(needle.lower()))
+            for m in re.finditer(r'<a[^>]+href=["\']([^"\']+)["\'][^>]*>([\s\S]*?)</a>',src,re.I):
+              t=text(m.group(2))
+              if re.search(r'кіберспорт|counter|dota|league of legends|valorant',t,re.I):
+                print('LINK',repr(t[:180]),'->',m.group(1))
+            # print nearby esports snippets
+            low=src.lower()
+            for needle in ['counter-strike','dota','league of legends','valorant','кіберспорт']:
+              pos=0
+              shown=0
+              while shown<8:
+                i=low.find(needle,pos)
+                if i<0: break
+                print('SNIP',needle,text(src[max(0,i-600):min(len(src),i+1600)])[:1400])
+                pos=i+len(needle); shown+=1
           PY
