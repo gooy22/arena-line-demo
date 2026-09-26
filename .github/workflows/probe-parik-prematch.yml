@@ -1,0 +1,53 @@
+name: Probe Parik24 prematch esports
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/probe-parik-prematch.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe prematch pages
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import subprocess,re
+          from bs4 import BeautifulSoup
+          urls=[
+            'https://parik24.me/uk/football',
+            'https://parik24.me/uk/go',
+            'https://parik24.me/uk/esports',
+            'https://parik24.me/uk/cybersport',
+          ]
+          def curl(url):
+            p=subprocess.run(['curl','-L','-sS','--compressed','--connect-timeout','10','--max-time','25',
+              '-A','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/153 Safari/537.36',url],
+              capture_output=True)
+            return p.stdout.decode('utf-8','ignore')
+          for url in urls:
+            html=curl(url)
+            print('\nURL',url,'bytes',len(html))
+            if not html: continue
+            title=re.search(r'<title[^>]*>(.*?)</title>',html,re.I|re.S)
+            print('TITLE',re.sub('<[^>]+>',' ',title.group(1)).strip() if title else '')
+            print('event_anchors',len(re.findall(r'data-anchor=["\']event_\d+',html,re.I)))
+            for needle in ['Кіберспорт','Counter-Strike','Dota','League of Legends','Valorant','ESportsBattle','Найближчі події']:
+              print(needle, html.lower().count(needle.lower()))
+            soup=BeautifulSoup(html,'html.parser')
+            hits=[]
+            for a in soup.find_all('a'):
+              txt=' '.join(a.get_text(' ',strip=True).split())
+              href=a.get('href')
+              if re.search(r'кіберспорт|counter|dota|league of legends|valorant',txt,re.I):
+                hits.append((txt,href))
+            for x in hits[:30]: print('LINK',x)
+          PY
