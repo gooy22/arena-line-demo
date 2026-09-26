@@ -1,0 +1,88 @@
+name: Discover current Parik24 feed
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/probe-parik-feed.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect current public Parik24 bundles
+        shell: bash
+        run: |
+          set -uo pipefail
+          node <<'NODE'
+          const { execFileSync } = require('child_process');
+
+          const pages = [
+            'https://www.parik24.org/uk/all-live/',
+            'https://parik24.org/uk/all-live/',
+            'https://parik24.me/uk/all-live/',
+            'https://parikbet24.net/',
+            'https://parik24.new/'
+          ];
+
+          function curl(url) {
+            try {
+              return execFileSync('curl', [
+                '-L','-sS','--compressed',
+                '--connect-timeout','10','--max-time','25',
+                '-A','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/153 Safari/537.36',
+                url
+              ], {encoding:'utf8', maxBuffer:50*1024*1024});
+            } catch {
+              return '';
+            }
+          }
+
+          function abs(base, src) {
+            try { return new URL(src, base).href; } catch { return ''; }
+          }
+
+          function mask(text) {
+            return text
+              .replace(/(X-Api-Key[=:'"\\s]+)[A-Za-z0-9._-]{8,}/gi,'$1<masked>')
+              .replace(/(X-Api-Key=)[^&"'\\s]+/gi,'$1<masked>');
+          }
+
+          for (const page of pages) {
+            const html = curl(page);
+            console.log('\nPAGE', page, 'bytes=' + html.length);
+            if (!html) continue;
+
+            const scripts = [...html.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)]
+              .map(m => abs(page, m[1]))
+              .filter(Boolean);
+
+            console.log('SCRIPTS', scripts.length);
+
+            for (const script of scripts.slice(0,120)) {
+              const js = curl(script);
+              if (!js) continue;
+
+              const needles = ['direct-feed/feed','GetLiveRichEventsBySport','GetMarketsByEventIds','X-Api-Key'];
+              if (!needles.some(n => js.includes(n))) continue;
+
+              console.log('\nMATCHING_BUNDLE', script);
+              for (const needle of needles) {
+                const i = js.indexOf(needle);
+                if (i >= 0) {
+                  console.log('NEEDLE', needle);
+                  console.log(mask(js.slice(Math.max(0,i-500), Math.min(js.length,i+1500))));
+                }
+              }
+
+              const wss = [...js.matchAll(/wss:\/\/[^"'\\\s)]+/g)].map(m=>m[0]);
+              for (const u of wss) console.log('WSS', mask(u));
+            }
+          }
+          NODE
