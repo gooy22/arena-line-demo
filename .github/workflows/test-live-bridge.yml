@@ -35,6 +35,13 @@ jobs:
           done
           cat /tmp/health.json
           curl -fsS 'http://127.0.0.1:3100/api/live?sport=CS&stage=live' >/tmp/live.json
-          node -e "const x=require('/tmp/live.json'); console.log(JSON.stringify({ok:x.ok,source:x.source,total:x.total,sport:x.sport,events:x.events?.length,first:x.events?.[0]?.name,odds:x.events?.[0]?.selections?.map(s=>s.odds)})); if(!x.ok) process.exit(2)"
+          curl -fsS 'http://127.0.0.1:3100/api/live?sport=CS&stage=prematch' >/tmp/prematch.json
+          node - <<'NODE'
+          const live=require('/tmp/live.json');
+          const pre=require('/tmp/prematch.json');
+          console.log('LIVE',JSON.stringify({ok:live.ok,source:live.source,total:live.total,events:live.events?.length,first:live.events?.[0]?.name,odds:live.events?.[0]?.selections?.map(s=>s.odds)}));
+          console.log('PREMATCH',JSON.stringify({ok:pre.ok,source:pre.source,total:pre.total,events:pre.events?.length,first:pre.events?.[0]?.name,odds:pre.events?.[0]?.selections?.map(s=>s.odds)}));
+          if(!live.ok || !pre.ok || !(live.events?.length) || !(pre.events?.length)) process.exit(2);
+          NODE
           cat /tmp/arena-server.log
           kill $(cat /tmp/arena.pid) || true
