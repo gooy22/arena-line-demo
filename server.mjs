@@ -10,6 +10,8 @@ const liveFeedModule = await readFile(new URL('./feed.mjs', import.meta.url), 'u
 
 let liveCache = { at:0, events:[], sourceStatus:'cold' };
 const LIVE_SOURCE = 'https://parik24.me/uk/all-live/';
+const ESPORTS_SOURCE = 'https://parik24.me/uk/esports';
+let esportsCache = { at:0, live:[], prematch:[], sourceStatus:'cold' };
 
 function decodeEntities(value='') {
   return String(value)
@@ -186,6 +188,155 @@ function parseParikLive(html) {
   return events;
 }
 
+
+function parseParikEsports(html) {
+  const eventsLive = [];
+  const eventsPrematch = [];
+  const cardRe = /<a[^>]*class=["'][^"']*tv2-ev[^"']*["'][^>]*>([\s\S]*?)<\/a>/gi;
+  let m;
+
+  while ((m = cardRe.exec(html))) {
+    const block = m[1];
+    const tournamentName = htmlText((block.match(/<span[^>]*class=["'][^"']*tv2-ev-lg[^"']*["'][^>]*>([\s\S]*?)<\/span>/i) || [])[1] || '');
+    if (!/dota|counter[- ]?strike|league of legends|valorant/i.test(tournamentName)) continue;
+
+    const teamBlocks = matches(/<span[^>]*class=["'][^"']*tv2-ev-tm[^"']*["'][^>]*>([\s\S]*?)<\/span>/gi, block);
+    const names = teamBlocks.map(x => htmlText((x[1].match(/<b[^>]*>([\s\S]*?)<\/b>/i) || [])[1] || '')).filter(Boolean).slice(0,2);
+    if (names.length < 2) continue;
+
+    const logos = teamBlocks.map(x => {
+      const src = (x[1].match(/<img[^>]+src=["']([^"']+)["']/i) || [])[1] || '';
+      return src ? new URL(src, ESPORTS_SOURCE).href : '';
+    }).slice(0,2);
+
+    const regulation = htmlText((block.match(/<em[^>]*class=["'][^"']*tv2-ev-time[^"']*["'][^>]*>([\s\S]*?)<\/em>/i) || [])[1] || '');
+    const scoreText = htmlText((block.match(/<em[^>]*class=["'][^"']*tv2-ev-score[^"']*["'][^>]*>([\s\S]*?)<\/em>/i) || [])[1] || '');
+    const isLive = Boolean(scoreText) || /\bК\d+\b|перерва|map\s*\d+/i.test(regulation);
+
+    const id = 'es-' + stableHash([tournamentName,names[0],names[1]].join('|'));
+    const categoryName = /counter[- ]?strike/i.test(tournamentName)
+      ? 'Counter-Strike'
+      : /dota/i.test(tournamentName)
+        ? 'Dota 2'
+        : /league of legends/i.test(tournamentName)
+          ? 'League of Legends'
+          : /valorant/i.test(tournamentName)
+            ? 'Valorant'
+            : 'Кіберспорт';
+
+    const competitors = names.map((name,index) => ({
+      id:`${id}-${index+1}`,
+      name,
+      ...(logos[index] ? { icon:{ url:logos[index] }, iconUrl:logos[index] } : {})
+    }));
+
+    const odds = [];
+    for (const od of matches(/<span[^>]*class=["'][^"']*tv2-ev-od[^"']*["'][^>]*>([\s\S]*?)<\/span>/gi, block)) {
+      const rawLabel = htmlText((od[1].match(/<i[^>]*>([\s\S]*?)<\/i>/i) || [])[1] || '');
+      const value = Number(htmlText((od[1].match(/<b[^>]*>([\s\S]*?)<\/b>/i) || [])[1] || '').replace(',','.'));
+      if (!rawLabel || !Number.isFinite(value) || value <= 1) continue;
+      odds.push({ rawLabel, value });
+    }
+
+    const selections = odds.slice(0,4).map((pick,index) => {
+      let outcomeType = index === 0 ? 0 : 3;
+      let shortLabel = pick.rawLabel;
+      let label = pick.rawLabel;
+      if (/^П1$/i.test(pick.rawLabel)) { outcomeType = 0; shortLabel='П1'; label=names[0]; }
+      else if (/^П2$/i.test(pick.rawLabel)) { outcomeType = 3; shortLabel='П2'; label=names[1]; }
+      else if (/^Х$/i.test(pick.rawLabel)) { outcomeType = 1; shortLabel='X'; label='Нічия'; }
+
+      return {
+        id:`parik:${id}:winner:${outcomeType}:${index}`,
+        eventId:id,
+        eventName:names.join(' - '),
+        tournament:tournamentName,
+        marketName:'Переможець',
+        label,
+        shortLabel,
+        odds:pick.value,
+        sport:'CS',
+        subsport:categoryName,
+        startTime:Math.floor(Date.now()/1000),
+        competitors,
+        categoryName,
+        outcomeType,
+        outcomeValues:[],
+        resultKind:1,
+        frozen:false,
+        stage:isLive ? 2 : 1,
+        marketType:1,
+        period:0,
+        parameters:[],
+        version:1
+      };
+    });
+
+    const score = /^\d+\s*:\s*\d+$/.test(scoreText) ? scoreText.replace(/\s+/g,'').replace(':','-') : '0-0';
+    const event = {
+      id,
+      name:names.join(' - '),
+      tournamentId:'parik-es-' + stableHash(tournamentName),
+      tournamentName,
+      categoryName,
+      sport:'CS',
+      subsport:categoryName,
+      stage:isLive ? 2 : 1,
+      status:isLive ? (/перерва/i.test(regulation) ? 2 : 1) : 0,
+      tradingStatus: selections.length ? 1 : 0,
+      startTime:Math.floor(Date.now()/1000) + (isLive ? 0 : 3600),
+      regulation:regulation || (isLive ? 'ЛАЙВ' : 'Сьогодні'),
+      competitors,
+      scoreboard:{ scores:[
+        { periodScoreType:1006, period:1, score },
+        { periodScoreType:1007, period:1, score }
+      ]},
+      selections
+    };
+
+    (isLive ? eventsLive : eventsPrematch).push(event);
+  }
+
+  return { live:eventsLive, prematch:eventsPrematch };
+}
+
+async function currentEsportsEvents() {
+  if (Date.now() - esportsCache.at < 7000 && (esportsCache.live.length || esportsCache.prematch.length)) return esportsCache;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 12000);
+  try {
+    const response = await fetch(ESPORTS_SOURCE + '?arena=' + Date.now(), {
+      signal:controller.signal,
+      cache:'no-store',
+      headers:{
+        'user-agent':'Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/153 Mobile Safari/537.36',
+        'accept':'text/html,application/xhtml+xml',
+        'accept-language':'uk-UA,uk;q=0.9,en;q=0.7',
+        'cache-control':'no-cache',
+        'pragma':'no-cache'
+      }
+    });
+    if (!response.ok) throw new Error('Parik24 esports HTTP ' + response.status);
+    const html = await response.text();
+    const parsed = parseParikEsports(html);
+    esportsCache = {
+      at:Date.now(),
+      live:parsed.live,
+      prematch:parsed.prematch,
+      sourceStatus:`HTTP ${response.status}; live=${parsed.live.length}; prematch=${parsed.prematch.length}`
+    };
+    console.log('PARIK_ESPORTS_OK ' + esportsCache.sourceStatus);
+    return esportsCache;
+  } catch (error) {
+    console.error('PARIK_ESPORTS_ERROR', error?.cause?.code || error?.name || error?.message || error);
+    if (esportsCache.live.length || esportsCache.prematch.length) return { ...esportsCache, stale:true, sourceStatus:'stale-cache' };
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function currentLiveEvents() {
   if (Date.now() - liveCache.at < 7000 && liveCache.events.length) return liveCache;
 
@@ -258,23 +409,41 @@ const server = http.createServer(async (req, res) => {
 
     if (url.pathname === '/api/live') {
       try {
-        const result = await currentLiveEvents();
         const sport = url.searchParams.get('sport') || '';
         const stage = url.searchParams.get('stage') || 'live';
-        const events = stage === 'live'
-          ? result.events.filter(event => !sport || event.sport === sport)
-          : [];
+
+        let events = [];
+        let sourceStatus = '';
+        let stale = false;
+        let total = 0;
+
+        if (sport === 'CS') {
+          const esports = await currentEsportsEvents();
+          events = stage === 'prematch' ? esports.prematch : esports.live;
+          sourceStatus = esports.sourceStatus;
+          stale = !!esports.stale;
+          total = esports.live.length + esports.prematch.length;
+        } else {
+          const result = await currentLiveEvents();
+          events = stage === 'live'
+            ? result.events.filter(event => !sport || event.sport === sport)
+            : [];
+          sourceStatus = result.sourceStatus;
+          stale = !!result.stale;
+          total = result.events.length;
+        }
 
         res.statusCode = 200;
         res.setHeader('content-type', 'application/json; charset=utf-8');
         res.setHeader('cache-control', 'no-store');
         return res.end(JSON.stringify({
           ok:true,
-          source:'parik24.me',
-          sourceStatus:result.sourceStatus,
-          stale:!!result.stale,
-          total:result.events.length,
+          source:sport === 'CS' ? 'parik24.me/uk/esports' : 'parik24.me/uk/all-live',
+          sourceStatus,
+          stale,
+          total,
           sport,
+          stage,
           events
         }));
       } catch (error) {
@@ -312,5 +481,5 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(port, '0.0.0.0', () => {
   console.log('Arena Line exact ZIP v32 listening on ' + port + ' with current Parik24 live bridge');
-  currentLiveEvents().catch(() => {});
+  currentLiveEvents().catch(() => {});\n  currentEsportsEvents().catch(() => {});
 });
