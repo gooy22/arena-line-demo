@@ -16,6 +16,27 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - name: Save current Parik24 page
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/parik-probe
+          curl -L -sS --compressed --connect-timeout 10 --max-time 30 \
+            -A 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/153 Safari/537.36' \
+            'https://parik24.me/uk/all-live/' -o /tmp/parik-probe/live.html
+          for u in \
+            'https://parik24.me/assets/js/app.js?v=1786961965' \
+            'https://parik24.me/assets/js/main.js'; do
+            n=$(basename "${u%%\?*}")
+            curl -L -sS --compressed --connect-timeout 10 --max-time 30 \
+              -A 'Mozilla/5.0 Chrome/153 Safari/537.36' "$u" -o "/tmp/parik-probe/$n"
+          done
+          wc -c /tmp/parik-probe/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: parik-public-client
+          path: /tmp/parik-probe
+          retention-days: 1
       - name: Inspect current public Parik24 bundles
         shell: bash
         run: |
