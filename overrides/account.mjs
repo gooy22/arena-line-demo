@@ -247,7 +247,12 @@ export class Accounts {
     account.payments.unshift({ id: crypto.randomUUID(), type, amount, date: new Date().toISOString() });
     this._persist(data, account);
   }
-  normalizeBetNumbers(account) {
+  ensureBetNumbers(account) {
+    const size = account.bets.length;
+    const numbers = account.bets.map(bet => Number(bet.number));
+    const valid = numbers.every(number => Number.isInteger(number) && number >= 1 && number <= size) &&
+      new Set(numbers).size === size;
+    if (valid) return;
     const ordered = [...account.bets].sort((a,b) => new Date(a.date) - new Date(b.date));
     ordered.forEach((bet,index) => { bet.number = index + 1; });
   }
@@ -255,7 +260,7 @@ export class Accounts {
     const data = this.read();
     const account = data.find(a => a.email === this.storage.getItem(SESSION));
     if (!account) throw new Error('Сначала войдите в аккаунт');
-    this.normalizeBetNumbers(account);
+    this.ensureBetNumbers(account);
     const bet = account.bets.find(item => item.id === id);
     if (!bet) throw new Error('Ставка не найдена');
 
