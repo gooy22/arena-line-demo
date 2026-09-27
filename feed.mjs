@@ -808,7 +808,7 @@ export class LiveFeed {
     this.syncTimer=setTimeout(() => this.pushSync(),1200);
   }
 
-  pushSync() {
+  async pushSync() {
     const rows=[...new Map([...this.events,...this.watched]).entries()]
       .map(([id,row]) => compactEvent(row,id))
       .filter(Boolean)
@@ -816,18 +816,52 @@ export class LiveFeed {
     if (!rows.length) return;
 
     const revision=++this.syncRevision;
-    fetch('/api/sync/events',{
-      method:'POST',
-      headers:{'content-type':'application/json'},
-      body:JSON.stringify({
+    const batchSize=35;
+    const batches=[];
+    for(let i=0;i<rows.length;i+=batchSize) batches.push(rows.slice(i,i+batchSize));
+
+    let accepted=0;
+    for(let index=0; index<batches.length; index++){
+      const batch=batches[index];
+      try{
+        const response=await fetch('/api/sync/events',{
+          method:'POST',
+          headers:{'content-type':'application/json'},
+          body:JSON.stringify({
+            revision,
+            batch:index+1,
+            batches:batches.length,
+            source:this.connectedUrl || this.currentUrl || '',
+            sport:this.sport,
+            stage:this.sport === 'CS' ? 'all' : this.stage,
+            rows:batch
+          }),
+          cache:'no-store'
+        });
+        if(!response.ok) throw new Error('sync HTTP '+response.status);
+        const value=await response.json().catch(()=>({}));
+        accepted+=Number(value?.accepted || batch.length);
+      }catch(error){
+        this.report('events-sync-error',{
+          message:JSON.stringify({
+            revision,
+            batch:index+1,
+            batches:batches.length,
+            rows:batch.length,
+            error:String(error?.message || error)
+          }).slice(0,1000)
+        });
+        return;
+      }
+    }
+
+    this.report('events-synced',{
+      message:JSON.stringify({
         revision,
-        source:this.connectedUrl || this.currentUrl || '',
-        sport:this.sport,
-        stage:this.sport === 'CS' ? 'all' : this.stage,
-        rows
-      }),
-      keepalive:true
-    }).catch(() => {});
+        rows:accepted,
+        batches:batches.length
+      })
+    });
   }
 
   get fresh() {
