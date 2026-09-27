@@ -169,10 +169,20 @@ function patchSportsModule(source) {
       'Call of Duty':'call-of-duty'
     };
     const fallback = games[event.categoryName] || SPORTS.find(s => s[0] === event.sport)?.[1] || 'esports';
-    const valorant = 'https://commons.wikimedia.org/wiki/Special:Redirect/file/Valorant_logo_-_pink_color_version.svg';
-    const fallbackGraphic = event.categoryName === 'Valorant'
-      ? \`<img class="reference-graphic valorant-restored" src="\${valorant}" alt="" aria-hidden="true" draggable="false">\`
-      : graphic(fallback);
+    const fallbackMarks = {
+      'Dota 2':['D','dota'],
+      'Counter-Strike':['CS','cs'],
+      'Valorant':['V','valorant'],
+      'League of Legends':['L','lol'],
+      'Free Fire':['FF','freefire'],
+      'Mobile Legends':['ML','mlbb'],
+      'PUBG':['P','pubg'],
+      'Rainbow Six':['R6','r6']
+    };
+    const mark = fallbackMarks[event.categoryName];
+    const fallbackGraphic = mark
+      ? `<span class="discipline-monogram discipline-${mark[1]}">${mark[0]}</span>`
+      : `<span class="discipline-monogram">🎮</span>`;
 
     const tournamentId = String(event.tournamentId || '');
     const providerPrimary = event.categoryIconUrl || event.tournamentIconUrl ||
@@ -237,6 +247,26 @@ const sportsCssPatch = `
   height:100%;
   place-items:center;
 }
+.discipline-monogram{
+  display:grid;
+  place-items:center;
+  width:100%;
+  height:100%;
+  border-radius:50%;
+  background:#101010;
+  color:#ece9e2;
+  font-size:14px;
+  font-weight:800;
+  letter-spacing:-.5px;
+}
+.discipline-dota{color:#d7222a;font-size:20px}
+.discipline-cs{color:#e7d500;font-size:12px}
+.discipline-valorant{color:#ff4655;font-size:20px}
+.discipline-lol{color:#c89b3c;font-size:19px}
+.discipline-freefire{color:#f4d600;font-size:11px}
+.discipline-mlbb{color:#56a7ff;font-size:11px}
+.discipline-pubg{color:#f2a900;font-size:17px}
+.discipline-r6{color:#f5f5f5;font-size:12px}
 .team-emblem-picture{
   display:grid!important;
   place-items:center;
