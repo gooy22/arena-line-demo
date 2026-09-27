@@ -146,6 +146,7 @@ function compactEvent(row, idOverride = '') {
     competitors:(event.competitors || []).slice(0,2).map(team => ({
       id:String(team.id || ''),
       name:String(team.name || ''),
+      categoryName:String(team.categoryName || event.categoryName || ''),
       icon:team.icon?.url ? {url:String(team.icon.url)} : undefined
     })),
     scoreboard:event.scoreboard || null,
@@ -238,7 +239,11 @@ function normalizeEsportsRow(row) {
         event?.tournamentIcon?.url ||
         event?.tournament?.icon?.url ||
         taxonomyURL('tournaments',event?.tournamentId)
-      )
+      ),
+      competitors:(event.competitors || []).map(team => ({
+        ...team,
+        categoryName:inferDiscipline(event)
+      }))
     }
   };
 }
