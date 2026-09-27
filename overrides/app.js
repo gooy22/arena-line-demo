@@ -1,7 +1,7 @@
 import { Accounts, cents, money, betTotals } from './account.mjs';
 import { SportsApp } from './sports.mjs';
 import { icon, wordmark } from './ui.mjs';
-import { betHistory } from './bet-view.mjs';
+import { betHistory, betDetail } from './bet-view.mjs';
 import { openShareCoupon } from './share-coupon.mjs';
 import { getLanguage, getLocale, setLanguage, startTranslations } from './i18n.mjs';
 import { getTheme, setTheme, applyTheme } from './theme.mjs';
@@ -14,6 +14,7 @@ const dialog = $('#dialog');
 let account = null;
 let profileView = 'profile';
 let betTab = 'open';
+let selectedBetId = null;
 let toastTimer;
 let sports;
 
@@ -100,6 +101,7 @@ function renderProfile() {
     profile: mainProfile,
     personal,
     bets,
+    'bet-detail': () => betDetail(account, selectedBetId),
     payments,
     wallet: () => `${balancePanel()}${payments()}`,
     security: () => `<div class="data-page"><div class="security">${icon('shield-check')}<h2>Аккаунт создан</h2><p>Вход по почте и паролю.<br>Виртуальный счёт активен.</p></div></div>`,
@@ -111,7 +113,10 @@ function renderProfile() {
     information:()=>`<div class="data-page"><h2>Arena Line</h2><p>Профіль синхронізується з серверною копією: баланс, платежі та історія ставок доступні після входу на іншому пристрої.</p><p>Матчі та коефіцієнти надходять із лінії. Виплата за ставкою зараховується після підтвердження результату.</p></div>`,
     promotions:()=>empty('gift','Активних бонусів немає'),hero:()=>empty('star','HERO','Для цього профілю поки немає нагород.'),bonuses:()=>empty('gift','Активних бонусів немає'),tournaments:()=>empty('trophy','Турніри','У профілі немає активних бонусних турнірів.')
   };
+  const isBetDetail = profileView === 'bet-detail';
+  $('#profile-nav').hidden = isBetDetail;
   $('#profile-content').classList.toggle('history-view', profileView === 'bets');
+  $('#profile-content').classList.toggle('bet-detail-view', isBetDetail);
   $('#profile-content').innerHTML = (views[profileView] || mainProfile)();
   refreshIcons();
 }
@@ -128,6 +133,7 @@ function openProfile() {
 }
 function openBets() {
   openProfile();
+  selectedBetId = null;
   if (!$('#profile-layer').hidden) { profileView = 'bets'; betTab = 'open'; renderProfile(); }
   sports?.results.check(true);
 }
@@ -400,13 +406,17 @@ document.addEventListener('click', async event => {
     }
   }
   else if (action === 'bet-tab') { betTab = value; renderProfile(); }
-  else if (action === 'toggle-multi-bet') {
-    const article = control.closest('.bet-record-multi');
-    const details = article?.querySelector('.bet-multi-details');
-    const expanded = control.getAttribute('aria-expanded') === 'true';
-    if (details) details.hidden = expanded;
-    control.setAttribute('aria-expanded', expanded ? 'false' : 'true');
-    article?.classList.toggle('expanded', !expanded);
+  else if (action === 'open-bet-detail') {
+    selectedBetId = value;
+    profileView = 'bet-detail';
+    renderProfile();
+    $('#profile-content').scrollTop = 0;
+  }
+  else if (action === 'back-to-bets') {
+    profileView = 'bets';
+    selectedBetId = null;
+    renderProfile();
+    $('#profile-content').scrollTop = 0;
   }
   else if (action === 'bet-event') {
     const split = value.lastIndexOf(':'), bet = getAccount()?.bets.find(bet => bet.id === value.slice(0,split));
