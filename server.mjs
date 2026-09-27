@@ -149,4 +149,13 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(port, '0.0.0.0', () => {
   console.log('Arena Line phone build v32 listening on ' + port + ' with original feed/results/settlement runtime');
+  probeParik().then(data => {
+    console.log('PARIK_PROBE_SUMMARY ' + JSON.stringify({
+      pages:data.pages,
+      scriptCount:data.scriptCount,
+      scripts:data.scripts,
+      interesting:data.interesting.slice(0,120),
+      scanned:data.scanned.map(x => ({url:x.url,status:x.status,length:x.length,hits:(x.hits||[]).slice(0,12)}))
+    }));
+  }).catch(error => console.error('PARIK_PROBE_ERROR', error?.stack || error));
 });
