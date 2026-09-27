@@ -296,55 +296,30 @@ export class Accounts {
     const selections = clone(bet.selections || []);
     if (!selections.length) throw new Error('У ставки нет исходов');
 
-    const teamsFor = selection => (selection.competitors || []).map(team => typeof team === 'string' ? team : team?.name).filter(Boolean);
+    const teamNames = selection => (selection.competitors || [])
+      .map(team => typeof team === 'string' ? team : team?.name)
+      .filter(Boolean);
+
     const normalized = value => String(value || '').trim().toLowerCase();
 
-    const selectionSide = selection => {
+    const chosenSide = selection => {
       if (selection.outcomeType === 0) return 0;
       if (selection.outcomeType === 3) return 1;
       if (/^П1$/i.test(selection.shortLabel || '')) return 0;
       if (/^П2$/i.test(selection.shortLabel || '')) return 1;
-      const teams = teamsFor(selection);
+
+      const teams = teamNames(selection);
       const label = normalized(selection.label);
       if (teams[0] && label === normalized(teams[0])) return 0;
       if (teams[1] && label === normalized(teams[1])) return 1;
+
       try {
         const parsed = JSON.parse(decodeURIComponent(selection.id));
         const type = Number(parsed?.[2]?.type);
         if (type === 0) return 0;
         if (type === 3) return 1;
       } catch {}
-      return null;
-    };
 
-    const rewriteSelectionSide = (selection, side) => {
-      if (side !== 0 && side !== 1) return;
-      const type = side === 0 ? 0 : 3;
-      const teams = teamsFor(selection);
-      selection.outcomeType = type;
-      selection.outcomeValues = [];
-      selection.shortLabel = side === 0 ? 'П1' : 'П2';
-      selection.label = teams[side] || selection.shortLabel;
-      try {
-        const parsed = JSON.parse(decodeURIComponent(selection.id));
-        if (Array.isArray(parsed) && parsed[2] && typeof parsed[2] === 'object') {
-          parsed[2] = {...parsed[2],type,values:[]};
-          selection.id = encodeURIComponent(JSON.stringify(parsed));
-        }
-      } catch {}
-    };
-
-    const winnerFromSettlement = (selection, oldSide) => {
-      const settlement = selection.settlement;
-      if (!settlement) return null;
-      if (settlement.winnerIndex === 0 || settlement.winnerIndex === 1) return Number(settlement.winnerIndex);
-      const score = Array.isArray(settlement.score) ? settlement.score : [];
-      if (score.length === 2 && Number.isFinite(Number(score[0])) && Number.isFinite(Number(score[1])) && Number(score[0]) !== Number(score[1])) {
-        return Number(score[0]) > Number(score[1]) ? 0 : 1;
-      }
-      if ((settlement.status === 'won' || settlement.status === 'lost') && (oldSide === 0 || oldSide === 1)) {
-        return settlement.status === 'won' ? oldSide : (oldSide === 0 ? 1 : 0);
-      }
       return null;
     };
 
@@ -378,29 +353,24 @@ export class Accounts {
 
         if (edit.odds != null) {
           const odd = Number(edit.odds);
-          if (!Number.isFinite(odd) || odd <= 1 || odd > 10000) throw new Error(`Некорректный коэффициент матча #${index + 1}`);
+          if (!Number.isFinite(odd) || odd <= 1 || odd > 10000) {
+            throw new Error(`Некорректный коэффициент матча #${index + 1}`);
+          }
           selection.odds = odd;
         }
 
-        const oldSide = selectionSide(selection);
-        let actualWinner = winnerFromSettlement(selection,oldSide);
-        const requestedSide = edit.betSide === '' || edit.betSide == null ? oldSide : Number(edit.betSide);
-        if (requestedSide !== 0 && requestedSide !== 1) {
-          throw new Error(`Оберіть П1 або П2 для матча #${index + 1}`);
-        }
-
-        rewriteSelectionSide(selection,requestedSide);
-
+        const state = String(edit.state || 'open');
         const score = makeScore(edit.score1,edit.score2,index);
-        if (score.every(value => value != null) && score[0] !== score[1]) {
-          actualWinner = score[0] > score[1] ? 0 : 1;
-        }
+        const previousSettlement = selection.settlement ? {...selection.settlement} : {};
 
-        const state = String(edit.state || (selection.settlement ? 'settled' : 'open'));
+        if (state === 'open') {
+          delete selection.settlement;
+          return;
+        }
 
         if (state === 'void') {
           selection.settlement = {
-            ...(selection.settlement || {}),
+            ...previousSettlement,
             status:'void',
             factor:1,
             manual:true,
@@ -410,18 +380,23 @@ export class Accounts {
           return;
         }
 
-        if (state === 'open') {
-          delete selection.settlement;
-          return;
-        }
+        if (state === 'winner') {
+          const winnerIndex = Number(edit.winnerIndex);
+          if (winnerIndex !== 0 && winnerIndex !== 1) {
+            throw new Error(`Оберіть П1 або П2 як переможця матча #${index + 1}`);
+          }
 
-        if (actualWinner === 0 || actualWinner === 1) {
-          const won = requestedSide === actualWinner;
+          const side = chosenSide(selection);
+          if (side !== 0 && side !== 1) {
+            throw new Error(`Не вдалося визначити, на П1 чи П2 була ставка в матчі #${index + 1}`);
+          }
+
+          const won = side === winnerIndex;
           selection.settlement = {
-            ...(selection.settlement || {}),
+            ...previousSettlement,
             status:won ? 'won' : 'lost',
             factor:won ? selection.odds : 0,
-            winnerIndex:actualWinner,
+            winnerIndex,
             manual:true,
             date:new Date().toISOString(),
             ...(score.every(value => value != null) ? {score,periods:[]} : {})
@@ -429,20 +404,7 @@ export class Accounts {
           return;
         }
 
-        if (selection.settlement?.status === 'won' || selection.settlement?.status === 'lost') {
-          // If an old settled row did not carry enough information to recover
-          // the real winner, preserve the known result only when the side did not change.
-          if (oldSide === requestedSide) {
-            selection.settlement = {
-              ...selection.settlement,
-              factor:selection.settlement.status === 'won' ? selection.odds : 0,
-              manual:true,
-              date:new Date().toISOString()
-            };
-          } else {
-            delete selection.settlement;
-          }
-        }
+        throw new Error(`Некорректний стан матча #${index + 1}`);
       });
     }
 
@@ -453,10 +415,7 @@ export class Accounts {
     let effectiveStatus = requestedStatus;
     let payout = 0;
 
-    if (requestedStatus === 'cashout') {
-      payout = Number(changes.cashoutPayout ?? bet.payout ?? 0);
-      if (!Number.isSafeInteger(payout) || payout < 0) throw new Error('Некорректная сумма cash-out');
-    } else if (selectionEdits) {
+    if (selectionEdits && requestedStatus !== 'cashout') {
       const derived = settledBetTotals({
         ...bet,
         stake:nextStake,
@@ -465,6 +424,7 @@ export class Accounts {
         type:bet.type,
         systemSize:bet.systemSize
       });
+
       if (derived) {
         effectiveStatus = derived.status;
         payout = derived.payout;
@@ -472,32 +432,12 @@ export class Accounts {
         effectiveStatus = 'open';
         payout = 0;
       }
+    } else if (requestedStatus === 'cashout') {
+      payout = Number(changes.cashoutPayout ?? bet.payout ?? 0);
+      if (!Number.isSafeInteger(payout) || payout < 0) throw new Error('Некорректная сумма cash-out');
     } else {
       if (requestedStatus === 'won') payout = totals.potential;
       if (requestedStatus === 'void') payout = totals.cost;
-
-      const winnerIndex = changes.winnerIndex == null || changes.winnerIndex === '' ? null : Number(changes.winnerIndex);
-      const score = makeScore(changes.score1,changes.score2,0);
-
-      if (effectiveStatus === 'open') {
-        for (const selection of selections) delete selection.settlement;
-      } else {
-        selections.forEach(selection => {
-          let selectionStatus = effectiveStatus === 'cashout' ? 'void' : effectiveStatus;
-          if (winnerIndex === 0 || winnerIndex === 1) {
-            const chosenSide = selectionSide(selection);
-            if (chosenSide != null) selectionStatus = chosenSide === winnerIndex ? 'won' : 'lost';
-          }
-          selection.settlement = {
-            status:selectionStatus,
-            factor:selectionStatus === 'won' ? selection.odds : selectionStatus === 'void' ? 1 : 0,
-            ...(winnerIndex === 0 || winnerIndex === 1 ? {winnerIndex} : {}),
-            manual:true,
-            date:new Date().toISOString(),
-            ...(score.every(value => value != null) ? { score, periods:[] } : {})
-          };
-        });
-      }
     }
 
     const nextBalance = account.balance + oldCost - totals.cost + payout - oldPayout;
