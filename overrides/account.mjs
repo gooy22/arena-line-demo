@@ -143,20 +143,24 @@ export class Accounts {
   async signIn(email, password) {
     email = email.trim().toLowerCase();
     const hash = await digest(password);
-    let account = this.read().find(a => a.email === email && a.hash === hash);
-    if (!account) {
-      try {
-        const response = await fetch(PROFILE_API + '/login', {
-          method:'POST',
-          headers:{'content-type':'application/json'},
-          body:JSON.stringify({email,hash}),
-          cache:'no-store'
-        });
-        if (response.ok) {
-          const value = await response.json();
-          if (value?.profile) account = this._replaceLocal(value.profile);
-        }
-      } catch {}
+    let account = this.read().find(a => a.email === email && a.hash === hash) || null;
+    try {
+      const response = await fetch(PROFILE_API + '/login', {
+        method:'POST',
+        headers:{'content-type':'application/json'},
+        body:JSON.stringify({email,hash}),
+        cache:'no-store'
+      });
+      if (response.ok) {
+        const value = await response.json();
+        if (value?.profile) account = this._replaceLocal(value.profile);
+      } else if (response.status === 401) {
+        throw new Error('Неверная почта или пароль');
+      } else if (response.status === 404 && account) {
+        this._queueSync(account);
+      }
+    } catch (error) {
+      if (error?.message === 'Неверная почта или пароль') throw error;
     }
     if (!account) throw new Error('Неверная почта или пароль');
     this.storage.setItem(SESSION, account.email);
