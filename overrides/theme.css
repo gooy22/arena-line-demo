@@ -1370,3 +1370,123 @@ html.share-coupon-open.share-open-express-legacy .share-actions svg{
   width:22px!important;
   height:22px!important;
 }
+
+
+/* v90: one share scale for every bet group; dark safe-area only at the top. */
+html.share-coupon-open,
+body.share-coupon-open,
+html.share-coupon-open.share-open-express-legacy,
+body.share-coupon-open.share-open-express-legacy{
+  background:#f5f4f0!important;
+}
+body.share-coupon-open::before,
+body.share-coupon-open.share-open-express-legacy::before{
+  content:""!important;
+  position:fixed!important;
+  top:0!important;
+  left:0!important;
+  right:0!important;
+  height:env(safe-area-inset-top)!important;
+  background:#171717!important;
+  z-index:2147483647!important;
+  pointer-events:none!important;
+}
+html.share-coupon-open dialog.share-coupon,
+body.share-coupon-open dialog.share-coupon,
+html.share-coupon-open.share-open-express-legacy dialog.share-coupon,
+body.share-coupon-open.share-open-express-legacy dialog.share-coupon{
+  inset:env(safe-area-inset-top) 0 0 0!important;
+  width:100vw!important;
+  max-width:100vw!important;
+  height:auto!important;
+  min-height:0!important;
+  background:#f5f4f0!important;
+  box-shadow:none!important;
+}
+html.share-coupon-open dialog.share-coupon::backdrop,
+html.share-coupon-open.share-open-express-legacy dialog.share-coupon::backdrop{
+  background:#171717!important;
+}
+html.share-coupon-open .share-layout,
+html.share-coupon-open.share-open-express-legacy .share-layout{
+  width:100%!important;
+  max-width:393px!important;
+  height:100%!important;
+  min-height:100%!important;
+  margin:0 auto!important;
+  padding:64px 16px max(12px,env(safe-area-inset-bottom))!important;
+  background:#f5f4f0!important;
+}
+html.share-coupon-open .share-close,
+html.share-coupon-open.share-open-express-legacy .share-close{
+  top:16px!important;
+  right:16px!important;
+  width:28px!important;
+  height:28px!important;
+}
+html.share-coupon-open .share-close svg,
+html.share-coupon-open.share-open-express-legacy .share-close svg{
+  width:24px!important;
+  height:24px!important;
+}
+html.share-coupon-open .share-ticket,
+html.share-coupon-open.share-open-express-legacy .share-ticket{
+  width:100%!important;
+  margin:0!important;
+  padding:0!important;
+}
+html.share-coupon-open .share-ticket canvas,
+html.share-coupon-open.share-open-express-legacy .share-ticket canvas{
+  width:100%!important;
+  height:auto!important;
+}
+html.share-coupon-open .share-amount,
+html.share-coupon-open.share-open-express-legacy .share-amount{
+  width:auto!important;
+  margin:20px 16px 16px!important;
+  gap:12px!important;
+  font-size:16px!important;
+  line-height:24px!important;
+}
+html.share-coupon-open .share-switch,
+html.share-coupon-open.share-open-express-legacy .share-switch{
+  width:36px!important;
+  height:20px!important;
+  padding:3px!important;
+}
+html.share-coupon-open .share-switch:after,
+html.share-coupon-open.share-open-express-legacy .share-switch:after{
+  width:14px!important;
+  height:14px!important;
+}
+html.share-coupon-open .share-amount input:checked+.share-switch:after,
+html.share-coupon-open.share-open-express-legacy .share-amount input:checked+.share-switch:after{
+  transform:translateX(16px)!important;
+}
+html.share-coupon-open .share-actions,
+html.share-coupon-open.share-open-express-legacy .share-actions{
+  gap:32px!important;
+  margin-top:4px!important;
+  transform:none!important;
+}
+html.share-coupon-open .share-actions button,
+html.share-coupon-open.share-open-express-legacy .share-actions button{
+  min-width:84px!important;
+  padding:0!important;
+  gap:8px!important;
+  font-size:14px!important;
+  line-height:18px!important;
+}
+html.share-coupon-open .share-actions button>span,
+html.share-coupon-open.share-open-express-legacy .share-actions button>span{
+  width:48px!important;
+  height:48px!important;
+}
+@media(display-mode:standalone){
+  html.share-coupon-open,
+  body.share-coupon-open,
+  html.share-coupon-open.share-open-express-legacy,
+  body.share-coupon-open.share-open-express-legacy{
+    background:#f5f4f0!important;
+  }
+}
