@@ -375,14 +375,15 @@ function patchSportsModule(source) {
     );
 
     if (!providerPrimary) {
-      return `<span class="game-badge game-badge-parik">${fallbackGraphic}</span>`;
+      return '<span class="game-badge game-badge-parik">' + fallbackGraphic + '</span>';
     }
 
-    return `<span class="game-badge game-badge-parik">
-      <img class="synced-discipline-logo" src="${escape(providerPrimary)}" data-fallbacks="${escape(JSON.stringify(fallbacks))}" data-fallback-index="0" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"
-        onerror="let a=[];try{a=JSON.parse(this.dataset.fallbacks||'[]')}catch{};const i=Number(this.dataset.fallbackIndex||0);if(i<a.length){this.dataset.fallbackIndex=String(i+1);this.src=a[i];}else{this.hidden=true;this.nextElementSibling.hidden=false;}">
-      <span class="discipline-fallback" hidden>${fallbackGraphic}</span>
-    </span>`;
+    return '<span class="game-badge game-badge-parik">' +
+      '<img class="synced-discipline-logo" src="' + escape(providerPrimary) +
+      '" data-fallbacks="' + escape(JSON.stringify(fallbacks)) +
+      '" data-fallback-index="0" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"' +
+      ' onerror="let a=[];try{a=JSON.parse(this.dataset.fallbacks||&quot;[]&quot;)}catch{};const i=Number(this.dataset.fallbackIndex||0);if(i<a.length){this.dataset.fallbackIndex=String(i+1);this.src=a[i];}else{this.hidden=true;this.nextElementSibling.hidden=false;}">' +
+      '<span class="discipline-fallback" hidden>' + fallbackGraphic + '</span></span>';
   }`;
 
   if (!source.includes(oldBlock)) {
