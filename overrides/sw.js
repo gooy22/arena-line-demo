@@ -1,4 +1,4 @@
-const CACHE = 'arena-line-sync-v52';
+const CACHE = 'arena-line-sync-v53';
 
 const PRECACHE = [
   '/',
@@ -32,12 +32,12 @@ const PRECACHE = [
     .map(name => `/assets/icons/${name}.png`)
 ];
 
-async function cacheFirst(request,{ignoreSearch=false}={}) {
+async function cacheFirst(request,{ignoreSearch=false,cacheMissing=false}={}) {
   const cache = await caches.open(CACHE);
   const cached = await cache.match(request,{ignoreSearch});
   if (cached) return cached;
   const response = await fetch(request);
-  if (response && response.ok) {
+  if (response && (response.ok || (cacheMissing && response.status === 404))) {
     cache.put(request,response.clone()).catch(()=>{});
   }
   return response;
@@ -89,7 +89,7 @@ self.addEventListener('fetch', event => {
   }
 
   if (url.pathname.startsWith('/api/media/')) {
-    event.respondWith(cacheFirst(request));
+    event.respondWith(cacheFirst(request,{cacheMissing:true}));
     return;
   }
 
