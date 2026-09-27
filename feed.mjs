@@ -661,6 +661,11 @@ export class LiveFeed {
     if (this.eventsReady) {
       const bucketCounts = {};
       for (const [name,map] of this.eventMaps) bucketCounts[name] = map.size;
+      const categoryCounts={};
+      for (const row of this.events.values()) {
+        const category=String(row.value?.categoryName || 'Unknown');
+        categoryCounts[category]=(categoryCounts[category] || 0) + 1;
+      }
       const samples=[...this.events.values()].slice(0,12).map(row=>({
         id:String(row.value?.id || ''),
         category:String(row.value?.categoryName || ''),
@@ -668,10 +673,11 @@ export class LiveFeed {
         providerSport:String(row.value?.providerSport || row.value?.sport || ''),
         categoryIconUrl:String(row.value?.categoryIconUrl || ''),
         tournamentIconUrl:String(row.value?.tournamentIconUrl || ''),
-        teams:(row.value?.competitors || []).slice(0,2).map(team=>({id:String(team?.id || ''),name:team.name,icon:team?.icon?.url || ''})),rawKeys:Object.keys(row.value || {}).slice(0,40)
+        teams:(row.value?.competitors || []).slice(0,2).map(team=>({id:String(team?.id || ''),name:team.name,icon:team?.icon?.url || ''})),
+        rawKeys:Object.keys(row.value || {}).slice(0,40)
       }));
       this.report('events-ready', {
-        message:JSON.stringify({total:this.events.size,bucketCounts,samples}).slice(0,3000)
+        message:JSON.stringify({total:this.events.size,bucketCounts,categoryCounts,samples}).slice(0,3000)
       });
     }
   }
