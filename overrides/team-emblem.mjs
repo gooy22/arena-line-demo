@@ -7,13 +7,17 @@ export function emblemCandidates(team) {
   const name = String(team?.name || '').trim();
   const category = String(team?.categoryName || '').trim();
   const source = String(team?.icon?.url || team?.iconUrl || '').trim();
-  if (!/^\\d{1,12}$/.test(id)) return [];
+  if (!/^[0-9]{1,12}$/.test(id)) return [];
 
   const base='/api/media/team?id=' + encodeURIComponent(id) +
     '&name=' + encodeURIComponent(name) +
     '&category=' + encodeURIComponent(category) +
     '&source=' + encodeURIComponent(source);
-  const urls=[base + '&prefer=parik', base + '&prefer=bo3'];
+  const urls=[
+    base + '&prefer=parik',
+    base + '&prefer=parik-alt',
+    base + '&prefer=bo3'
+  ];
   const failed=globalThis.window?.__arenaFailedLogoSources;
   return urls.filter(url => !failed || !failed.has(url));
 }
@@ -26,7 +30,7 @@ export function teamEmblem(team) {
   const urls = emblemCandidates(team);
   const initials = String(team?.name || '')
     .trim()
-    .split(/\\s+/)
+    .split(/\s+/)
     .slice(0,2)
     .map(word => Array.from(word)[0] || '')
     .join('')
