@@ -293,11 +293,11 @@ export class Accounts {
     const score = [changes.score1, changes.score2].map(value => value === '' || value == null ? null : Number(value));
     if (score.some(value => value != null && (!Number.isInteger(value) || value < 0 || value > 999))) throw new Error('Некорректный счёт');
 
-    if (status === 'open') {
+    if (effectiveStatus === 'open') {
       for (const selection of selections) delete selection.settlement;
     } else {
       selections.forEach((selection,index) => {
-        let selectionStatus = status === 'cashout' ? 'void' : status;
+        let selectionStatus = effectiveStatus === 'cashout' ? 'void' : effectiveStatus;
         if (winnerIndex === 0 || winnerIndex === 1) {
           const chosenSide = selection.outcomeType === 0 || /^П1$/i.test(selection.shortLabel || '') ? 0 :
             selection.outcomeType === 3 || /^П2$/i.test(selection.shortLabel || '') ? 1 : null;
@@ -313,8 +313,10 @@ export class Accounts {
       if ((winnerIndex === 0 || winnerIndex === 1) && selections.length === 1) {
         const chosenSide = selections[0].outcomeType === 0 || /^П1$/i.test(selections[0].shortLabel || '') ? 0 :
           selections[0].outcomeType === 3 || /^П2$/i.test(selections[0].shortLabel || '') ? 1 : null;
-        if (chosenSide != null && status !== 'cashout') {
-          payout = chosenSide === winnerIndex ? totals.potential : 0;
+        if (chosenSide != null && effectiveStatus !== 'cashout') {
+          effectiveStatus = chosenSide === winnerIndex ? 'won' : 'lost';
+          payout = effectiveStatus === 'won' ? totals.potential : 0;
+          selections[0].settlement.status = effectiveStatus;
         }
       }
     }
@@ -326,12 +328,12 @@ export class Accounts {
       stake:nextStake,
       selections,
       ...totals,
-      status,
+      status:effectiveStatus,
       payout,
       manualEdit:true,
       editedAt:new Date().toISOString()
     });
-    if (status === 'open') {
+    if (effectiveStatus === 'open') {
       delete bet.settledAt;
       bet.payout = 0;
     } else {
@@ -351,10 +353,10 @@ export class Accounts {
 
     account.balance = nextBalance;
     account.payments = account.payments.filter(payment => payment.id !== 'bet:' + bet.id);
-    if (payout > 0 && status !== 'open') {
+    if (payout > 0 && effectiveStatus !== 'open') {
       account.payments.unshift({
         id:'bet:' + bet.id,
-        type:status === 'cashout' ? 'bet-cashout' : 'bet-payout',
+        type:effectiveStatus === 'cashout' ? 'bet-cashout' : 'bet-payout',
         amount:payout,
         betId:bet.id,
         date:bet.settledAt
