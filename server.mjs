@@ -466,6 +466,9 @@ window.__arenaRegisterFingerprint = window.__arenaRegisterFingerprint || functio
     window.__arenaFailedLogoSources.add(badSource);
     window.__arenaLogoCache.delete(badSource);
   }
+  for(const badKey of row.keys){
+    window.__arenaEntityLogoCache.delete(kind+':'+badKey);
+  }
   return false;
 };
 window.__arenaNextLogo = window.__arenaNextLogo || function(img) {
@@ -1261,17 +1264,33 @@ const server=http.createServer(async (req,res)=>{
     if (url.pathname === '/api/media/team' && method === 'GET') {
       const id=safeString(url.searchParams.get('id'),32);
       const prefer=safeString(url.searchParams.get('prefer') || 'parik',20);
+      const name=safeString(url.searchParams.get('name'),160);
+      const category=safeString(url.searchParams.get('category'),80);
       const exactSource=safeParikMediaURL(url.searchParams.get('source'));
-      if(!/^\\d{1,16}$/.test(id)) return json(res,400,{ok:false,error:'Invalid competitor id'});
+      if(!/^[0-9]{1,16}$/.test(id)) return json(res,400,{ok:false,error:'Invalid competitor id'});
 
       if(prefer === 'bo3'){
-        const cached=cachedCompetitorLogo(id);
+        let cached=cachedCompetitorLogo(id);
+        if(!cached && name){
+          queueExactMedia({kind:'competitor',id,name,category});
+          const deadline=Date.now()+1800;
+          while(!cached && Date.now()<deadline){
+            await new Promise(resolve=>setTimeout(resolve,120));
+            cached=cachedCompetitorLogo(id);
+          }
+        }
         if(!cached){
           res.statusCode=404;
           res.setHeader('cache-control','no-store');
           return res.end();
         }
         return streamImageCandidates(res,[{url:cached,trusted:true}]);
+      }
+
+      if(prefer === 'parik-alt'){
+        return streamImageCandidates(res,[
+          {url:'https://24parik-bet.org/taxonomyicons/competitors/'+id+'-164w'}
+        ]);
       }
 
       return streamImageCandidates(res,[
