@@ -141,7 +141,7 @@ async function drawLegacyCoupon(canvas, bet, showAmount) {
   context.globalCompositeOperation='destination-out';
   for(let x=0;x<=width+7;x+=width/13) for(const edge of [0,height]) {context.beginPath();context.arc(x,edge,7,0,Math.PI*2);context.fill();}
   context.globalCompositeOperation='source-over';
-  const tail=model.showAmount ? ` ${model.stakeLabel}: ${model.stake}. ${model.payoutLabel}: ${model.payout}` : ` ${model.stakeLabel}: ${model.stake}`;
+  const tail=cropSingleTotals ? '' : (model.showAmount ? ` ${model.stakeLabel}: ${model.stake}. ${model.payoutLabel}: ${model.payout}` : ` ${model.stakeLabel}: ${model.stake}`);
   canvas.setAttribute('aria-label',`${model.type}. ${model.rows.map(row=>row.title).join('. ')}.${tail}`);
   return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('Не вдалося зберегти купон')),'image/png'));
 }
@@ -170,7 +170,8 @@ export async function drawCoupon(canvas, bet, showAmount) {
     font(12); const detail = wrap(row.detail, row.status ? 224 : 242);
     return {...row,title,detail,height:Math.max(54,19*title.length+15*detail.length+15)};
   });
-  const totalsHeight=model.showAmount ? 74 : 44;
+  const cropSingleTotals = bet?.type === 'single' && !model.showAmount;
+  const totalsHeight = cropSingleTotals ? 0 : (model.showAmount ? 74 : 44);
   const height = 44 + rows.reduce((total,row)=>total+row.height,0) + totalsHeight;
   canvas.width = width*scale; canvas.height = height*scale;
   context.scale(scale,scale); context.fillStyle='#e4e3df'; context.fillRect(0,0,width,height);
@@ -200,7 +201,9 @@ export async function drawCoupon(canvas, bet, showAmount) {
     }
     y+=row.height; rule(y);
   });
-  text(model.stakeLabel,16,y+29,'#292621',15); text(model.stake,width-16,y+29,'#292621',15,'right');
+  if(!cropSingleTotals){
+    text(model.stakeLabel,16,y+29,'#292621',15); text(model.stake,width-16,y+29,'#292621',15,'right');
+  }
   if(model.showAmount){
     const paid = (model.status==='won' || model.status==='cashout') ? '#009e69' : '#292621';
     text(model.payoutLabel,16,y+59,paid,15); text(model.payout,width-16,y+59,paid,15,'right');
