@@ -28,6 +28,7 @@ export function emblemCandidates(team) {
   }
 
   if (/^\d{1,12}$/.test(id)) {
+    candidates.unshift('/api/media/team?id=' + encodeURIComponent(id));
     for (const origin of ORIGINS) {
       candidates.push(`${origin}/taxonomyicons/competitors/${id}-164w`);
     }
