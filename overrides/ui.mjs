@@ -31,7 +31,7 @@ const fallbackSvg = name => {
 
 export function graphic(name,className='') {
   if (name === 'esports') {
-    return `<img class="reference-graphic gamepad-graphic ${className}" src="/assets/icons/esports-controller-clean-v77.png" alt="" aria-hidden="true" draggable="false" decoding="async">`;
+    return `<img class="reference-graphic gamepad-graphic ${className}" src="/assets/icons/esports-controller-clean-v78.png" alt="" aria-hidden="true" draggable="false" decoding="async">`;
   }
   const fallback=fallbackSvg(name);
   if (fallback) return fallback.replace('reference-graphic','reference-graphic '+className);
