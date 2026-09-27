@@ -1643,4 +1643,41 @@ server.listen(port,'0.0.0.0',()=>{
     resultsSource={ok:false,error:String(error?.message || error),disciplines:[]};
     console.error('RESULTS_SOURCE_ERROR '+JSON.stringify(resultsSource));
   });
+
+  setTimeout(async()=>{
+    const base='http://127.0.0.1:'+port;
+    const checks=[];
+    const request=async path=>{
+      const response=await fetch(base+path,{cache:'no-store'});
+      const text=await response.text();
+      checks.push({path,status:response.status,type:response.headers.get('content-type')||'',bytes:text.length,text});
+      return text;
+    };
+    try{
+      const html=await request('/');
+      const appText=await request('/v64/app.js');
+      const accountText=await request('/v64/account.mjs');
+      const sportsText=await request('/v64/sports.mjs');
+      const betText=await request('/v64/bet-view.mjs');
+      const i18nText=await request('/v64/i18n.mjs');
+      await request('/v64/feed.mjs');
+      await request('/v64/event-view.mjs');
+      const failures=[];
+      for(const row of checks) if(row.status!==200) failures.push(row.path+':'+row.status);
+      if(!html.includes('/v64/app.js')) failures.push('html:no-v64-app');
+      if(!html.includes('/v64/app.css')) failures.push('html:no-v64-css');
+      if(!appText.includes('CLIENT_BOOT_OK')) failures.push('app:no-client-boot-probe');
+      if(!appText.includes('new SportsApp')) failures.push('app:no-sports-init');
+      if(!accountText.includes('settleBets')) failures.push('account:missing');
+      if(!sportsText.includes('class SportsApp')) failures.push('sports:missing');
+      if(betText.includes('bet-status-pill') || betText.includes("'Виграна'")) failures.push('bet:legacy-status-pill');
+      if(!betText.includes('duplicateManualPeriod')) failures.push('bet:no-score-dedupe');
+      if(!i18nText.includes('Редагувати') || !i18nText.includes('Edit')) failures.push('i18n:incomplete');
+      const summary=checks.map(({path,status,type,bytes})=>({path,status,type,bytes}));
+      if(failures.length) console.error('FRONTEND_SELFTEST_FAILED '+JSON.stringify({failures,summary}));
+      else console.log('FRONTEND_SELFTEST_OK '+JSON.stringify({build:'64',summary}));
+    }catch(error){
+      console.error('FRONTEND_SELFTEST_ERROR '+String(error?.stack||error));
+    }
+  },1200);
 });
