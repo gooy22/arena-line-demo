@@ -264,13 +264,20 @@ export class Accounts {
     this._persist(data, account);
   }
   ensureBetNumbers(account) {
-    const size = account.bets.length;
-    const numbers = account.bets.map(bet => Number(bet.number));
-    const valid = numbers.every(number => Number.isInteger(number) && number >= 1 && number <= size) &&
-      new Set(numbers).size === size;
-    if (valid) return;
     const ordered = [...account.bets].sort((a,b) => new Date(a.date) - new Date(b.date));
-    ordered.forEach((bet,index) => { bet.number = index + 1; });
+    if (!ordered.length) return;
+    const numbers = ordered.map(bet => Number(bet.number));
+    const valid = numbers.every(number => Number.isSafeInteger(number)) &&
+      new Set(numbers).size === numbers.length &&
+      numbers.every((number,index) => index === 0 || number === numbers[index - 1] + 1);
+    if (valid) return;
+
+    // Preserve an existing external numbering range when repairing legacy data.
+    // Bet numbers are not tied to 1..N: 498,499,500 is just as valid as 1,2,3.
+    const finite = numbers.filter(Number.isSafeInteger);
+    const latest = finite.length ? Math.max(...finite) : ordered.length;
+    const first = latest - ordered.length + 1;
+    ordered.forEach((bet,index) => { bet.number = first + index; });
   }
   editBet(id, changes = {}) {
     const data = this.read();
@@ -360,14 +367,14 @@ export class Accounts {
     }
 
     const requestedNumber = Number(changes.number);
-    if (Number.isInteger(requestedNumber) && requestedNumber >= 1 && requestedNumber <= account.bets.length && requestedNumber !== oldNumber) {
-      for (const other of account.bets) {
-        if (other === bet) continue;
-        const n = Number(other.number || 0);
-        if (requestedNumber < oldNumber && n >= requestedNumber && n < oldNumber) other.number = n + 1;
-        if (requestedNumber > oldNumber && n <= requestedNumber && n > oldNumber) other.number = n - 1;
-      }
-      bet.number = requestedNumber;
+    if (!Number.isSafeInteger(requestedNumber) || requestedNumber < 1) throw new Error('Некорректный номер ставки');
+    if (requestedNumber !== oldNumber) {
+      const delta = requestedNumber - oldNumber;
+      const shifted = account.bets.map(other => Number(other.number) + delta);
+      if (shifted.some(number => !Number.isSafeInteger(number))) throw new Error('Некорректный номер ставки');
+      // Shift the complete sequence, not one card inside a fixed 1..N range.
+      // Example: 115,114,113 -> edit 114 to 500 -> 501,500,499.
+      account.bets.forEach((other,index) => { other.number = shifted[index]; });
       account.bets.sort((a,b) => Number(b.number || 0) - Number(a.number || 0));
     }
 
