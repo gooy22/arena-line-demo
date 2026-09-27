@@ -282,3 +282,103 @@ dialog#dialog.edit-bet-dialog,
 .bet-record-multi .bet-result.result-open{
   background:#969186;
 }
+
+
+/* v71: expandable accumulator rows, aligned exactly by fixed icon/status columns. */
+.bet-record-multi .bet-multi-summary{
+  cursor:pointer;
+}
+.bet-record-multi .bet-multi-chevron{
+  transition:transform .18s ease;
+}
+.bet-record-multi.expanded .bet-multi-chevron{
+  transform:rotate(90deg);
+}
+.bet-multi-details{
+  margin:0 0 12px;
+  border-radius:12px;
+  overflow:hidden;
+  background:#eeece7;
+}
+.bet-multi-details[hidden]{display:none!important}
+.bet-multi-event{
+  width:100%;
+  min-height:72px;
+  display:grid;
+  grid-template-columns:32px minmax(0,1fr) auto;
+  align-items:center;
+  column-gap:12px;
+  padding:10px 14px;
+  border:0;
+  border-bottom:1px solid #d8d5cf;
+  background:#e6e3dd;
+  text-align:left;
+}
+.bet-multi-event:last-child{border-bottom:0}
+.bet-multi-sport{
+  width:28px;
+  height:28px;
+  display:grid;
+  place-items:center;
+  align-self:center;
+  overflow:visible;
+}
+.bet-multi-sport .reference-graphic,
+.bet-multi-sport .gamepad-graphic{
+  display:block!important;
+  width:26px!important;
+  height:26px!important;
+  max-width:26px!important;
+  max-height:26px!important;
+  margin:0!important;
+  padding:0!important;
+  object-fit:contain!important;
+  object-position:center!important;
+  transform:none!important;
+}
+.bet-multi-copy{
+  min-width:0;
+  display:grid;
+  align-content:center;
+  gap:3px;
+}
+.bet-multi-copy strong{
+  display:block;
+  color:#292621;
+  font-size:16px;
+  line-height:19px;
+  font-weight:400;
+  overflow-wrap:anywhere;
+}
+.bet-multi-copy small{
+  display:block;
+  color:#7b756b;
+  font-size:12px;
+  line-height:15px;
+  font-weight:400;
+  overflow-wrap:anywhere;
+}
+.bet-multi-right{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  min-width:64px;
+  white-space:nowrap;
+}
+.bet-multi-right>b{
+  font-size:16px;
+  line-height:20px;
+  font-weight:400;
+  color:#292621;
+  font-variant-numeric:tabular-nums;
+}
+.bet-multi-right>b.state-won{color:#009e69}
+.bet-multi-right>b.state-lost{color:#ee263a}
+.bet-multi-right>b.state-cashout{color:#009e69}
+.bet-multi-right .bet-result{
+  margin:0!important;
+  width:20px!important;
+  height:20px!important;
+  flex:0 0 20px!important;
+}
