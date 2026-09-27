@@ -194,7 +194,9 @@ const sportsCssPatch = `
   overflow:hidden;
 }
 .tournament-tabs>button.active .tournament-symbol{
-  border-color:#d7e300!important;
+  border:0!important;
+  outline:0!important;
+  box-shadow:none!important;
 }
 .game-badge-dark,
 .tournament-symbol .game-badge{
