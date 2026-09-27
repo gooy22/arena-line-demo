@@ -226,7 +226,13 @@ function normalizeEsportsRow(row) {
       categoryName:inferDiscipline(event),
       subsport:inferDiscipline(event),
       categoryIconUrl:String(event?.categoryIcon?.url || event?.subsportIcon?.url || event?.category?.icon?.url || event?.icon?.url || ''),
-      tournamentIconUrl:String(event?.tournamentIcon?.url || event?.tournament?.icon?.url || '')
+      tournamentIconUrl:String(
+        event?.tournamentIcon?.url ||
+        event?.tournament?.icon?.url ||
+        (/^\d{1,16}$/.test(String(event?.tournamentId || ''))
+          ? 'https://parik24.pro/taxonomyicons/tournaments/' + String(event.tournamentId) + '-164w'
+          : '')
+      )
     }
   };
 }
@@ -662,7 +668,7 @@ export class LiveFeed {
         providerSport:String(row.value?.providerSport || row.value?.sport || ''),
         categoryIconUrl:String(row.value?.categoryIconUrl || ''),
         tournamentIconUrl:String(row.value?.tournamentIconUrl || ''),
-        teams:(row.value?.competitors || []).slice(0,2).map(team=>({name:team.name,icon:team?.icon?.url || ''}))
+        teams:(row.value?.competitors || []).slice(0,2).map(team=>({id:String(team?.id || ''),name:team.name,icon:team?.icon?.url || ''})),rawKeys:Object.keys(row.value || {}).slice(0,40)
       }));
       this.report('events-ready', {
         message:JSON.stringify({total:this.events.size,bucketCounts,samples}).slice(0,3000)
