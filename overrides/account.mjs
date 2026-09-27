@@ -333,7 +333,9 @@ export class Accounts {
           status:selectionStatus,
           manual:true,
           date:new Date().toISOString(),
-          ...(score.every(value => value != null) ? { score, periods:[score] } : {})
+          // A manually entered score is the final score. Do not invent a fake period
+          // containing the same pair, otherwise history renders the result twice.
+          ...(score.every(value => value != null) ? { score, periods:[] } : {})
         };
       });
     }
