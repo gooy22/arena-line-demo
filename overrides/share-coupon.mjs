@@ -14,6 +14,26 @@ function totalOdds(bet) {
   return value.toFixed(4).replace(/0+$/,'').replace(/\.$/,'');
 }
 
+function expressEventsLabel(count) {
+  const locale=String(getLocale()||'').toLowerCase();
+  if(locale.startsWith('en')) return count === 1 ? 'event' : 'events';
+  const mod10=count%10, mod100=count%100;
+  if(locale.startsWith('ru')) {
+    if(mod10===1 && mod100!==11) return 'событие';
+    if(mod10>=2 && mod10<=4 && (mod100<12 || mod100>14)) return 'события';
+    return 'событий';
+  }
+  if(mod10===1 && mod100!==11) return 'подія';
+  if(mod10>=2 && mod10<=4 && (mod100<12 || mod100>14)) return 'події';
+  return 'подій';
+}
+
+function couponTypeLabel(bet) {
+  if(bet?.type !== 'express') return t(({single:'Ординар',system:'Система'})[bet?.type] || 'Ординар');
+  const count=Array.isArray(bet?.selections) ? bet.selections.length : 0;
+  return `${t('Експрес')}, ${count} ${expressEventsLabel(count)}`;
+}
+
 function sportImage(selection) {
   const name = isEsportsSelection(selection) ? 'esports' : games[selection.sport] || 'esports';
   if (!imageCache.has(name)) imageCache.set(name, new Promise(resolve => {
@@ -31,7 +51,7 @@ export function couponData(bet, showAmount) {
   const payoutLabel=t(status === 'open' ? 'Можлива виплата' : status === 'cashout' ? 'Виведено' : 'Виплата');
   return {
     date:date(bet.date),
-    type:t(({single:'Ординар',express:'Експрес',system:'Система'})[bet.type] || 'Ординар'),
+    type:couponTypeLabel(bet),
     rows:bet.selections.map(selection => ({
       title:`${t(selection.marketName)} ${t(selection.label)}`,
       detail:`${date(selection.startTime ? selection.startTime * 1000 : bet.date)} ${selection.eventName}`,
