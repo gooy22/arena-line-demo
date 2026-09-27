@@ -155,7 +155,7 @@ function openEditBet(id) {
     ? (Number(settlementScore[0]) > Number(settlementScore[1]) ? 0 : 1)
     : '';
 
-  const status = ['open','won','lost','cashout'].includes(bet.status) ? bet.status : 'open';
+  const status = ['open','won','lost','void','cashout'].includes(bet.status) ? bet.status : 'open';
   const oddsFields = selections.map((selection,index) => `
     <label for="edit-odds-${index}">Коефіцієнт${selections.length > 1 ? ' · ' + esc(selection.label || String(index + 1)) : ''}</label>
     <input id="edit-odds-${index}" class="edit-odds" data-index="${index}" inputmode="decimal" value="${Number(selection.odds || 0).toFixed(2)}" required>
@@ -194,6 +194,7 @@ function openEditBet(id) {
           <option value="open" ${status === 'open' ? 'selected' : ''}>Нерозрахована</option>
           <option value="won" ${status === 'won' ? 'selected' : ''}>Виграна</option>
           <option value="lost" ${status === 'lost' ? 'selected' : ''}>Програна</option>
+          <option value="void" ${status === 'void' ? 'selected' : ''}>Повернення</option>
           <option value="cashout" ${status === 'cashout' ? 'selected' : ''}>Cash-out</option>
         </select>
         <div id="edit-cashout-wrap" ${status === 'cashout' ? '' : 'hidden'}>
@@ -231,6 +232,7 @@ function openEditBet(id) {
       const totals = betTotals(stake,nextSelections,bet.type,bet.systemSize);
       let value = totals.potential;
       if (statusInput.value === 'lost') value = 0;
+      if (statusInput.value === 'void') value = totals.cost;
       if (statusInput.value === 'cashout') {
         const raw = Number(String($('#edit-cashout').value || '0').replace(',', '.'));
         value = Number.isFinite(raw) ? Math.round(raw * 100) : 0;
