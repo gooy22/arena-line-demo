@@ -5,6 +5,7 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { gunzipSync } from 'node:zlib';
 import app from './dist/server/index.js';
 import { augmentSettlements, completedHistory, probeResultsSource } from './results_bridge.mjs';
+import { readProfile, loginProfile, syncProfile, profileStorageStatus } from './profile_store.mjs';
 
 const port = Number(process.env.PORT || 3000);
 const env = {};
@@ -18,6 +19,12 @@ const ctx = {
 
 const feedModule = await readFile(new URL('./feed.mjs', import.meta.url), 'utf8');
 const emblemModule = await readFile(new URL('./overrides/team-emblem.mjs', import.meta.url), 'utf8');
+const accountModule = await readFile(new URL('./overrides/account.mjs', import.meta.url), 'utf8');
+const appModule = await readFile(new URL('./overrides/app.js', import.meta.url), 'utf8');
+const betViewModule = await readFile(new URL('./overrides/bet-view.mjs', import.meta.url), 'utf8');
+const themeCssModule = await readFile(new URL('./overrides/theme.css', import.meta.url), 'utf8');
+const serviceWorkerModule = await readFile(new URL('./overrides/sw.js', import.meta.url), 'utf8');
+const manifestModule = await readFile(new URL('./overrides/manifest.webmanifest', import.meta.url), 'utf8');
 
 const inflateText = value => gunzipSync(Buffer.from(value,'base64')).toString('utf8');
 const accountSyncModule = inflateText("H4sIANlzuGoC/9Ua227byPU9X0EDhUnCFCO5fSkVSnBSF3DXawe192FhBLtjcmwxoUiWM7StlQS02aJPCxQoiu1TsegfpMWm3VvyDdIf9Zy58CLRysZJizaAxeHMOWfOfc4ZJhpnac6NqbEXBGmRcGYQZjwkjOp3xzg4Ojg92Dv85OHe4d7Ro33H2P9w7+DQMcZpQieOEVABFUaXlHHHOKf8NOUkZsbcuMjTsWG694mk1TkHuu74KTP79+iN2vfO1Pv3gjRh3Phg/2PfJDlNSEftwzpXPVMvn+yfnBwcH2kQRhmL0qQB8fHRo09Ojz/YL4GyPL2IYtphkyTo8PQZRXivRAhi4M2/InFB/QHjeRHwIqfhI5y2xLStQZP02rdsf5DQa+MXhFPLdnl6cHJ8wvMoubQATmsiiAljlRXoDadJ2DSFMb1nGIIubpnmFoMfckntqcGKjFbvfYOPIuYi+49GJEr8x2CICHSfU5bGV8BF35gDLSGaRcckioFGTkGMRKFKSu4l5Qecjq1KRzsSfDYzTUmEoUlKOo6gCdSiC0sOG/TYLfQUmqQ4oiSkObOUOeWaL+hIjtXC0BW4yIpd8T81QUWgPN7hk4yankmyLI4CwsHs95+yNDEd86YjDS3wTW+dnuO6ruR/OCUFH6V59Jmg4JkPKeDmhrkjlufedG7PJd85zWIS0MM0ILHm0UabGaiNreYutmI3KeK4L2Ckx4SEEylrDmqwbAiBNJv4wudKohohm7gZmYwxRvy9PCcTN2LiaTXW7GHj1Tt7UiMAIdWKjPMKEYdNJHStX9OrCGPJPyrG5zQH7BNyQQ9A95fgi2tgilZ9yuvWJY+SkN74KL97AeMDfLWIPyBSYb7vCwJSe32tVoE18Ls2Ip6JtycCsE9jRoU63axgI8GQQmt1Scgjzq9Ojo9gAWMzuphYiGwrHGUuQRkmZPgUwWjF0LcZMY6uaCVbU6wVxyhF20KkdT/B2aYBLGkBa20FwrRr7/TuLrXA+U1BC/oYdSgYaugDZ7Q+Krg2nfyYKK5EFyCzmQ4apYW6u7CEZGyU8tbQWMl/zVcXkgEYDvMyBK/LR8gMrooZgQ8U8oke6h0he2YwoD65JhE3LihSMe+TLLqvTgzTmY4pZIvQMx9/dGo6KpN5Yn+d1jTjKuc552k48VZsMFXieBoYkowSTWlIMwNIhBcM3Ohn3Z/bFcuaaaSuGC5RMAvCSVSpAZ3LdmJMXFJXQZFDguRWbU+xK1Ibuoq57W2Bsb2t3A8X9VrDDdELB9pHEWVt1VbBUkugdWo1NuZqNBfcT+Wr1A2OhR1B6JSDMklmNVxQBlz7ASfLBK0EATmsRXBL2Mpo9arAFCGL6Lfl9rUQWAl4dXa+owe2Op3gS3tcQIIR9cwk7aAaqHmba6XP7OmbvKi/6hV2vY7YYNF2Q95bkfzHyn0/EoVsPQCPT2oR+OaqYL45EIUC61H41oqSftesloRKVO2jFHk3PTa0qHMzQjcDg0WXyYHePIOK8zrNQ+Vx0q/Frwvyj0Wtephe0/wRFKGWXffkEWEjJaYsza2SWP/OJozTyyh5/xaUwiLH/1Hztde5Mq04KtDvblLJnoJQHIqi3203af9/NZD+v0JIgawH0UeZrJOkelftoVf7LbZrO19r7UGj0mk7TP23LOdqh5j9Dm6R08uIcZr/VxzjLUoXC0q42xyq6S5ametus2p+/BPO8pByaDCyAipZzRPlvrTzCkB/s5mRNW1hVQDUm4e+djigr5rgKJTUw3LvYESSSxqq/WsAgrpa1VF0Cx9vYGNe9jmSWtni8xg3Y6jeIobGUPOUFjxIx1Tx1AIoeFNQ7vvlUVFVdxk5SdgFFJjofQ4Zy/5DxWTr4rtarEoIOutaaRw+VmMnodePywO2kSHeCP4+OKNhxKV7wKEAju1DnGxsUfVmtzSpG6vmRqLDECl7O7w6kNQiQPAH+OtGIRCMwvXkBw0fIIBQeXpt4J3Zfp6nuWUu/rZ8vnix+Mfiu+XnxuLV4qWx+Bc8Xiy+XXy9eAmj12aDBVDso5RxXzcmlLsBvGOn4QilT8B3fJwuuyczzWhiDrteDScTcIhVctq8KBGaBa+PaYBpjtn26ox7keb7BHNVkYFmqSNuKGp9pmpmNYJkqkRXFxoYElvlLGhJEmucFYI9Oe+mYci2fNHVqVDDGa2OGpAItq3yAueXUQIGssTKbIaPB35PDga9LvxrMc1fwQDfLV4vf4tPMNOrxTeLbw2cWrxc/n755fIP8Pfnxavlc7BRKYPY3cefshEATs66Tu+JGyVBXISUWU1+r6Mkobm4FrLt7e2KFCSBjPIIfJMN3Zgml3w08He15AzypH87pRpLMTmnsd9K9wypPBm6CRnT2WwFpUYCWvWcH0o6uK/vd4fm4qseHIeLr3bNuvwyeZ1CQqpAu95PS3Uo7nsrvLMAOrae7bDdtoVdYdDSnvoyjvVQYb2B39XNen1xFxd38Q6tYm9MkoLEJ0jTP2M92E5d/82rWFC+zskz2nQ2MaXZq0GteFv9ulCug2rx+cD/cY72wlj+bvn54gc5UBli8Q34mQpt4EL89ueNLhw/IPjlpwSrBHaawSdexYkh5idQ/oxPos9AjOPzpwDjQr6GYg/xHUm0kYRUajmTmcUxr8XVcwx5CB5XaRTCI4CuBDzBrDl9qS9Atof1N69KWOomkHJDnBsinXX75b7jzE/S62bLJi3qW6V8DpKizgXBbwmYkRS6sHmrJ9Q9Xx71eJ88lK43m4nrjjYIf6oEqO/oSMIezwvqoAd7gnFHEJO/p/SGe82MK+btoXi4T9MoscyOaXsFxDKcMjR0WFrkAfVMSb2Dx6A5789Lp11J+Pa0dgrIqX6V+kGnIcjDqSE9AwUK93h9UqlHWqXpP2Xur7L7YIostCpRErIV6TaY/ly3KuJquyEMOpeSZeP+cpeaE0i3bOZlOM8rtxLaSLGwj0jc4vnatpKQ1JtXojul0pR56/oStt8glIiVu0klw6xr25s4lkCK5e47sSri+W6sylTQW1M6ViybuJd471XhOh3Z04qVRhqXu23I4yUe5PJy/KAtnf8JUvWLxT+hOHi+/EIlcqjukIWO4KF/F2VqCRxxHm20fgn6DipUtTSNoZi2VNXZ0cazdyp1dMqyc4PydId6TmKSBHRH0AVFts4/uO2M/BrOSHEa4hm5/GLx2lj8HTT9Pfy9QjUbAPH98o+GLMyWf8Fa+ofll1i4gdJX9/LFZs3riPKb4+oEVPoxF84i3v2BGkDFv+X7n4JivJ+IGInC+afyuqbMvls6JW9vVwl40LXX9igSNoouuDWNQm+FpIOntWfCa0fim6rZ8yqSeJgfhJ5EkQdPI7nXz6W1YicRZmtWO9cEzBf6HxI+giR+Y/UcOYyqKwfRBcnK1FGWz0jO0PANwk6vC+ZGduT7bIZpQVXweUhz2OfMdd063Scug5rTsohzjtchpETt2h3rvPY2m+H/QJAbA5hoIDq1qXM5pfeTn2PVrrUvsqt9nFSkMGb5LVZjMbwBonIeMlx/ZV5qrtNzumiUarnsmXCXsmMSW0pxfDG306u5K37FLsnXFKI10NGK0aHberemW462Rf0x9S2/o658Qi279NqFj7hymt/7N0O9gJqMIwAA");
@@ -141,6 +148,11 @@ function css(res, method, source) {
 
 function safeString(value, max = 300) {
   return String(value ?? '').slice(0, max);
+}
+
+function bearer(req) {
+  const value = String(req.headers.authorization || '');
+  return value.startsWith('Bearer ') ? value.slice(7) : '';
 }
 
 function safeEvent(raw) {
@@ -462,10 +474,11 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (url.pathname === '/health') {
+      const profileStorage = await profileStorageStatus();
       return json(res, 200, {
         ok:true,
-        source:'arena-line-parik-sync-v3',
-        runtime:'phone-ui + parik-direct-feed + bo3/opendota settlement',
+        source:'arena-line-parik-sync-v4',
+        runtime:'phone-ui + parik-feed + synced-file-profile + flexible-bet-editor + multi-esports-settlement',
         sync:{
           lastClientAt:syncMeta.lastClientAt || null,
           source:syncMeta.source || null,
@@ -489,6 +502,31 @@ const server = http.createServer(async (req, res) => {
       return js(res,method,emblemModule);
     }
 
+    if (url.pathname === '/account.mjs' && ['GET','HEAD'].includes(method)) {
+      return js(res,method,accountModule);
+    }
+
+    if (url.pathname === '/app.js' && ['GET','HEAD'].includes(method)) {
+      return js(res,method,appModule);
+    }
+
+    if (url.pathname === '/bet-view.mjs' && ['GET','HEAD'].includes(method)) {
+      return js(res,method,betViewModule);
+    }
+
+    if (url.pathname === '/theme.css' && ['GET','HEAD'].includes(method)) {
+      return css(res,method,themeCssModule);
+    }
+
+    if (url.pathname === '/sw.js' && ['GET','HEAD'].includes(method)) {
+      res.setHeader('service-worker-allowed','/');
+      return js(res,method,serviceWorkerModule);
+    }
+
+    if (url.pathname === '/manifest.webmanifest' && ['GET','HEAD'].includes(method)) {
+      return textResponse(res,method,'application/manifest+json; charset=utf-8',manifestModule);
+    }
+
     if (url.pathname === '/sports.mjs' && ['GET','HEAD'].includes(method)) {
       const response = await embeddedAsset('/sports.mjs',method,req.headers);
       if (!response.ok) {
@@ -507,6 +545,48 @@ const server = http.createServer(async (req, res) => {
       }
       const source=method === 'HEAD' ? '' : await response.text();
       return css(res,method,source + sportsCssPatch);
+    }
+
+    if (url.pathname === '/api/profile/login') {
+      if (method !== 'POST') return json(res,405,{ok:false,error:'Method not allowed'});
+      const body = JSON.parse((await readBody(req,32_000)).toString('utf8') || '{}');
+      const email = safeString(body.email,200).trim().toLowerCase();
+      const hash = safeString(body.hash,80);
+      if (!email || !/^[a-f0-9]{64}$/i.test(hash)) return json(res,400,{ok:false,error:'Invalid credentials'});
+      const profile = await loginProfile(email,hash);
+      if (!profile) return json(res,401,{ok:false,error:'Invalid credentials'});
+      return json(res,200,{ok:true,profile});
+    }
+
+    if (url.pathname === '/api/profile') {
+      if (method !== 'GET') return json(res,405,{ok:false,error:'Method not allowed'});
+      const email = safeString(url.searchParams.get('email'),200).trim().toLowerCase();
+      const hash = bearer(req);
+      if (!email || !/^[a-f0-9]{64}$/i.test(hash)) return json(res,401,{ok:false,error:'Unauthorized'});
+      const profile = await loginProfile(email,hash);
+      if (!profile) return json(res,404,{ok:false,error:'Profile not found'});
+      return json(res,200,{ok:true,profile});
+    }
+
+    if (url.pathname === '/api/profile/sync') {
+      if (method !== 'POST') return json(res,405,{ok:false,error:'Method not allowed'});
+      const hash = bearer(req);
+      if (!/^[a-f0-9]{64}$/i.test(hash)) return json(res,401,{ok:false,error:'Unauthorized'});
+      const body = JSON.parse((await readBody(req,2_100_000)).toString('utf8') || '{}');
+      try {
+        const profile = await syncProfile(body.profile,hash);
+        console.log('PROFILE_SYNC ' + JSON.stringify({
+          id:profile.id,
+          revision:profile.profileRevision,
+          bets:profile.bets.length,
+          balance:profile.balance
+        }));
+        return json(res,200,{ok:true,profile});
+      } catch (error) {
+        if (error?.statusCode === 409) return json(res,409,{ok:false,error:'Profile conflict',profile:error.profile});
+        if (error?.statusCode === 401) return json(res,401,{ok:false,error:'Unauthorized'});
+        return json(res,400,{ok:false,error:safeString(error?.message || 'Invalid profile',200)});
+      }
     }
 
     if (url.pathname === '/api/sync/telemetry') {
@@ -634,7 +714,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(port,'0.0.0.0',() => {
-  console.log('Arena Line Parik sync v3 listening on ' + port);
+  console.log('Arena Line Parik sync v4 listening on ' + port);
   probeResultsSource()
     .then(status => {
       resultsSource={...status,error:null};
