@@ -157,16 +157,16 @@ function patchIndexHtml(source) {
     /<meta\s+name=["']viewport["']\s+content=["'][^"']*["']\s*\/?>/i,
     '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">'
   );
-  html=html.replace(/\?+v=\d+/g,'?v=79');
+  html=html.replace(/\?+v=\d+/g,'?v=80');
   if (!html.includes('apple-touch-icon')) {
     html=html.replace(
       '<link rel="manifest" href="/manifest.webmanifest">',
       '<link rel="manifest" href="/manifest.webmanifest">\n  <link rel="apple-touch-icon" href="/assets/icons/esports-controller-clean-v79.png">\n  <meta name="apple-mobile-web-app-capable" content="yes">\n  <meta name="apple-mobile-web-app-status-bar-style" content="black">'
     );
   }
-  if (!html.includes('arena-editor-hotfix-v79')) {
+  if (!html.includes('arena-editor-hotfix-v80')) {
     html=html.replace('</head>', `
-<style id="arena-editor-hotfix-v79">
+<style id="arena-editor-hotfix-v80">
 dialog#dialog.edit-bet-dialog{
   position:fixed!important;
   top:auto!important;
@@ -344,18 +344,18 @@ dialog#dialog.edit-bet-dialog .edit-bet-hide{
 }
 </style>
 <script>
-window.__ARENA_BUILD__='79';
+window.__ARENA_BUILD__='80';
 </script>
 </head>`);
   }
   html=html
-    .replace(/href="\/(app|sports|bet-view|event-view|share-coupon|settings|theme)\.css\?v=79"/g,'href="/v79/$1.css"')
-    .replace('src="/lucide.min.js"','src="/v79/lucide.min.js"')
-    .replace('src="/app.js?v=79"','src="/v79/app.js"');
-  if(!html.includes('arena-client-diagnostics-v79')){
+    .replace(/href="\/(app|sports|bet-view|event-view|share-coupon|settings|theme)\.css\?v=80"/g,'href="/v80/$1.css"')
+    .replace('src="/lucide.min.js"','src="/v80/lucide.min.js"')
+    .replace('src="/app.js?v=80"','src="/v80/app.js"');
+  if(!html.includes('arena-client-diagnostics-v80')){
     html=html.replace('<title>Arena Line</title>',`<title>Arena Line</title>
-<script id="arena-client-diagnostics-v79">
-(()=>{const send=(kind,message,extra={})=>{try{fetch('/api/client-diagnostic',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({kind,message:String(message||'').slice(0,1800),build:'79',href:location.href,...extra}),keepalive:true,cache:'no-store'}).catch(()=>{})}catch{}};
+<script id="arena-client-diagnostics-v80">
+(()=>{const send=(kind,message,extra={})=>{try{fetch('/api/client-diagnostic',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({kind,message:String(message||'').slice(0,1800),build:'80',href:location.href,...extra}),keepalive:true,cache:'no-store'}).catch(()=>{})}catch{}};
 window.addEventListener('error',event=>send('CLIENT_ERROR',event.message||event.error?.message||'window error',{source:event.filename||'',line:event.lineno||0,column:event.colno||0}));
 window.addEventListener('unhandledrejection',event=>send('CLIENT_REJECTION',event.reason?.stack||event.reason?.message||event.reason||'unhandled rejection'));
 window.__arenaClientDiagnostic=send;
@@ -378,8 +378,9 @@ function patchSportsModule(source) {
       'Counter-Strike':'/assets/icons/counter-strike.png',
       'League of Legends':'/assets/icons/lol.png'
     };
-    const fallbackImage=fallbackImages[event.categoryName] || '/assets/icons/esports-controller-clean-v79.png';
-    const fallbackGraphic='<img class="synced-discipline-logo local-fallback-logo" src="' + fallbackImage + '" alt="">';
+    const esportsController='data:image/png;base64,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';
+    const fallbackImage=fallbackImages[event.categoryName] || esportsController;
+    const fallbackGraphic='<img class="synced-discipline-logo local-fallback-logo gamepad-graphic" src="' + fallbackImage + '" alt="">';
 
     const rawEntityKey=String(event.tournamentId || event.tournamentName || event.categoryName || '');
     const entityKey='tournament:' + rawEntityKey;
@@ -1381,8 +1382,8 @@ const server=http.createServer(async (req,res)=>{
       return textResponse(res,method,'text/html; charset=utf-8',patchIndexHtml(source),'no-store');
     }
 
-    if (url.pathname.startsWith('/v79/') && ['GET','HEAD'].includes(method)) {
-      const runtimePath='/' + url.pathname.slice('/v79/'.length);
+    if (url.pathname.startsWith('/v80/') && ['GET','HEAD'].includes(method)) {
+      const runtimePath='/' + url.pathname.slice('/v80/'.length);
       if (runtimePath === '/feed.mjs') return js(res,method,feedModule,'no-store');
       if (runtimePath === '/team-emblem.mjs') return js(res,method,emblemModule,'no-store');
       if (runtimePath === '/ui.mjs') return js(res,method,uiModule,'no-store');
@@ -1671,19 +1672,19 @@ server.listen(port,'0.0.0.0',()=>{
     };
     try{
       const html=await request('/');
-      const appText=await request('/v79/app.js');
-      const accountText=await request('/v79/account.mjs');
-      const sportsText=await request('/v79/sports.mjs');
-      const betText=await request('/v79/bet-view.mjs');
-      const shareText=await request('/v79/share-coupon.mjs');
-      const i18nText=await request('/v79/i18n.mjs');
-      const themeText=await request('/v79/theme.css');
-      await request('/v79/feed.mjs');
-      await request('/v79/event-view.mjs');
+      const appText=await request('/v80/app.js');
+      const accountText=await request('/v80/account.mjs');
+      const sportsText=await request('/v80/sports.mjs');
+      const betText=await request('/v80/bet-view.mjs');
+      const shareText=await request('/v80/share-coupon.mjs');
+      const i18nText=await request('/v80/i18n.mjs');
+      const themeText=await request('/v80/theme.css');
+      await request('/v80/feed.mjs');
+      await request('/v80/event-view.mjs');
       const failures=[];
       for(const row of checks) if(row.status!==200) failures.push(row.path+':'+row.status);
-      if(!html.includes('/v79/app.js')) failures.push('html:no-v65-app');
-      if(!html.includes('/v79/app.css')) failures.push('html:no-v65-css');
+      if(!html.includes('/v80/app.js')) failures.push('html:no-v65-app');
+      if(!html.includes('/v80/app.css')) failures.push('html:no-v65-css');
       if(!appText.includes('CLIENT_BOOT_OK')) failures.push('app:no-client-boot-probe');
       if(!appText.includes('new SportsApp')) failures.push('app:no-sports-init');
       if(!accountText.includes('settleBets')) failures.push('account:missing');
@@ -1696,7 +1697,7 @@ server.listen(port,'0.0.0.0',()=>{
       if(!betText.includes("const multi = bet.type === 'express' || bet.type === 'system'")) failures.push('bet:multi-detection-missing');
       if(!betText.includes('data-action="open-bet-detail"') || !betText.includes('export function betDetail')) failures.push('bet:detail-page-missing');
       if(!appText.includes("action === 'open-bet-detail'") || !appText.includes("profileView = 'bet-detail'")) failures.push('app:detail-navigation-missing');
-      if(!shareText.includes("esports-controller-clean-v79.png") || !shareText.includes("stakeLabel:showAmount ? t('Сума ставки') : t('Коефіцієнт')")) failures.push('share:original-behavior-missing');
+      if(!shareText.includes("ESPORTS_CONTROLLER_DATA") || !shareText.includes("stakeLabel:showAmount ? t('Сума ставки') : t('Коефіцієнт')")) failures.push('share:original-behavior-missing');
       if(!shareText.includes("share-coupon-open") || !themeText.includes("html.share-coupon-open") || !themeText.includes("background:#171716!important")) failures.push('share:pwa-background-cover-missing');
       if(!betText.includes("replace(/\\B(?=(\\d{3})+(?!\\d))/g, ' ')") || !betText.includes("${major}.${minor} €")) failures.push('bet:bad-money-format');
       if(!i18nText.includes('Редагувати') || !i18nText.includes('Edit')) failures.push('i18n:incomplete');
@@ -1706,10 +1707,11 @@ server.listen(port,'0.0.0.0',()=>{
       if(!themeText.includes('.share-close:focus-visible') || !themeText.includes('.gamepad-graphic') || !themeText.includes('width:84%!important')) failures.push('theme:share-focus-or-emblem-normalization-missing');
       if(!shareText.includes('cropRatio') || !shareText.includes('font(12.5)')) failures.push('share:scale-or-gamepad-crop-missing');
       const swText=await request('/sw.js');
-      if(!swText.includes("arena-line-sync-v79") || !swText.includes("esports-controller-clean-v79.png")) failures.push('sw:v79-refresh-missing');
+      if(!swText.includes("arena-line-sync-v80") || !swText.includes("self.clients.matchAll")) failures.push('sw:v80-refresh-missing');
       if(!themeText.includes('body.share-coupon-open::before') || !themeText.includes('height:env(safe-area-inset-top)')) failures.push('theme:share-top-strip-missing');
       if(!themeText.includes('v76: compact accumulator detail rows') || !themeText.includes('min-height:56px!important')) failures.push('theme:compact-accumulator-missing');
       if(!themeText.includes('v77: clean transparent esports controller') || !themeText.includes('clip-path:none!important')) failures.push('theme:clean-controller-missing');
+      if(!uiText.includes("ESPORTS_CONTROLLER_DATA") || !sportsText.includes("data:image/png;base64")) failures.push('controller:inline-data-missing');
       if(/\]\s*\n\s*\[/.test(i18nText)) failures.push('i18n:malformed-row-boundary');
       const controllerResponse=await fetch(base+'/assets/icons/esports-controller-clean-v79.png',{cache:'no-store'});
       const controllerBytes=(await controllerResponse.arrayBuffer()).byteLength;
@@ -1717,7 +1719,7 @@ server.listen(port,'0.0.0.0',()=>{
       const summary=checks.map(({path,status,type,bytes})=>({path,status,type,bytes}));
       summary.push({path:'/assets/icons/esports-controller-clean-v79.png',status:controllerResponse.status,type:controllerResponse.headers.get('content-type')||'',bytes:controllerBytes});
       if(failures.length) console.error('FRONTEND_SELFTEST_FAILED '+JSON.stringify({failures,summary}));
-      else console.log('FRONTEND_SELFTEST_OK '+JSON.stringify({build:'79',summary}));
+      else console.log('FRONTEND_SELFTEST_OK '+JSON.stringify({build:'80',summary}));
     }catch(error){
       console.error('FRONTEND_SELFTEST_ERROR '+String(error?.stack||error));
     }
