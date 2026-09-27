@@ -19,7 +19,7 @@ function sportImage(selection) {
     const image = new Image();
     image.onload = () => resolve(image);
     image.onerror = () => resolve(null);
-    image.src = name === 'esports' ? '/assets/icons/esports-controller-clean-v78.png' : `/assets/icons/${name}.png`;
+    image.src = name === 'esports' ? '/assets/icons/esports-controller-clean-v79.png' : `/assets/icons/${name}.png`;
   }));
   return imageCache.get(name);
 }
