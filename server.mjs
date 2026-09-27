@@ -1678,6 +1678,7 @@ server.listen(port,'0.0.0.0',()=>{
       const betText=await request('/v80/bet-view.mjs');
       const shareText=await request('/v80/share-coupon.mjs');
       const i18nText=await request('/v80/i18n.mjs');
+      const uiText=await request('/v80/ui.mjs');
       const themeText=await request('/v80/theme.css');
       await request('/v80/feed.mjs');
       await request('/v80/event-view.mjs');
