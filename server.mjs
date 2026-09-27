@@ -3,7 +3,7 @@ import { Readable } from 'node:stream';
 import { readFile } from 'node:fs/promises';
 import app from './dist/server/index.js';
 import { augmentSettlements, completedHistory, probeResultsSource } from './results_bridge.mjs';
-import { readProfile, loginProfile, syncProfile, profileStorageStatus } from './profile_store.mjs';
+import { loginProfile, syncProfile, profileStorageStatus } from './profile_store.mjs';
 
 const port = Number(process.env.PORT || 3000);
 const env = {};
@@ -25,7 +25,7 @@ const serviceWorkerModule = await readFile(new URL('./overrides/sw.js', import.m
 const manifestModule = await readFile(new URL('./overrides/manifest.webmanifest', import.meta.url), 'utf8');
 
 const syncedEvents = new Map();
-let resultsSource = {ok:null,error:null,count:0,disciplines:[]};
+let resultsSource = {ok:null,error:null,disciplines:[]};
 let syncMeta = {
   lastClientAt:0,
   source:'',
@@ -49,31 +49,23 @@ async function readBody(req, limit = 2_000_000) {
 
 function json(res, status, value) {
   res.statusCode = status;
-  res.setHeader('content-type', 'application/json; charset=utf-8');
-  res.setHeader('cache-control', 'no-store');
+  res.setHeader('content-type','application/json; charset=utf-8');
+  res.setHeader('cache-control','no-store');
   res.end(JSON.stringify(value));
 }
 
 function textResponse(res, method, type, source) {
   res.statusCode = 200;
-  res.setHeader('content-type', type);
-  res.setHeader('cache-control', 'no-store, no-cache, must-revalidate');
-  res.setHeader('x-content-type-options', 'nosniff');
+  res.setHeader('content-type',type);
+  res.setHeader('cache-control','no-store, no-cache, must-revalidate');
+  res.setHeader('x-content-type-options','nosniff');
   if (method === 'HEAD') return res.end();
   res.end(source);
 }
 
-function js(res, method, source) {
-  return textResponse(res,method,'text/javascript; charset=utf-8',source);
-}
-
-function css(res, method, source) {
-  return textResponse(res,method,'text/css; charset=utf-8',source);
-}
-
-function safeString(value, max = 300) {
-  return String(value ?? '').slice(0, max);
-}
+const js = (res,method,source) => textResponse(res,method,'text/javascript; charset=utf-8',source);
+const css = (res,method,source) => textResponse(res,method,'text/css; charset=utf-8',source);
+const safeString = (value,max=300) => String(value ?? '').slice(0,max);
 
 function bearer(req) {
   const value = String(req.headers.authorization || '');
@@ -81,27 +73,27 @@ function bearer(req) {
 }
 
 function safeEvent(raw) {
-  const id = safeString(raw?.id, 64);
+  const id = safeString(raw?.id,64);
   if (!id || !/^[A-Za-z0-9:_-]{1,64}$/.test(id)) return null;
   return {
     id,
-    name:safeString(raw?.name, 220),
-    tournamentId:safeString(raw?.tournamentId, 80),
-    tournamentName:safeString(raw?.tournamentName, 220),
-    categoryName:safeString(raw?.categoryName, 120),
-    categoryIconUrl:safeString(raw?.categoryIconUrl, 500),
-    tournamentIconUrl:safeString(raw?.tournamentIconUrl, 500),
-    sport:safeString(raw?.sport, 20),
-    subsport:safeString(raw?.subsport, 40),
+    name:safeString(raw?.name,220),
+    tournamentId:safeString(raw?.tournamentId,80),
+    tournamentName:safeString(raw?.tournamentName,220),
+    categoryName:safeString(raw?.categoryName,120),
+    categoryIconUrl:safeString(raw?.categoryIconUrl,500),
+    tournamentIconUrl:safeString(raw?.tournamentIconUrl,500),
+    sport:safeString(raw?.sport,20),
+    subsport:safeString(raw?.subsport,40),
     stage:Number(raw?.stage || 0),
     status:Number(raw?.status || 0),
     tradingStatus:Number(raw?.tradingStatus || 0),
     startTime:Number(raw?.startTime || 0),
-    regulation:safeString(raw?.regulation, 120),
+    regulation:safeString(raw?.regulation,120),
     competitors:Array.isArray(raw?.competitors) ? raw.competitors.slice(0,2).map(team => ({
-      id:safeString(team?.id, 64),
-      name:safeString(team?.name, 160),
-      icon:team?.icon?.url ? {url:safeString(team.icon.url, 500)} : undefined
+      id:safeString(team?.id,64),
+      name:safeString(team?.name,160),
+      icon:team?.icon?.url ? {url:safeString(team.icon.url,500)} : undefined
     })) : [],
     scoreboard:raw?.scoreboard && typeof raw.scoreboard === 'object' ? raw.scoreboard : null,
     syncedAt:Date.now()
@@ -109,14 +101,14 @@ function safeEvent(raw) {
 }
 
 function pruneSyncedEvents() {
-  const cutoff = Date.now() - 48 * 3600_000;
-  for (const [id, event] of syncedEvents) {
-    const eventTime = Number(event.startTime || 0) * 1000;
+  const cutoff=Date.now()-48*3600_000;
+  for (const [id,event] of syncedEvents) {
+    const eventTime=Number(event.startTime || 0)*1000;
     if ((event.syncedAt || 0) < cutoff && (!eventTime || eventTime < cutoff)) syncedEvents.delete(id);
   }
   if (syncedEvents.size > 5000) {
-    const rows = [...syncedEvents.entries()].sort((a,b) => (a[1].syncedAt || 0) - (b[1].syncedAt || 0));
-    for (const [id] of rows.slice(0, syncedEvents.size - 5000)) syncedEvents.delete(id);
+    const rows=[...syncedEvents.entries()].sort((a,b)=>(a[1].syncedAt||0)-(b[1].syncedAt||0));
+    for (const [id] of rows.slice(0,syncedEvents.size-5000)) syncedEvents.delete(id);
   }
 }
 
@@ -264,70 +256,65 @@ const sportsCssPatch = `
 }
 `;
 
-async function embeddedAsset(pathname, method, headers) {
-  const request = new Request('http://localhost' + pathname, {method,headers});
+async function embeddedAsset(pathname,method,headers) {
+  const request = new Request('http://localhost' + pathname,{method,headers});
   return app.fetch(request,env,ctx);
 }
 
 async function mergedSettlements(bodyBuffer, req) {
-  const raw = bodyBuffer.toString('utf8');
-  const payload = JSON.parse(raw || '{}');
-  const events = Array.isArray(payload.events) ? payload.events : [];
+  const payload=JSON.parse(bodyBuffer.toString('utf8') || '{}');
+  const events=Array.isArray(payload.events) ? payload.events : [];
   if (!events.length || events.length > 30) return {status:400,body:{error:'Invalid events'}};
 
-  let base = {results:[],unavailable:[],pending:events.map(e => String(e.eventId || e.id || ''))};
+  let base={results:[],unavailable:[],pending:events.map(e=>String(e.eventId||e.id||''))};
   try {
-    const request = new Request('http://localhost/api/settlements', {
+    const request=new Request('http://localhost/api/settlements',{
       method:'POST',
       headers:req.headers,
       body:bodyBuffer
     });
-    const response = await app.fetch(request,env,ctx);
+    const response=await app.fetch(request,env,ctx);
     if (response.ok) {
-      const value = await response.json();
+      const value=await response.json();
       if (Array.isArray(value?.results)) base=value;
     } else {
-      base.unavailable=[...(base.unavailable || []),'Embedded results HTTP ' + response.status];
+      base.unavailable=[...(base.unavailable||[]),'Embedded results HTTP '+response.status];
     }
-  } catch (error) {
-    base.unavailable=[...(base.unavailable || []),'Embedded results: ' + String(error?.message || error)];
+  } catch(error) {
+    base.unavailable=[...(base.unavailable||[]),'Embedded results: '+String(error?.message||error)];
   }
 
-  const extra = await augmentSettlements(events,base.results || []);
-  const merged = new Map();
+  const extra=await augmentSettlements(events,base.results || []);
+  const merged=new Map();
   for (const row of base.results || []) merged.set(String(row.id),row);
   for (const row of extra.results || []) if (!merged.has(String(row.id))) merged.set(String(row.id),row);
 
   const results=[...merged.values()];
-  const unavailable=[...new Set([...(base.unavailable || []),...(extra.unavailable || [])])];
-  const pending=events
-    .map(event => String(event.eventId || event.id || ''))
-    .filter(id => id && !merged.has(id));
+  const unavailable=[...new Set([...(base.unavailable||[]),...(extra.unavailable||[])])];
+  const pending=events.map(event=>String(event.eventId||event.id||'')).filter(id=>id&&!merged.has(id));
 
-  console.log('SETTLEMENT_SYNC ' + JSON.stringify({
+  console.log('SETTLEMENT_SYNC '+JSON.stringify({
     requested:events.length,
-    embedded:(base.results || []).length,
-    bo3:(extra.results || []).length,
+    embedded:(base.results||[]).length,
+    bo3:(extra.results||[]).length,
     settled:results.length,
     pending:pending.length,
     unavailable
   }));
-
   return {status:200,body:{results,unavailable,pending}};
 }
 
-const server = http.createServer(async (req, res) => {
+const server=http.createServer(async (req,res)=>{
   try {
-    const method = req.method || 'GET';
-    const url = new URL(req.url || '/', 'http://localhost');
-
+    const method=req.method || 'GET';
+    const url=new URL(req.url || '/','http://localhost');
 
     if (url.pathname === '/health') {
-      const profileStorage = await profileStorageStatus();
-      return json(res, 200, {
+      const profileStorage=await profileStorageStatus();
+      return json(res,200,{
         ok:true,
         source:'arena-line-parik-sync-v4',
-        runtime:'phone-ui + parik-feed + synced-file-profile + flexible-bet-editor + multi-esports-settlement',
+        runtime:'parik-feed + synced-file-profile + flexible-bet-editor + multi-esports-settlement',
         sync:{
           lastClientAt:syncMeta.lastClientAt || null,
           source:syncMeta.source || null,
@@ -339,99 +326,74 @@ const server = http.createServer(async (req, res) => {
           telemetry:syncMeta.telemetry
         },
         resultsSource,
-        profiles:profileStorage
+        profileStorage
       });
     }
 
-    if (url.pathname === '/feed.mjs' && ['GET','HEAD'].includes(method)) {
-      return js(res,method,feedModule);
-    }
-
-    if (url.pathname === '/team-emblem.mjs' && ['GET','HEAD'].includes(method)) {
-      return js(res,method,emblemModule);
-    }
-
-    if (url.pathname === '/account.mjs' && ['GET','HEAD'].includes(method)) {
-      return js(res,method,accountModule);
-    }
-
-    if (url.pathname === '/app.js' && ['GET','HEAD'].includes(method)) {
-      return js(res,method,appModule);
-    }
-
-    if (url.pathname === '/bet-view.mjs' && ['GET','HEAD'].includes(method)) {
-      return js(res,method,betViewModule);
-    }
-
-    if (url.pathname === '/theme.css' && ['GET','HEAD'].includes(method)) {
-      return css(res,method,themeCssModule);
-    }
-
+    if (url.pathname === '/feed.mjs' && ['GET','HEAD'].includes(method)) return js(res,method,feedModule);
+    if (url.pathname === '/team-emblem.mjs' && ['GET','HEAD'].includes(method)) return js(res,method,emblemModule);
+    if (url.pathname === '/account.mjs' && ['GET','HEAD'].includes(method)) return js(res,method,accountModule);
+    if (url.pathname === '/app.js' && ['GET','HEAD'].includes(method)) return js(res,method,appModule);
+    if (url.pathname === '/bet-view.mjs' && ['GET','HEAD'].includes(method)) return js(res,method,betViewModule);
+    if (url.pathname === '/theme.css' && ['GET','HEAD'].includes(method)) return css(res,method,themeCssModule);
     if (url.pathname === '/sw.js' && ['GET','HEAD'].includes(method)) {
       res.setHeader('service-worker-allowed','/');
       return js(res,method,serviceWorkerModule);
     }
-
     if (url.pathname === '/manifest.webmanifest' && ['GET','HEAD'].includes(method)) {
       return textResponse(res,method,'application/manifest+json; charset=utf-8',manifestModule);
     }
 
     if (url.pathname === '/sports.mjs' && ['GET','HEAD'].includes(method)) {
-      const response = await embeddedAsset('/sports.mjs',method,req.headers);
-      if (!response.ok) {
-        res.statusCode=response.status;
-        return res.end();
-      }
+      const response=await embeddedAsset('/sports.mjs',method,req.headers);
+      if (!response.ok) { res.statusCode=response.status; return res.end(); }
       const source=method === 'HEAD' ? '' : await response.text();
       return js(res,method,patchSportsModule(source));
     }
 
     if (url.pathname === '/sports.css' && ['GET','HEAD'].includes(method)) {
-      const response = await embeddedAsset('/sports.css',method,req.headers);
-      if (!response.ok) {
-        res.statusCode=response.status;
-        return res.end();
-      }
+      const response=await embeddedAsset('/sports.css',method,req.headers);
+      if (!response.ok) { res.statusCode=response.status; return res.end(); }
       const source=method === 'HEAD' ? '' : await response.text();
       return css(res,method,source + sportsCssPatch);
     }
 
     if (url.pathname === '/api/profile/login') {
       if (method !== 'POST') return json(res,405,{ok:false,error:'Method not allowed'});
-      const body = JSON.parse((await readBody(req,32_000)).toString('utf8') || '{}');
-      const email = safeString(body.email,200).trim().toLowerCase();
-      const hash = safeString(body.hash,80);
+      const body=JSON.parse((await readBody(req,32_000)).toString('utf8') || '{}');
+      const email=safeString(body.email,200).trim().toLowerCase();
+      const hash=safeString(body.hash,80);
       if (!email || !/^[a-f0-9]{64}$/i.test(hash)) return json(res,400,{ok:false,error:'Invalid credentials'});
-      const profile = await loginProfile(email,hash);
+      const profile=await loginProfile(email,hash);
       if (!profile) return json(res,401,{ok:false,error:'Invalid credentials'});
       return json(res,200,{ok:true,profile});
     }
 
     if (url.pathname === '/api/profile') {
       if (method !== 'GET') return json(res,405,{ok:false,error:'Method not allowed'});
-      const email = safeString(url.searchParams.get('email'),200).trim().toLowerCase();
-      const hash = bearer(req);
+      const email=safeString(url.searchParams.get('email'),200).trim().toLowerCase();
+      const hash=bearer(req);
       if (!email || !/^[a-f0-9]{64}$/i.test(hash)) return json(res,401,{ok:false,error:'Unauthorized'});
-      const profile = await loginProfile(email,hash);
+      const profile=await loginProfile(email,hash);
       if (!profile) return json(res,404,{ok:false,error:'Profile not found'});
       return json(res,200,{ok:true,profile});
     }
 
     if (url.pathname === '/api/profile/sync') {
       if (method !== 'POST') return json(res,405,{ok:false,error:'Method not allowed'});
-      const hash = bearer(req);
+      const hash=bearer(req);
       if (!/^[a-f0-9]{64}$/i.test(hash)) return json(res,401,{ok:false,error:'Unauthorized'});
-      const body = JSON.parse((await readBody(req,2_100_000)).toString('utf8') || '{}');
+      const body=JSON.parse((await readBody(req,2_100_000)).toString('utf8') || '{}');
       try {
-        const profile = await syncProfile(body.profile,hash);
-        console.log('PROFILE_SYNC ' + JSON.stringify({
+        const profile=await syncProfile(body.profile,hash);
+        console.log('PROFILE_SYNC '+JSON.stringify({
           id:profile.id,
           revision:profile.profileRevision,
           bets:profile.bets.length,
           balance:profile.balance
         }));
         return json(res,200,{ok:true,profile});
-      } catch (error) {
+      } catch(error) {
         if (error?.statusCode === 409) return json(res,409,{ok:false,error:'Profile conflict',profile:error.profile});
         if (error?.statusCode === 401) return json(res,401,{ok:false,error:'Unauthorized'});
         return json(res,400,{ok:false,error:safeString(error?.message || 'Invalid profile',200)});
@@ -440,9 +402,9 @@ const server = http.createServer(async (req, res) => {
 
     if (url.pathname === '/api/sync/telemetry') {
       if (method !== 'POST') return json(res,405,{ok:false,error:'Method not allowed'});
-      const body = await readBody(req,16_000);
-      const value = JSON.parse(body.toString('utf8') || '{}');
-      const telemetry = {
+      const body=await readBody(req,16_000);
+      const value=JSON.parse(body.toString('utf8') || '{}');
+      const telemetry={
         kind:safeString(value.kind,50),
         endpoint:safeString(value.endpoint,500),
         state:safeString(value.state,40),
@@ -459,18 +421,15 @@ const server = http.createServer(async (req, res) => {
       };
       syncMeta.telemetry=telemetry;
       syncMeta.lastClientAt=Date.now();
-      console.log('FEED_TELEMETRY ' + JSON.stringify(telemetry));
+      console.log('FEED_TELEMETRY '+JSON.stringify(telemetry));
       return json(res,200,{ok:true});
     }
 
     if (url.pathname === '/api/sync/events') {
       if (method !== 'POST') return json(res,405,{ok:false,error:'Method not allowed'});
-      const body = await readBody(req,1_500_000);
-      const value = JSON.parse(body.toString('utf8') || '{}');
-      if (!Array.isArray(value.rows) || value.rows.length > 250) {
-        return json(res,400,{ok:false,error:'Invalid rows'});
-      }
-
+      const body=await readBody(req,1_500_000);
+      const value=JSON.parse(body.toString('utf8') || '{}');
+      if (!Array.isArray(value.rows) || value.rows.length > 250) return json(res,400,{ok:false,error:'Invalid rows'});
       let accepted=0;
       for (const raw of value.rows) {
         const event=safeEvent(raw);
@@ -478,7 +437,6 @@ const server = http.createServer(async (req, res) => {
         syncedEvents.set(event.id,event);
         accepted++;
       }
-
       syncMeta={
         ...syncMeta,
         lastClientAt:Date.now(),
@@ -489,8 +447,7 @@ const server = http.createServer(async (req, res) => {
         received:accepted
       };
       pruneSyncedEvents();
-
-      console.log('FEED_SYNC ' + JSON.stringify({
+      console.log('FEED_SYNC '+JSON.stringify({
         source:syncMeta.source,
         sport:syncMeta.sport,
         stage:syncMeta.stage,
@@ -505,8 +462,8 @@ const server = http.createServer(async (req, res) => {
       if (method !== 'GET') return json(res,405,{ok:false,error:'Method not allowed'});
       const ids=(url.searchParams.get('ids') || '').split(',').filter(Boolean).slice(0,100);
       const events=ids.length
-        ? ids.map(id => syncedEvents.get(id)).filter(Boolean)
-        : [...syncedEvents.values()].sort((a,b) => (b.syncedAt || 0)-(a.syncedAt || 0)).slice(0,50);
+        ? ids.map(id=>syncedEvents.get(id)).filter(Boolean)
+        : [...syncedEvents.values()].sort((a,b)=>(b.syncedAt||0)-(a.syncedAt||0)).slice(0,50);
       return json(res,200,{ok:true,meta:syncMeta,total:syncedEvents.size,events});
     }
 
@@ -520,7 +477,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/results') {
       if (method !== 'GET') return json(res,405,{error:'Method not allowed'});
       const ids=(url.searchParams.get('ids') || '').split(',').filter(Boolean).slice(0,100);
-      const events=ids.map(id => syncedEvents.get(String(id))).filter(Boolean).map(eventForSettlement);
+      const events=ids.map(id=>syncedEvents.get(String(id))).filter(Boolean).map(eventForSettlement);
       if (!events.length) return json(res,200,[]);
       const external=await augmentSettlements(events,[]);
       return json(res,200,external.results || []);
@@ -534,43 +491,39 @@ const server = http.createServer(async (req, res) => {
       if (!team) return json(res,200,[]);
       try {
         const rows=await completedHistory(team.name,20,team.categoryName);
-        console.log('COMPLETED_HISTORY ' + JSON.stringify({team:team.name,category:team.categoryName,rows:rows.length}));
+        console.log('COMPLETED_HISTORY '+JSON.stringify({team:team.name,category:team.categoryName,rows:rows.length}));
         return json(res,200,rows);
-      } catch (error) {
+      } catch(error) {
         console.error('COMPLETED_HISTORY_ERROR',team.name,error?.message || error);
         return json(res,200,[]);
       }
     }
 
-    const body = ['GET','HEAD'].includes(method) ? undefined : await readBody(req);
-    const request = new Request('http://localhost' + (req.url || '/'), {
+    const body=['GET','HEAD'].includes(method) ? undefined : await readBody(req);
+    const request=new Request('http://localhost'+(req.url || '/'),{
       method,
       headers:req.headers,
       ...(body ? {body} : {})
     });
-
-    const response = await app.fetch(request,env,ctx);
+    const response=await app.fetch(request,env,ctx);
     res.statusCode=response.status;
-    response.headers.forEach((value,key) => res.setHeader(key,value));
+    response.headers.forEach((value,key)=>res.setHeader(key,value));
     res.setHeader('cache-control','no-store');
-
     if (method === 'HEAD' || response.status === 204 || !response.body) return res.end();
     Readable.fromWeb(response.body).pipe(res);
-  } catch (error) {
+  } catch(error) {
     console.error('Arena Line runtime error',error?.stack || error);
     return json(res,500,{ok:false,error:'Arena Line server error'});
   }
 });
 
-server.listen(port,'0.0.0.0',() => {
-  console.log('Arena Line Parik sync v4 listening on ' + port);
-  probeResultsSource()
-    .then(status => {
-      resultsSource={...status,error:null};
-      console.log('RESULTS_SOURCE_OK ' + JSON.stringify(resultsSource));
-    })
-    .catch(error => {
-      resultsSource={ok:false,error:String(error?.message || error),count:0,disciplines:[]};
-      console.error('RESULTS_SOURCE_ERROR ' + JSON.stringify(resultsSource));
-    });
+server.listen(port,'0.0.0.0',()=>{
+  console.log('Arena Line Parik sync v4 listening on '+port);
+  probeResultsSource().then(status=>{
+    resultsSource={...status,error:null};
+    console.log('RESULTS_SOURCE_OK '+JSON.stringify(resultsSource));
+  }).catch(error=>{
+    resultsSource={ok:false,error:String(error?.message || error),disciplines:[]};
+    console.error('RESULTS_SOURCE_ERROR '+JSON.stringify(resultsSource));
+  });
 });
