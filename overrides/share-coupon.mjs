@@ -145,7 +145,12 @@ export function openShareCoupon(bet, showToast) {
     const url=URL.createObjectURL(file), link=document.createElement('a');link.href=url;link.download=file.name;
     document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
   }
+  const releaseShareBackdrop=()=>{
+    document.documentElement.classList.remove('share-coupon-open');
+    document.body.classList.remove('share-coupon-open');
+  };
   dialog.querySelector('.share-close').onclick=()=>dialog.close();
+  dialog.addEventListener('close',releaseShareBackdrop,{once:true});
   dialog.querySelector('input').onchange=render;
   dialog.querySelector('.share-save').onclick=save;
   const share=dialog.querySelector('.share-send');
@@ -155,5 +160,7 @@ export function openShareCoupon(bet, showToast) {
     try {await navigator.share({files:[file],title:'Купон Arena Line'});}
     catch(problem){if(problem.name!=='AbortError')showToast('Не вдалося поділитися. Купон можна зберегти зображенням.');}
   };
+  document.documentElement.classList.add('share-coupon-open');
+  document.body.classList.add('share-coupon-open');
   if(!dialog.open)dialog.showModal();window.lucide?.createIcons();render();
 }
