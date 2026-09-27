@@ -151,16 +151,16 @@ function teamMetaByProviderId(id) {
 
 function patchIndexHtml(source) {
   let html=String(source || '');
-  html=html.replace(/\?+v=\d+/g,'?v=63');
+  html=html.replace(/\?+v=\d+/g,'?v=64');
   if (!html.includes('apple-touch-icon')) {
     html=html.replace(
       '<link rel="manifest" href="/manifest.webmanifest">',
       '<link rel="manifest" href="/manifest.webmanifest">\n  <link rel="apple-touch-icon" href="/assets/icons/esports.png">\n  <meta name="apple-mobile-web-app-capable" content="yes">\n  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">'
     );
   }
-  if (!html.includes('arena-editor-hotfix-v63')) {
+  if (!html.includes('arena-editor-hotfix-v64')) {
     html=html.replace('</head>', `
-<style id="arena-editor-hotfix-v63">
+<style id="arena-editor-hotfix-v64">
 dialog#dialog.edit-bet-dialog{
   position:fixed!important;
   top:auto!important;
@@ -338,9 +338,23 @@ dialog#dialog.edit-bet-dialog .edit-bet-hide{
 }
 </style>
 <script>
-window.__ARENA_BUILD__='63';
+window.__ARENA_BUILD__='64';
 </script>
 </head>`);
+  }
+  html=html
+    .replace(/href="\/(app|sports|bet-view|event-view|share-coupon|settings|theme)\.css\?v=64"/g,'href="/v64/$1.css"')
+    .replace('src="/lucide.min.js"','src="/v64/lucide.min.js"')
+    .replace('src="/app.js?v=64"','src="/v64/app.js"');
+  if(!html.includes('arena-client-diagnostics-v64')){
+    html=html.replace('<title>Arena Line</title>',`<title>Arena Line</title>
+<script id="arena-client-diagnostics-v64">
+(()=>{const send=(kind,message,extra={})=>{try{fetch('/api/client-diagnostic',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({kind,message:String(message||'').slice(0,1800),build:'64',href:location.href,...extra}),keepalive:true,cache:'no-store'}).catch(()=>{})}catch{}};
+window.addEventListener('error',event=>send('CLIENT_ERROR',event.message||event.error?.message||'window error',{source:event.filename||'',line:event.lineno||0,column:event.colno||0}));
+window.addEventListener('unhandledrejection',event=>send('CLIENT_REJECTION',event.reason?.stack||event.reason?.message||event.reason||'unhandled rejection'));
+window.__arenaClientDiagnostic=send;
+})();
+</script>`);
   }
   return html;
 }
@@ -1352,6 +1366,36 @@ const server=http.createServer(async (req,res)=>{
       return textResponse(res,method,'text/html; charset=utf-8',patchIndexHtml(source),'no-store');
     }
 
+    if (url.pathname.startsWith('/v64/') && ['GET','HEAD'].includes(method)) {
+      const runtimePath='/' + url.pathname.slice('/v64/'.length);
+      if (runtimePath === '/feed.mjs') return js(res,method,feedModule,'no-store');
+      if (runtimePath === '/team-emblem.mjs') return js(res,method,emblemModule,'no-store');
+      if (runtimePath === '/ui.mjs') return js(res,method,uiModule,'no-store');
+      if (runtimePath === '/i18n.mjs') return js(res,method,i18nModule,'no-store');
+      if (runtimePath === '/account.mjs') return js(res,method,accountModule,'no-store');
+      if (runtimePath === '/app.js') return js(res,method,appModule,'no-store');
+      if (runtimePath === '/bet-view.mjs') return js(res,method,betViewModule,'no-store');
+      if (runtimePath === '/theme.css') return css(res,method,themeCssModule,'no-store');
+      if (runtimePath === '/sports.mjs') {
+        const response=await embeddedAsset('/sports.mjs',method,req.headers);
+        if (!response.ok) { res.statusCode=response.status; return res.end(); }
+        const source=method === 'HEAD' ? '' : await response.text();
+        return js(res,method,patchSportsModule(source),'no-store');
+      }
+      if (runtimePath === '/sports.css') {
+        const response=await embeddedAsset('/sports.css',method,req.headers);
+        if (!response.ok) { res.statusCode=response.status; return res.end(); }
+        const source=method === 'HEAD' ? '' : await response.text();
+        return css(res,method,source + sportsCssPatch,'no-store');
+      }
+      const response=await embeddedAsset(runtimePath,method,req.headers);
+      res.statusCode=response.status;
+      response.headers.forEach((value,key)=>res.setHeader(key,value));
+      res.setHeader('cache-control','no-store');
+      if (method === 'HEAD' || response.status === 204 || !response.body) return res.end();
+      return Readable.fromWeb(response.body).pipe(res);
+    }
+
     if (url.pathname === '/feed.mjs' && ['GET','HEAD'].includes(method)) return js(res,method,feedModule);
     if (url.pathname === '/team-emblem.mjs' && ['GET','HEAD'].includes(method)) return js(res,method,emblemModule);
     if (url.pathname === '/ui.mjs' && ['GET','HEAD'].includes(method)) return js(res,method,uiModule);
@@ -1445,6 +1489,26 @@ const server=http.createServer(async (req,res)=>{
         if (error?.statusCode === 401) return json(res,401,{ok:false,error:'Unauthorized'});
         return json(res,400,{ok:false,error:safeString(error?.message || 'Invalid profile',200)});
       }
+    }
+
+    if (url.pathname === '/api/client-diagnostic') {
+      if (method !== 'POST') return json(res,405,{ok:false,error:'Method not allowed'});
+      const body=await readBody(req,12_000);
+      let value={};
+      try{value=JSON.parse(body.toString('utf8') || '{}');}catch{}
+      const diagnostic={
+        kind:safeString(value.kind,60),
+        message:safeString(value.message,2000),
+        build:safeString(value.build,20),
+        href:safeString(value.href,500),
+        source:safeString(value.source,500),
+        line:Number(value.line || 0),
+        column:Number(value.column || 0),
+        ua:safeString(req.headers['user-agent'],500),
+        at:Date.now()
+      };
+      console.log('CLIENT_DIAGNOSTIC '+JSON.stringify(diagnostic));
+      return json(res,200,{ok:true});
     }
 
     if (url.pathname === '/api/sync/telemetry') {
