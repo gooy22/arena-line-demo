@@ -130,6 +130,7 @@ function compactEvent(row, idOverride = '') {
   return {
     id:eventId,
     name:String(event.name || ''),
+    categoryId:String(event.categoryId || ''),
     tournamentId:String(event.tournamentId || ''),
     tournamentName:String(event.tournamentName || ''),
     categoryName:String(event.categoryName || ''),
@@ -669,7 +670,9 @@ export class LiveFeed {
       const samples=[...this.events.values()].slice(0,12).map(row=>({
         id:String(row.value?.id || ''),
         category:String(row.value?.categoryName || ''),
+        categoryId:String(row.value?.categoryId || ''),
         tournament:String(row.value?.tournamentName || ''),
+        tournamentId:String(row.value?.tournamentId || ''),
         providerSport:String(row.value?.providerSport || row.value?.sport || ''),
         categoryIconUrl:String(row.value?.categoryIconUrl || ''),
         tournamentIconUrl:String(row.value?.tournamentIconUrl || ''),
