@@ -123,11 +123,12 @@ export function marketSelections(row, event) {
       .filter(Boolean));
 }
 
-function compactEvent(row) {
+function compactEvent(row, idOverride = '') {
   const event = row?.value || row;
-  if (!event?.id) return null;
+  const eventId = String(idOverride || event?.id || '');
+  if (!eventId) return null;
   return {
-    id:String(event.id),
+    id:eventId,
     name:String(event.name || ''),
     tournamentId:String(event.tournamentId || ''),
     tournamentName:String(event.tournamentName || ''),
@@ -589,9 +590,19 @@ export class LiveFeed {
     if (!this.ready) return;
 
     const buckets = this.providerSportBuckets();
+    const modes = this.sport === 'CS'
+      ? [
+          {stage:'live',target:'GetLiveRichEventsBySport'},
+          {stage:'prematch',target:'GetRichEventsBySportAndTimeRange'}
+        ]
+      : [{
+          stage:this.stage,
+          target:this.stage === 'live' ? 'GetLiveRichEventsBySport' : 'GetRichEventsBySportAndTimeRange'
+        }];
+
     const signature = canonical({
-      stage:this.stage,
-      range:this.stage === 'prematch' ? this.range : null,
+      modes:modes.map(mode => mode.stage),
+      range:this.sport === 'CS' || this.stage === 'prematch' ? this.range : null,
       buckets
     });
     if (!force && signature === this.eventBucketSignature) return;
@@ -601,20 +612,18 @@ export class LiveFeed {
     this.eventMaps.clear();
     this.eventsReady = this.events.size > 0;
 
-    const target = this.stage === 'live'
-      ? 'GetLiveRichEventsBySport'
-      : 'GetRichEventsBySportAndTimeRange';
-
-    buckets.forEach((bucket,index) => {
-      const map = new Map();
-      const name = 'events:' + index + ':' + bucket;
-      this.eventMaps.set(name,map);
-      const args = this.stage === 'live' ? [bucket] : [bucket,this.range];
-      this.subscribe(name,target,args,map);
+    modes.forEach(mode => {
+      buckets.forEach((bucket,index) => {
+        const map = new Map();
+        const name = 'events:' + mode.stage + ':' + index + ':' + bucket;
+        this.eventMaps.set(name,map);
+        const args = mode.stage === 'live' ? [bucket] : [bucket,this.range];
+        this.subscribe(name,mode.target,args,map);
+      });
     });
 
     this.report('event-buckets', {
-      message:JSON.stringify(buckets).slice(0,1800)
+      message:JSON.stringify({buckets,modes:modes.map(mode=>mode.stage)}).slice(0,1800)
     });
   }
 
@@ -625,9 +634,11 @@ export class LiveFeed {
       for (const [id,row] of map) {
         if (this.sport === 'CS') {
           if (!looksEsportsEvent(row?.value)) continue;
-          combined.set(String(id),normalizeEsportsRow(row));
+          const normalized=normalizeEsportsRow(row);
+          normalized.value={...normalized.value,id:String(id)};
+          combined.set(String(id),normalized);
         } else {
-          combined.set(String(id),row);
+          combined.set(String(id),{...row,value:{...row.value,id:String(id)}});
         }
       }
     }
@@ -677,7 +688,14 @@ export class LiveFeed {
     this.eventBucketSignature = '';
     this.state = this.ready ? 'connected' : 'connecting';
 
-    if (this.ready) this.subscribeEvents(true);
+    if (this.ready) {
+      if (this.sport === 'CS' && sport === 'CS') {
+        this.marketSignature='';
+        this.scheduleMarkets();
+      } else {
+        this.subscribeEvents(true);
+      }
+    }
     this.notify();
   }
 
@@ -704,7 +722,10 @@ export class LiveFeed {
 
   subscribeMarkets() {
     if (!this.ready) return;
-    const ids = [...new Set([...this.events.keys(),...this.selectedIds])].sort();
+    const visibleIds=[...this.events]
+      .filter(([,row]) => this.stage === 'live' ? Number(row.value?.stage) === 2 : Number(row.value?.stage) === 1)
+      .map(([id]) => id);
+    const ids = [...new Set([...visibleIds,...this.selectedIds])].sort();
     const signature = canonical(ids);
     if (signature === this.marketSignature) return;
     this.marketSignature = signature;
@@ -762,8 +783,8 @@ export class LiveFeed {
   }
 
   pushSync() {
-    const rows=[...new Map([...this.events,...this.watched]).values()]
-      .map(compactEvent)
+    const rows=[...new Map([...this.events,...this.watched]).entries()]
+      .map(([id,row]) => compactEvent(row,id))
       .filter(Boolean)
       .slice(0,MAX_SYNC_EVENTS);
     if (!rows.length) return;
@@ -776,7 +797,7 @@ export class LiveFeed {
         revision,
         source:this.connectedUrl || this.currentUrl || '',
         sport:this.sport,
-        stage:this.stage,
+        stage:this.sport === 'CS' ? 'all' : this.stage,
         rows
       }),
       keepalive:true
