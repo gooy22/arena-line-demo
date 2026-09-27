@@ -1706,7 +1706,7 @@ server.listen(port,'0.0.0.0',()=>{
       if(!themeText.includes('.bet-detail-page') || !themeText.includes('grid-template-rows:auto minmax(0,1fr) auto') || !themeText.includes('.bet-detail-scroll')) failures.push('theme:bet-detail-layout-missing');
       if(!html.includes('maximum-scale=1,user-scalable=no') || !html.includes('apple-mobile-web-app-status-bar-style" content="black"')) failures.push('html:mobile-viewport-or-statusbar-missing');
       if(!themeText.includes('.share-close:focus-visible') || !themeText.includes('.gamepad-graphic') || !themeText.includes('width:84%!important')) failures.push('theme:share-focus-or-emblem-normalization-missing');
-      if(!shareText.includes('cropRatio') || !shareText.includes('font(12.5)')) failures.push('share:scale-or-gamepad-crop-missing');
+      if(!shareText.includes('cropRatio') || !shareText.includes('font(16)')) failures.push('share:scale-or-gamepad-crop-missing');
       const swText=await request('/sw.js');
       if(!swText.includes("arena-line-sync-v82") || !swText.includes("self.clients.matchAll")) failures.push('sw:v82-refresh-missing');
       if(!themeText.includes('body.share-coupon-open::before') || !themeText.includes('height:env(safe-area-inset-top)')) failures.push('theme:share-top-strip-missing');
