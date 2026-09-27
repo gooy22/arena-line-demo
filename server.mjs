@@ -3,7 +3,7 @@ import { Readable } from 'node:stream';
 import { readFile } from 'node:fs/promises';
 import app from './dist/server/index.js';
 import { augmentSettlements, completedHistory, probeResultsSource } from './results_bridge.mjs';
-import { loginProfile, syncProfile, profileStorageStatus } from './profile_store.mjs';
+import { loginProfile, syncProfile, profileStorageStatus, changeProfilePassword } from './profile_store.mjs';
 
 const port = Number(process.env.PORT || 3000);
 const env = {};
@@ -377,6 +377,25 @@ const server=http.createServer(async (req,res)=>{
       const profile=await loginProfile(email,hash);
       if (!profile) return json(res,404,{ok:false,error:'Profile not found'});
       return json(res,200,{ok:true,profile});
+    }
+
+    if (url.pathname === '/api/profile/password') {
+      if (method !== 'POST') return json(res,405,{ok:false,error:'Method not allowed'});
+      const oldHash=bearer(req);
+      const body=JSON.parse((await readBody(req,32_000)).toString('utf8') || '{}');
+      const email=safeString(body.email,200).trim().toLowerCase();
+      const newHash=safeString(body.newHash,80);
+      if (!email || !/^[a-f0-9]{64}$/i.test(oldHash) || !/^[a-f0-9]{64}$/i.test(newHash)) {
+        return json(res,400,{ok:false,error:'Invalid credential'});
+      }
+      try {
+        const profile=await changeProfilePassword(email,oldHash,newHash);
+        if (!profile) return json(res,404,{ok:false,error:'Profile not found'});
+        return json(res,200,{ok:true,profile});
+      } catch(error) {
+        if (error?.statusCode === 401) return json(res,401,{ok:false,error:'Unauthorized'});
+        return json(res,400,{ok:false,error:safeString(error?.message || 'Password sync failed',200)});
+      }
     }
 
     if (url.pathname === '/api/profile/sync') {
