@@ -1490,3 +1490,15 @@ html.share-coupon-open.share-open-express-legacy .share-actions button>span{
     background:#f5f4f0!important;
   }
 }
+
+
+/* v91: remove the artificial 6px PWA lift from the MAIN sports bottom bar only. */
+@media (display-mode:standalone){
+  .sports-nav{
+    padding-bottom:0!important;
+    min-height:var(--sports-footer)!important;
+  }
+  .sports-shell .slip-mini{
+    bottom:calc(var(--sports-footer) + 6px)!important;
+  }
+}
