@@ -1244,15 +1244,15 @@ html.share-coupon-open .share-error{
 }
 
 
-/* v84: every non-single share stays exactly on the pre-v82 layout. */
-html.share-coupon-open.share-nonsingle-legacy{
+/* v85: express share stays exactly on the pre-v82/v81 layout. */
+html.share-coupon-open.share-express-legacy{
   background:#171716!important;
 }
-body.share-coupon-open.share-nonsingle-legacy{
+body.share-coupon-open.share-express-legacy{
   background:#f5f4f0!important;
   overflow:hidden!important;
 }
-body.share-coupon-open.share-nonsingle-legacy::before{
+body.share-coupon-open.share-express-legacy::before{
   content:""!important;
   position:fixed!important;
   top:0!important;
@@ -1263,8 +1263,8 @@ body.share-coupon-open.share-nonsingle-legacy::before{
   z-index:2147483647!important;
   pointer-events:none!important;
 }
-html.share-coupon-open.share-nonsingle-legacy dialog.share-coupon,
-body.share-coupon-open.share-nonsingle-legacy dialog.share-coupon{
+html.share-coupon-open.share-express-legacy dialog.share-coupon,
+body.share-coupon-open.share-express-legacy dialog.share-coupon{
   position:fixed!important;
   inset:0!important;
   width:100vw!important;
@@ -1280,10 +1280,10 @@ body.share-coupon-open.share-nonsingle-legacy dialog.share-coupon{
   box-shadow:none!important;
   overflow:hidden!important;
 }
-html.share-coupon-open.share-nonsingle-legacy dialog.share-coupon::backdrop{
+html.share-coupon-open.share-express-legacy dialog.share-coupon::backdrop{
   background:#f5f4f0!important;
 }
-html.share-coupon-open.share-nonsingle-legacy .share-layout{
+html.share-coupon-open.share-express-legacy .share-layout{
   width:100%!important;
   max-width:430px!important;
   height:100%!important;
@@ -1295,11 +1295,11 @@ html.share-coupon-open.share-nonsingle-legacy .share-layout{
   padding:calc(env(safe-area-inset-top) + 58px) 16px max(10px,env(safe-area-inset-bottom))!important;
   background:#f5f4f0!important;
 }
-html.share-coupon-open.share-nonsingle-legacy .share-spacer{
+html.share-coupon-open.share-express-legacy .share-spacer{
   flex:1!important;
   min-height:24px!important;
 }
-html.share-coupon-open.share-nonsingle-legacy .share-close{
+html.share-coupon-open.share-express-legacy .share-close{
   top:calc(env(safe-area-inset-top) + 14px)!important;
   right:16px!important;
   width:24px!important;
@@ -1312,21 +1312,21 @@ html.share-coupon-open.share-nonsingle-legacy .share-close{
   background:transparent!important;
   color:#8f8b80!important;
 }
-html.share-coupon-open.share-nonsingle-legacy .share-close svg{
+html.share-coupon-open.share-express-legacy .share-close svg{
   width:22px!important;
   height:22px!important;
 }
-html.share-coupon-open.share-nonsingle-legacy .share-ticket{
+html.share-coupon-open.share-express-legacy .share-ticket{
   width:96%!important;
   margin-left:auto!important;
   margin-right:auto!important;
   padding:0!important;
 }
-html.share-coupon-open.share-nonsingle-legacy .share-ticket canvas{
+html.share-coupon-open.share-express-legacy .share-ticket canvas{
   width:100%!important;
   height:auto!important;
 }
-html.share-coupon-open.share-nonsingle-legacy .share-amount{
+html.share-coupon-open.share-express-legacy .share-amount{
   width:calc(96% - 32px)!important;
   margin-top:18px!important;
   margin-right:auto!important;
@@ -1337,36 +1337,36 @@ html.share-coupon-open.share-nonsingle-legacy .share-amount{
   line-height:21px!important;
   color:inherit!important;
 }
-html.share-coupon-open.share-nonsingle-legacy .share-switch{
+html.share-coupon-open.share-express-legacy .share-switch{
   width:34px!important;
   height:19px!important;
   padding:3px!important;
 }
-html.share-coupon-open.share-nonsingle-legacy .share-switch:after{
+html.share-coupon-open.share-express-legacy .share-switch:after{
   width:13px!important;
   height:13px!important;
 }
-html.share-coupon-open.share-nonsingle-legacy .share-amount input:checked+.share-switch:after{
+html.share-coupon-open.share-express-legacy .share-amount input:checked+.share-switch:after{
   transform:translateX(15px)!important;
 }
-html.share-coupon-open.share-nonsingle-legacy .share-actions{
+html.share-coupon-open.share-express-legacy .share-actions{
   gap:28px!important;
   margin-top:2px!important;
   transform:scale(.94)!important;
   transform-origin:top center!important;
 }
-html.share-coupon-open.share-nonsingle-legacy .share-actions button{
+html.share-coupon-open.share-express-legacy .share-actions button{
   min-width:78px!important;
   padding:0!important;
   gap:7px!important;
   font-size:13px!important;
   line-height:17px!important;
 }
-html.share-coupon-open.share-nonsingle-legacy .share-actions button>span{
+html.share-coupon-open.share-express-legacy .share-actions button>span{
   width:52px!important;
   height:52px!important;
 }
-html.share-coupon-open.share-nonsingle-legacy .share-actions svg{
+html.share-coupon-open.share-express-legacy .share-actions svg{
   width:22px!important;
   height:22px!important;
 }
