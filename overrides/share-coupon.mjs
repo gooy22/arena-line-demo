@@ -47,6 +47,7 @@ function sportImage(selection) {
 
 export function couponData(bet, showAmount) {
   const status = bet.status;
+  const openExpress = bet?.type === 'express' && status === 'open';
   const payoutLabel=t(status === 'open' ? 'Можлива виплата' : status === 'cashout' ? 'Виведено' : 'Виплата');
   return {
     date:date(bet.date),
@@ -55,7 +56,7 @@ export function couponData(bet, showAmount) {
       title:`${t(selection.marketName)} ${t(selection.label)}`,
       detail:`${date(selection.startTime ? selection.startTime * 1000 : bet.date)} ${selection.eventName}`,
       odds:String(Number(selection.odds.toFixed(2))),
-      status:selection.settlement?.status,
+      status:openExpress ? null : selection.settlement?.status,
       selection,
     })),
     showAmount,
@@ -213,161 +214,10 @@ export async function drawCoupon(canvas, bet, showAmount) {
   return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('Не вдалося зберегти купон')),'image/png'));
 }
 
-
-const htmlEsc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-
-function openExpressSport(selection){
-  const name=isEsportsSelection(selection) ? 'esports' : games[selection?.sport] || 'esports';
-  const src=name==='esports' ? ESPORTS_CONTROLLER_DATA : `/assets/icons/${name}.png`;
-  return `<img class="express-share-sport-image" src="${src}" alt="">`;
-}
-
-function expressShareSelection(selection,bet){
-  const result=selection?.settlement;
-  const state=result?.status || '';
-  const hasResult=Boolean(state);
-  const stateIcon=state==='won' ? 'check' : state==='lost' ? 'x' : state==='void' ? 'undo-2' : 'clock-3';
-  const teams=selection?.competitors?.length
-    ? selection.competitors
-    : String(selection?.eventName||'').split(' - ').map(name=>({name}));
-  const score=Array.isArray(result?.score) ? result.score : null;
-  const rawPeriods=Array.isArray(result?.periods) ? result.periods : [];
-  const duplicateManualPeriod=result?.manual && rawPeriods.length===1 && score &&
-    Array.isArray(rawPeriods[0]) && Number(rawPeriods[0][0])===Number(score[0]) && Number(rawPeriods[0][1])===Number(score[1]);
-  const periods=duplicateManualPeriod ? [] : rawPeriods;
-  const detailDate=date(selection?.startTime ? selection.startTime*1000 : bet.date).toUpperCase();
-  const leading=hasResult
-    ? `<span class="express-share-result result-${htmlEsc(state)}">${icon(stateIcon)}</span>`
-    : `<span class="express-share-sport">${openExpressSport(selection)}</span>`;
-  return `<section class="express-share-selection">
-    <div class="express-share-summary">
-      ${leading}
-      <span class="express-share-pick">
-        <small>${htmlEsc(t(selection?.marketName||''))}</small>
-        <strong>${htmlEsc(t(selection?.label||''))}</strong>
-      </span>
-      <span class="express-share-odds">${htmlEsc(Number(selection?.odds||0).toFixed(2).replace(/0+$/,'').replace(/\.$/,''))}</span>
-      ${icon('chevron-right','express-share-chevron')}
-    </div>
-    <div class="express-share-event-date">${htmlEsc(detailDate)}</div>
-    <div class="express-share-teams">
-      ${teams.map((team,i)=>`<div><span>${htmlEsc(team?.name||'')}</span>${score ? `<span class="express-share-team-score">${periods.map(period=>`<small>${htmlEsc(period[i] ?? '')}</small>`).join('')}<b>${htmlEsc(score[i] ?? '')}</b></span>` : ''}</div>`).join('')}
-    </div>
-  </section>`;
-}
-
-function ensureOpenExpressShareStyle(){
-  if(document.getElementById('open-express-share-style')) return;
-  const style=document.createElement('style');
-  style.id='open-express-share-style';
-  style.textContent=`
-html.share-open-express-screen,body.share-open-express-screen{background:#171717!important}
-body.share-open-express-screen::before{content:none!important}
-html.share-open-express-screen dialog.share-open-express-reference,body.share-open-express-screen dialog.share-open-express-reference{position:fixed!important;inset:env(safe-area-inset-top) 0 0 0!important;width:100vw!important;max-width:100vw!important;height:auto!important;min-height:0!important;max-height:none!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:#fff!important;overflow:hidden!important;box-shadow:none!important}
-html.share-open-express-screen dialog.share-open-express-reference::backdrop{background:#171717!important}
-.share-open-express-reference .express-share-screen{width:100%!important;max-width:393px!important;height:100%!important;min-height:100%!important;margin:0 auto!important;display:grid!important;grid-template-rows:56px 57px minmax(0,1fr) 176px!important;background:#fff!important;color:#33312e!important;font-family:Roboto,Arial,sans-serif!important}
-.share-open-express-reference .express-share-appbar{height:56px!important;padding:0 12px!important;display:flex!important;align-items:center!important;justify-content:space-between!important;gap:10px!important;background:#171717!important;color:#fff!important}
-.share-open-express-reference .express-share-wordmark{width:114px!important;height:auto!important;display:block!important;object-fit:contain!important}
-.share-open-express-reference .express-share-app-actions{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:8px!important}
-.share-open-express-reference .express-share-app-icon{width:25px!important;height:34px!important;display:grid!important;place-items:center!important;position:relative!important;color:#aaa69e!important}
-.share-open-express-reference .express-share-app-icon svg{width:23px!important;height:23px!important}
-.share-open-express-reference .express-share-app-icon b{position:absolute!important;top:1px!important;right:-5px!important;min-width:15px!important;height:15px!important;padding:0 3px!important;border-radius:10px!important;display:flex!important;align-items:center!important;justify-content:center!important;background:#e3273a!important;color:#fff!important;font-size:9px!important;line-height:15px!important}
-.share-open-express-reference .express-share-topup{height:34px!important;padding:0 14px!important;border-radius:22px!important;display:flex!important;align-items:center!important;background:#08a878!important;color:#fff!important;font-size:14px!important;white-space:nowrap!important}
-.share-open-express-reference .express-share-titlebar{height:57px!important;display:grid!important;grid-template-columns:42px 1fr 42px!important;align-items:center!important;border-bottom:1px solid #e5e3df!important;background:#fff!important}
-.share-open-express-reference .express-share-back{width:42px!important;height:57px!important;padding:0!important;border:0!important;background:transparent!important;color:#8b877f!important;display:grid!important;place-items:center!important}
-.share-open-express-reference .express-share-back svg{width:24px!important;height:24px!important}
-.share-open-express-reference .express-share-titlebar>div{grid-column:2!important;text-align:center!important;display:flex!important;flex-direction:column!important;align-items:center!important}
-.share-open-express-reference .express-share-titlebar strong{font-size:17px!important;line-height:21px!important;font-weight:600!important}
-.share-open-express-reference .express-share-titlebar span{font-size:15px!important;line-height:19px!important;color:#7d7972!important}
-.share-open-express-reference .express-share-content{min-height:0!important;overflow-y:auto!important;display:flex!important;flex-direction:column!important;background:#fff!important;scrollbar-width:none!important}
-.share-open-express-reference .express-share-content::-webkit-scrollbar{display:none!important}
-.share-open-express-reference .express-share-selection{padding:13px 12px 20px!important;border-bottom:1px solid #e7e5e1!important;background:#fff!important}
-.share-open-express-reference .express-share-summary{min-height:56px!important;padding:9px 12px!important;border-radius:13px!important;background:#f3f1ed!important;display:grid!important;grid-template-columns:26px minmax(0,1fr) auto 18px!important;align-items:center!important;gap:9px!important}
-.share-open-express-reference .express-share-sport,.share-open-express-reference .express-share-result{width:22px!important;height:22px!important;display:grid!important;place-items:center!important}
-.share-open-express-reference .express-share-result{border-radius:50%!important;background:#08a878!important;color:#fff!important}
-.share-open-express-reference .express-share-result.result-lost{background:#e6253a!important}
-.share-open-express-reference .express-share-result svg{width:14px!important;height:14px!important}
-.share-open-express-reference .express-share-sport-image{width:22px!important;height:22px!important;display:block!important;object-fit:contain!important;background:transparent!important}
-.share-open-express-reference .express-share-pick{min-width:0!important;display:flex!important;flex-direction:column!important}
-.share-open-express-reference .express-share-pick small{font-size:12px!important;line-height:15px!important;color:#837e75!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
-.share-open-express-reference .express-share-pick strong{font-size:16px!important;line-height:20px!important;font-weight:400!important;color:#37332f!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
-.share-open-express-reference .express-share-odds{font-size:16px!important;line-height:20px!important;color:#37332f!important}
-.share-open-express-reference .express-share-chevron{width:18px!important;height:18px!important;color:#b0ada5!important}
-.share-open-express-reference .express-share-event-date{margin-top:8px!important;font-size:11px!important;line-height:14px!important;font-weight:600!important;color:#6f6b64!important}
-.share-open-express-reference .express-share-teams{margin-top:7px!important;display:flex!important;flex-direction:column!important;gap:7px!important}
-.share-open-express-reference .express-share-teams>div{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;font-size:15px!important;line-height:18px!important;color:#37332f!important}
-.share-open-express-reference .express-share-team-score{display:flex!important;gap:7px!important;align-items:center!important}.share-open-express-reference .express-share-team-score small{font-size:11px!important;color:#8b877e!important}.share-open-express-reference .express-share-team-score b{min-width:20px!important;text-align:right!important;font-size:14px!important;font-weight:400!important}
-.share-open-express-reference .express-share-fill{flex:1 1 auto!important;min-height:110px!important}
-.share-open-express-reference .express-share-footer{min-height:176px!important;padding:23px 12px max(15px,env(safe-area-inset-bottom))!important;border-top:1px solid #d9d7d3!important;background:#fff!important}
-.share-open-express-reference .express-share-footer dl{margin:0!important;display:grid!important;gap:10px!important}.share-open-express-reference .express-share-footer dl>div{display:flex!important;justify-content:space-between!important;gap:16px!important;font-size:15px!important;line-height:19px!important}.share-open-express-reference .express-share-footer dt,.share-open-express-reference .express-share-footer dd{margin:0!important}
-.share-open-express-reference .express-share-native{min-height:34px!important;margin-top:18px!important;padding:0 13px!important;border:0!important;border-radius:18px!important;display:inline-flex!important;align-items:center!important;gap:7px!important;width:max-content!important;background:#f3f1ed!important;color:#37332f!important;font-size:14px!important;font-weight:600!important}.share-open-express-reference .express-share-native svg{width:17px!important;height:17px!important}
-`;
-  document.head.append(style);
-}
-
-function openOpenExpressReference(bet,showToast){
-  ensureOpenExpressShareStyle();
-  let dialog=document.getElementById('share-coupon');
-  if(!dialog){dialog=document.createElement('dialog');dialog.id='share-coupon';document.body.append(dialog);}
-  dialog.className='share-coupon share-open-express-reference';
-  dialog.setAttribute('aria-label',t('Поділитися ставкою'));
-  dialog.innerHTML=`<div class="express-share-screen">
-    <header class="express-share-appbar">
-      <img src="/assets/wordmark.png" class="express-share-wordmark" alt="PARIK24">
-      <div class="express-share-app-actions">
-        <span class="express-share-app-icon">${icon('message-square')}<b>99+</b></span>
-        <span class="express-share-app-icon">${icon('search')}</span>
-        <span class="express-share-app-icon">${icon('bell')}<b>6</b></span>
-        <span class="express-share-topup">${htmlEsc(t('Поповнити'))}</span>
-      </div>
-    </header>
-    <div class="express-share-titlebar">
-      <button class="express-share-back" aria-label="${htmlEsc(t('Назад'))}">${icon('chevron-left')}</button>
-      <div>
-        <strong>${htmlEsc(t('Експрес'))} №${htmlEsc(bet.number||'')}</strong>
-        <span>${htmlEsc(date(bet.date))}</span>
-      </div>
-    </div>
-    <main class="express-share-content">
-      <div class="express-share-selections">${(bet.selections||[]).map(selection=>expressShareSelection(selection,bet)).join('')}</div>
-      <div class="express-share-fill"></div>
-    </main>
-    <footer class="express-share-footer">
-      <dl>
-        <div><dt>${htmlEsc(t('Сума ставки'))}</dt><dd>${htmlEsc(amount(bet.cost))}</dd></div>
-        <div><dt>${htmlEsc(t('Загальний коефіцієнт'))}</dt><dd>${htmlEsc(totalOdds(bet))}</dd></div>
-        <div><dt>${htmlEsc(t('Можлива виплата'))}</dt><dd>${htmlEsc(amount(bet.potential||0))}</dd></div>
-      </dl>
-      <button class="express-share-native">${icon('share-2')}${htmlEsc(t('Поділитися'))}</button>
-    </footer>
-  </div>`;
-
-  const cleanup=()=>{
-    document.documentElement.classList.remove('share-coupon-open','share-open-express-screen');
-    document.body.classList.remove('share-coupon-open','share-open-express-screen');
-    dialog.classList.remove('share-open-express-reference');
-  };
-  dialog.querySelector('.express-share-back').onclick=()=>dialog.close();
-  dialog.addEventListener('close',cleanup,{once:true});
-  dialog.querySelector('.express-share-native').onclick=async()=>{
-    try{
-      if(navigator.share) await navigator.share({title:`${t('Експрес')} №${bet.number||''}`});
-      else showToast(t('Поділитися'));
-    }catch(problem){
-      if(problem?.name!=='AbortError') showToast('Не вдалося поділитися');
-    }
-  };
-  document.documentElement.classList.add('share-coupon-open','share-open-express-screen');
-  document.body.classList.add('share-coupon-open','share-open-express-screen');
-  if(!dialog.open) dialog.showModal();
-  window.lucide?.createIcons();
-}
-
 export function openShareCoupon(bet, showToast) {
-  if (bet?.type === 'express' && bet?.status === 'open') return openOpenExpressReference(bet,showToast);
   let dialog=document.getElementById('share-coupon');
   if (!dialog) {dialog=document.createElement('dialog');dialog.id='share-coupon';dialog.className='share-coupon';document.body.append(dialog);}
-  const legacyOpenExpress = false;
+  const legacyOpenExpress = bet?.type === 'express' && bet?.status === 'open';
   dialog.classList.toggle('share-open-express-legacy',legacyOpenExpress);
   dialog.setAttribute('aria-label',t('Поділитися ставкою'));
   dialog.innerHTML=`<button class="share-close" aria-label="Закрити">${icon('x')}</button><div class="share-layout"><div class="share-spacer"></div><div class="share-ticket"><canvas role="img"></canvas><p class="share-error" role="status">Готуємо купон…</p></div><label class="share-amount"><span>${t('Показати суму ставки:')}</span><input type="checkbox" role="switch" checked aria-label="${t('Показати суму ставки:')}"><span class="share-switch" aria-hidden="true"></span></label><div class="share-actions">${bet.status==='open'?`<button class="share-send" disabled><span>${icon('share')}</span>${t('Поділитися')}<br>${t('ставкою')}</button>`:''}<button class="share-save" disabled><span>${icon('images')}</span>${t('Зберегти')}<br>${t('зображення')}</button></div></div>`;
