@@ -143,7 +143,7 @@ const server = http.createServer(async (req, res) => {
         code:Number(value.code || 0),
         reason:safeString(value.reason, 180),
         subscription:safeString(value.subscription, 80),
-        message:safeString(value.message, 300),
+        message:safeString(value.message, 3000),
         at:Number(value.at || Date.now())
       };
       syncMeta.telemetry = telemetry;
