@@ -368,6 +368,17 @@ export class Accounts {
     const oldHash = await digest(oldPassword), newHash = await digest(newPassword);
     const data = this.read(), account = data.find(a => a.email === this.storage.getItem(SESSION));
     if (!account || account.hash !== oldHash) throw new Error('Текущий пароль неверен');
-    account.hash = newHash; this._persist(data, account);
+    try {
+      const response = await fetch(PROFILE_API + '/password', {
+        method:'POST',
+        headers:{'content-type':'application/json','authorization':'Bearer ' + oldHash},
+        body:JSON.stringify({email:account.email,newHash})
+      });
+      if (!response.ok && response.status !== 404) throw new Error('Не вдалося синхронізувати пароль');
+    } catch (error) {
+      if (error?.message === 'Не вдалося синхронізувати пароль') throw error;
+    }
+    account.hash = newHash;
+    this._persist(data, account);
   }
 }
