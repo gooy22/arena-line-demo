@@ -19,7 +19,7 @@ function sportImage(selection) {
     const image = new Image();
     image.onload = () => resolve(image);
     image.onerror = () => resolve(null);
-    image.src = name === 'esports' ? '/assets/icons/esports-exact-20260927.png' : `/assets/icons/${name}.png`;
+    image.src = name === 'esports' ? '/assets/icons/esports-controller-clean-v77.png' : `/assets/icons/${name}.png`;
   }));
   return imageCache.get(name);
 }
@@ -93,7 +93,7 @@ export async function drawCoupon(canvas, bet, showAmount) {
   rows.forEach((row,index) => {
     if (images[index]) {
       const esports=isEsportsSelection(row.selection);
-      drawContained(context,images[index],17,y+(row.height-22)/2,esports ? 19 : 21,esports ? 0.045 : 0);
+      drawContained(context,images[index],17,y+(row.height-22)/2,esports ? 20 : 21,0);
     }
     row.title.forEach((line,i)=>text(line,52,y+21+i*16,'#292621',12.5));
     row.detail.forEach((line,i)=>text(line,52,y+21+row.title.length*16+i*13,'#7b756b',10));
