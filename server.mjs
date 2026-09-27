@@ -495,6 +495,23 @@ const sportsCssPatch = `
 `;
 
 
+
+async function probeBo3Media() {
+  const urls=[
+    'https://api.bo3.gg/api/v1/tournaments?page[limit]=5&sort=-id',
+    'https://api.bo3.gg/api/v1/teams?page[limit]=5&sort=-id'
+  ];
+  for(const url of urls){
+    try{
+      const response=await fetch(url,{signal:AbortSignal.timeout(10000),headers:{accept:'application/json'}});
+      const body=await response.text();
+      console.log('BO3_MEDIA_PROBE '+JSON.stringify({url,status:response.status,body:body.slice(0,12000)}));
+    }catch(error){
+      console.error('BO3_MEDIA_PROBE_ERROR '+JSON.stringify({url,error:String(error?.message||error)}));
+    }
+  }
+}
+
 async function probeParikIconPaths() {
   const tournamentId='8df12f483e8c46f38307abc078f1b1d1';
   const categoryId='817c1aebc52740d3b77d18af36d8d42f';
@@ -833,6 +850,7 @@ const server=http.createServer(async (req,res)=>{
 server.listen(port,'0.0.0.0',()=>{
   console.log('Arena Line Parik sync v4 listening on '+port);
   probeParikIconPaths().catch(error=>console.error('PARIK_ICON_PROBE_ERROR '+String(error?.message||error)));
+  probeBo3Media().catch(error=>console.error('BO3_MEDIA_PROBE_ERROR '+String(error?.message||error)));
   profileStorageStatus().then(status=>{
     console.log('PROFILE_STORAGE '+JSON.stringify(status));
   }).catch(error=>{
