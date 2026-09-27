@@ -359,6 +359,7 @@ export class Accounts {
         if (requestedNumber > oldNumber && n <= requestedNumber && n > oldNumber) other.number = n - 1;
       }
       bet.number = requestedNumber;
+      account.bets.sort((a,b) => Number(b.number || 0) - Number(a.number || 0));
     }
 
     account.balance = nextBalance;
