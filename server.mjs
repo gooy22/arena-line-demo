@@ -17,7 +17,11 @@ async function probeParik() {
     'https://parik24.pro/',
     'https://parik24.pro/uk/',
     'https://parik24.pro/uk/all-live/',
-    'https://parik24.pro/uk/esports'
+    'https://parik24.pro/uk/esports',
+    'https://24parik-bet.org/',
+    'https://24parik-bet.org/uk/',
+    'https://24parik-bet.org/uk/all-live/',
+    'https://24parik-bet.org/uk/esports'
   ];
   const headers = {
     'user-agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/153 Safari/537.36',
