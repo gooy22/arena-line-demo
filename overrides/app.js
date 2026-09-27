@@ -133,7 +133,7 @@ function closeProfile() {
   sports?.resizeSlip();
 }
 function openDialog(title, content) {
-  dialog.classList.remove('language-sheet','theme-sheet');
+  dialog.classList.remove('language-sheet','theme-sheet','edit-bet-dialog');
   $('#dialog-content').innerHTML = `<div class="dialog-head"><h2 id="dialog-title">${title}</h2><button class="icon-button" type="button" data-action="close-dialog" aria-label="Закрыть" title="Закрыть">${icon('x')}</button></div>${content}`;
   if (!dialog.open) dialog.showModal();
   refreshIcons();
