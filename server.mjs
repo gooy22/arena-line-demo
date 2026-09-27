@@ -107,6 +107,7 @@ function safeEvent(raw) {
     competitors:Array.isArray(raw?.competitors) ? raw.competitors.slice(0,2).map(team => ({
       id:safeString(team?.id,64),
       name:safeString(team?.name,160),
+      categoryName:safeString(team?.categoryName || raw?.categoryName || '',120),
       icon:team?.icon?.url ? {url:safeString(team.icon.url,500)} : undefined
     })) : [],
     scoreboard:raw?.scoreboard && typeof raw.scoreboard === 'object' ? raw.scoreboard : null,
@@ -149,16 +150,16 @@ function teamMetaByProviderId(id) {
 
 function patchIndexHtml(source) {
   let html=String(source || '');
-  html=html.replace(/\?+v=\d+/g,'?v=54');
+  html=html.replace(/\?+v=\d+/g,'?v=55');
   if (!html.includes('apple-touch-icon')) {
     html=html.replace(
       '<link rel="manifest" href="/manifest.webmanifest">',
       '<link rel="manifest" href="/manifest.webmanifest">\n  <link rel="apple-touch-icon" href="/assets/icons/esports.png">\n  <meta name="apple-mobile-web-app-capable" content="yes">\n  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">'
     );
   }
-  if (!html.includes('arena-editor-hotfix-v54')) {
+  if (!html.includes('arena-editor-hotfix-v55')) {
     html=html.replace('</head>', `
-<style id="arena-editor-hotfix-v54">
+<style id="arena-editor-hotfix-v55">
 dialog#dialog.edit-bet-dialog{
   position:fixed!important;
   top:auto!important;
@@ -336,7 +337,7 @@ dialog#dialog.edit-bet-dialog .edit-bet-hide{
 }
 </style>
 <script>
-window.__ARENA_BUILD__='54';
+window.__ARENA_BUILD__='55';
 if('serviceWorker' in navigator){
   navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.update())).catch(()=>{});
 }
@@ -379,8 +380,9 @@ function patchSportsModule(source) {
 
     const exactTournament = String(event.tournamentIconUrl || '');
     const exactCategory = String(event.categoryIconUrl || '');
-    const baseMedia = '/api/media/tournament?name=' +
-      encodeURIComponent(String(event.tournamentName || '')) +
+    const baseMedia = '/api/media/tournament?id=' +
+      encodeURIComponent(String(event.tournamentId || '')) +
+      '&name=' + encodeURIComponent(String(event.tournamentName || '')) +
       '&category=' + encodeURIComponent(String(event.categoryName || '')) +
       '&source=' + encodeURIComponent(exactTournament) +
       '&categorySource=' + encodeURIComponent(exactCategory);
@@ -411,6 +413,12 @@ function patchSportsModule(source) {
 window.__arenaLogoCache = window.__arenaLogoCache || new Map();
 window.__arenaStableLogoSrc = window.__arenaStableLogoSrc || function(url) {
   return window.__arenaLogoCache.get(String(url || '')) || String(url || '');
+};
+window.__arenaRejectLogo = window.__arenaRejectLogo || function(img) {
+  if(window.__arenaNextLogo && window.__arenaNextLogo(img)) return true;
+  img.hidden=true;
+  if(img.nextElementSibling) img.nextElementSibling.hidden=false;
+  return false;
 };
 window.__arenaNextLogo = window.__arenaNextLogo || function(img) {
   if(!img) return false;
@@ -488,7 +496,7 @@ if (!window.__arenaNormalizeLogo) {
         }
       }
       if(maxX < minX || maxY < minY) {
-        if(window.__arenaNextLogo(img)) return;
+        window.__arenaRejectLogo(img);
         return;
       }
 
@@ -523,7 +531,10 @@ if (!window.__arenaNormalizeLogo) {
         : (visible && darkNeutral/visible>0.82 && meanLum<30 && meanChroma<24);
       const lowInformation = visible < 10 || strong < 6 || visibleRatio < 0.003 || strongRatio < 0.0015;
 
-      if((lowInformation || invisibleOnSurface) && window.__arenaNextLogo(img)) return;
+      if(lowInformation || invisibleOnSurface) {
+        window.__arenaRejectLogo(img);
+        return;
+      }
 
       const expand=Math.max(1,Math.round(Math.max(w,h)*0.012));
       minX=Math.max(0,minX-expand); minY=Math.max(0,minY-expand);
@@ -802,90 +813,117 @@ function safeParikMediaURL(value) {
 }
 
 
-const competitorMediaCache = new Map();
+const backgroundMedia = {
+  disciplines:new Map(),
+  tournaments:new Map(),
+  competitors:new Map(),
+  warming:new Set()
+};
 
-function entityLogo(row) {
-  return String(
-    row?.image_url ||
-    row?.icon_url ||
-    row?.avatar_url ||
-    row?.photo_url ||
-    row?.image?.url ||
-    ''
-  );
+function logoFromEntity(row) {
+  return String(row?.image_url || row?.icon_url || row?.avatar_url || row?.photo_url || row?.image?.url || '');
 }
 
-async function bo3CompetitorLogo(name, category='') {
-  name=String(name || '').trim();
-  if(!name) return '';
-  const discipline=disciplineIds[category] || null;
-  const cacheKey='c:'+String(discipline || '')+':'+mediaName(name);
-  const cached=competitorMediaCache.get(cacheKey);
-  if(cached && Date.now()-cached.at < 12*3600_000) return cached.url;
-
-  const kinds = category === 'Dota 2' ? ['players','teams'] : ['teams','players'];
-  let best=null,bestScore=0;
-
-  for(const kind of kinds){
+async function fetchBo3Pages(kind, discipline, limitPages) {
+  const rows=[];
+  for(let page=0; page<limitPages; page++){
+    const qs=new URLSearchParams({
+      'page[limit]':'100',
+      'page[offset]':String(page*100)
+    });
     const table=kind;
-    const nameField=kind === 'players' ? 'nickname' : 'name';
-    const filters=[
-      ['eq',name],
-      ['ilike',name],
-      ['like',name]
-    ];
-
-    for(const [op,value] of filters){
-      const qs=new URLSearchParams({'page[limit]':'25'});
-      qs.set(`filter[${table}.${nameField}][${op}]`,value);
-      if(discipline) qs.set(`filter[${table}.discipline_id][eq]`,String(discipline));
-      try{
-        const response=await fetch(`https://api.bo3.gg/api/v1/${kind}?${qs}`,{
-          signal:AbortSignal.timeout(8000),
-          headers:{accept:'application/json'}
-        });
-        if(!response.ok) continue;
-        const data=await response.json();
-        for(const row of data?.results || []){
-          const logo=entityLogo(row);
-          if(!logo) continue;
-          const score=mediaScore(name,row.nickname || row.name || row.slug || '');
-          if(score>bestScore){best={...row,__logo:logo};bestScore=score;}
-        }
-        if(bestScore>=900) break;
-      }catch{}
-    }
-    if(bestScore>=900) break;
-
-    // Active/recent entities are normally near the front; scan a bounded window as fallback.
-    for(const sort of ['-updated_at','-id']){
-      for(let offset=0; offset<=300 && bestScore<900; offset+=100){
-        const qs=new URLSearchParams({'page[limit]':'100','page[offset]':String(offset),'sort':sort});
-        if(discipline) qs.set(`filter[${table}.discipline_id][eq]`,String(discipline));
-        try{
-          const response=await fetch(`https://api.bo3.gg/api/v1/${kind}?${qs}`,{
-            signal:AbortSignal.timeout(9000),
-            headers:{accept:'application/json'}
-          });
-          if(!response.ok) break;
-          const data=await response.json();
-          const rows=Array.isArray(data?.results) ? data.results : [];
-          for(const row of rows){
-            const logo=entityLogo(row);
-            if(!logo) continue;
-            const score=mediaScore(name,row.nickname || row.name || row.slug || '');
-            if(score>bestScore){best={...row,__logo:logo};bestScore=score;}
-          }
-          if(rows.length<100) break;
-        }catch{break;}
-      }
-      if(bestScore>=900) break;
-    }
+    if(discipline) qs.set(`filter[${table}.discipline_id][eq]`,String(discipline));
+    if(kind === 'tournaments') qs.set('sort','-start_date');
+    else qs.set('sort','-id');
+    try{
+      const response=await fetch(`https://api.bo3.gg/api/v1/${kind}?${qs}`,{
+        signal:AbortSignal.timeout(7000),
+        headers:{accept:'application/json'}
+      });
+      if(!response.ok) break;
+      const data=await response.json();
+      const batch=Array.isArray(data?.results) ? data.results : [];
+      rows.push(...batch);
+      if(batch.length < 100) break;
+    }catch{break;}
   }
+  return rows;
+}
 
-  const url=bestScore>=700 ? String(best?.__logo || '') : '';
-  competitorMediaCache.set(cacheKey,{at:Date.now(),url});
-  return url;
+function bestCatalogLogo(name, rows, fields) {
+  let best='', bestScore=0;
+  for(const row of rows || []){
+    const logo=logoFromEntity(row);
+    if(!logo) continue;
+    const candidate=fields.map(field=>row?.[field]).find(Boolean) || '';
+    const score=mediaScore(name,candidate);
+    if(score>bestScore){best=logo;bestScore=score;}
+  }
+  return bestScore>=700 ? best : '';
+}
+
+async function warmDisciplineMedia(category) {
+  category=String(category || '');
+  const discipline=disciplineIds[category];
+  if(!discipline) return;
+  const existing=backgroundMedia.disciplines.get(category);
+  if(existing && Date.now()-existing.at < 12*3600_000) return;
+  if(backgroundMedia.warming.has(category)) return;
+
+  backgroundMedia.warming.add(category);
+  try{
+    const [tournaments,teams,players]=await Promise.all([
+      fetchBo3Pages('tournaments',discipline,4),
+      fetchBo3Pages('teams',discipline,5),
+      fetchBo3Pages('players',discipline,5)
+    ]);
+    backgroundMedia.disciplines.set(category,{
+      at:Date.now(),tournaments,teams,players
+    });
+
+    for(const event of syncedEvents.values()){
+      const eventCategory=String(event.categoryName || event.subsport || '');
+      if(eventCategory !== category) continue;
+      if(event.tournamentId && !backgroundMedia.tournaments.has(String(event.tournamentId))){
+        const logo=bestCatalogLogo(event.tournamentName,tournaments,['name','slug']);
+        backgroundMedia.tournaments.set(String(event.tournamentId),logo || '');
+      }
+      for(const team of event.competitors || []){
+        const id=String(team.id || '');
+        if(!id || backgroundMedia.competitors.has(id)) continue;
+        const preferred=category === 'Dota 2'
+          ? [...players,...teams]
+          : [...teams,...players];
+        const logo=bestCatalogLogo(team.name,preferred,['nickname','name','slug']);
+        backgroundMedia.competitors.set(id,logo || '');
+      }
+    }
+    console.log('MEDIA_WARM '+JSON.stringify({
+      category,
+      tournaments:tournaments.length,
+      teams:teams.length,
+      players:players.length
+    }));
+  }catch(error){
+    console.error('MEDIA_WARM_ERROR '+JSON.stringify({category,error:String(error?.message || error)}));
+  }finally{
+    backgroundMedia.warming.delete(category);
+  }
+}
+
+function scheduleMediaWarm(events) {
+  const categories=[...new Set((events || []).map(event=>String(event?.categoryName || event?.subsport || '')).filter(category=>disciplineIds[category]))];
+  for(const category of categories){
+    setTimeout(()=>warmDisciplineMedia(category).catch(()=>{}),0);
+  }
+}
+
+function cachedTournamentLogo(id) {
+  return backgroundMedia.tournaments.get(String(id || '')) || '';
+}
+
+function cachedCompetitorLogo(id) {
+  return backgroundMedia.competitors.get(String(id || '')) || '';
 }
 
 async function remoteImageResponse(candidate) {
@@ -893,7 +931,7 @@ async function remoteImageResponse(candidate) {
   if(!candidate.trusted && !safeParikMediaURL(candidate.url)) return null;
   try{
     const response=await fetch(candidate.url,{
-      signal:AbortSignal.timeout(9000),
+      signal:AbortSignal.timeout(2200),
       headers:{
         accept:'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
         'user-agent':'Mozilla/5.0 ArenaLine/1.0'
@@ -985,43 +1023,48 @@ const server=http.createServer(async (req,res)=>{
 
     if (url.pathname === '/api/media/team' && method === 'GET') {
       const id=safeString(url.searchParams.get('id'),32);
+      const prefer=safeString(url.searchParams.get('prefer') || 'parik',20);
       if(!/^\d{1,16}$/.test(id)) return json(res,400,{ok:false,error:'Invalid competitor id'});
-      const meta=teamMetaByProviderId(id) || {};
-      const name=safeString(url.searchParams.get('name') || meta.name || '',160);
-      const category=safeString(url.searchParams.get('category') || meta.categoryName || '',80);
-      const parik={url:'https://parik24.pro/taxonomyicons/competitors/'+id+'-164w'};
-      const direct=await remoteImageResponse(parik);
-      if(direct) return sendRemoteImage(res,direct);
 
-      const bo3=await bo3CompetitorLogo(name,category).catch(()=> '');
-      if(bo3) {
-        console.log('COMPETITOR_MEDIA '+JSON.stringify({id,name,category,source:'bo3'}));
-        return streamImageCandidates(res,[{url:bo3,trusted:true}]);
+      if(prefer === 'bo3'){
+        const cached=cachedCompetitorLogo(id);
+        if(!cached){
+          res.statusCode=404;
+          res.setHeader('cache-control','no-store');
+          return res.end();
+        }
+        return streamImageCandidates(res,[{url:cached,trusted:true}]);
       }
-      console.log('COMPETITOR_MEDIA '+JSON.stringify({id,name,category,source:'initials'}));
-      res.statusCode=404;
-      res.setHeader('cache-control','public, max-age=21600');
-      return res.end();
+
+      return streamImageCandidates(res,[
+        {url:'https://parik24.pro/taxonomyicons/competitors/'+id+'-164w'}
+      ]);
     }
 
     if (url.pathname === '/api/media/tournament' && method === 'GET') {
-      const name=safeString(url.searchParams.get('name'),180);
+      const id=safeString(url.searchParams.get('id'),80);
       const category=safeString(url.searchParams.get('category'),80);
       const exactTournament=safeParikMediaURL(url.searchParams.get('source'));
       const exactCategory=safeParikMediaURL(url.searchParams.get('categorySource'));
       const prefer=safeString(url.searchParams.get('prefer') || 'parik',20);
       const fallback=localDisciplineIcon(category);
 
-      if(prefer === 'parik'){
-        return streamImageCandidates(res,[{url:exactTournament}]);
-      }
+      if(prefer === 'parik') return streamImageCandidates(res,[{url:exactTournament}]);
+
       if(prefer === 'bo3'){
-        const bo3=await bo3TournamentLogo(name,category).catch(()=> '');
-        return streamImageCandidates(res,[{url:bo3,trusted:true}]);
+        const cached=cachedTournamentLogo(id);
+        if(!cached){
+          res.statusCode=404;
+          res.setHeader('cache-control','no-store');
+          return res.end();
+        }
+        return streamImageCandidates(res,[{url:cached,trusted:true}]);
       }
+
       if(prefer === 'category'){
         return streamImageCandidates(res,[{url:exactCategory}],fallback);
       }
+
       return streamImageCandidates(res,[{url:exactTournament},{url:exactCategory}],fallback);
     }
 
@@ -1194,6 +1237,7 @@ const server=http.createServer(async (req,res)=>{
         received:accepted
       };
       pruneSyncedEvents();
+      scheduleMediaWarm([...syncedEvents.values()]);
       console.log('FEED_SYNC '+JSON.stringify({
         source:syncMeta.source,
         sport:syncMeta.sport,
