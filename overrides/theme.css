@@ -1806,3 +1806,37 @@ html.share-coupon-open .share-close{
   padding:9px 10px!important;
   border-radius:10px!important;
 }
+
+
+/* v99: VIP HOUSE textual header brand. */
+.viphouse-wordmark{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  width:auto!important;
+  min-width:112px!important;
+  max-width:122px!important;
+  height:24px!important;
+  margin:0!important;
+  padding:0!important;
+  color:#b58d70!important;
+  font-family:Roboto,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+  font-size:19px!important;
+  line-height:24px!important;
+  font-weight:700!important;
+  letter-spacing:1.55px!important;
+  white-space:nowrap!important;
+  text-transform:uppercase!important;
+}
+.sports-header .brand .viphouse-wordmark,
+.profile-header .brand .viphouse-wordmark{
+  color:#b58d70!important;
+}
+@media(max-width:370px){
+  .viphouse-wordmark{
+    min-width:104px!important;
+    max-width:112px!important;
+    font-size:17px!important;
+    letter-spacing:1.35px!important;
+  }
+}
