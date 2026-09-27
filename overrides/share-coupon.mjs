@@ -214,7 +214,91 @@ export async function drawCoupon(canvas, bet, showAmount) {
   return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('Не вдалося зберегти купон')),'image/png'));
 }
 
+
+const htmlEsc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+
+function expressShareSelection(selection,bet,index){
+  const result=selection?.settlement;
+  const state=result?.status || (bet.status==='cashout' ? 'void' : '');
+  const stateIcon=state==='won' ? 'check' : state==='lost' ? 'x' : state==='void' || state==='cashout' ? 'undo-2' : 'clock-3';
+  const teams=selection?.competitors?.length ? selection.competitors : String(selection?.eventName||'').split(' - ').map(name=>({name}));
+  const score=Array.isArray(result?.score) ? result.score : null;
+  const rawPeriods=Array.isArray(result?.periods) ? result.periods : [];
+  const duplicateManualPeriod=result?.manual && rawPeriods.length===1 && score &&
+    Array.isArray(rawPeriods[0]) && Number(rawPeriods[0][0])===Number(score[0]) && Number(rawPeriods[0][1])===Number(score[1]);
+  const periods=duplicateManualPeriod ? [] : rawPeriods;
+  const detailDate=date(selection?.startTime ? selection.startTime*1000 : bet.date).toUpperCase();
+  const scoreHtml=score ? `<span class="express-share-score">${periods.length ? periods.map((period,p)=>`<small>${htmlEsc(period[index] ?? '')}</small>`).join('') : ''}<b>${htmlEsc(score[index] ?? '')}</b></span>` : '';
+  return `<section class="express-share-selection">
+    <div class="express-share-summary">
+      <span class="express-share-result result-${htmlEsc(state||'open')}">${icon(stateIcon)}</span>
+      <span class="express-share-pick"><small>${htmlEsc(t(selection?.marketName||''))}</small><strong>${htmlEsc(t(selection?.label||''))}</strong></span>
+      <span class="express-share-odds">${htmlEsc(Number(selection?.odds||0).toFixed(2).replace(/0+$/,'').replace(/\.$/,''))}</span>
+      ${icon('chevron-right','express-share-chevron')}
+    </div>
+    <div class="express-share-event-date">${htmlEsc(detailDate)}</div>
+    <div class="express-share-teams">
+      ${teams.map((team,i)=>`<div><span>${htmlEsc(team?.name||'')}</span>${score ? `<span class="express-share-team-score">${periods.map(period=>`<small>${htmlEsc(period[i] ?? '')}</small>`).join('')}<b>${htmlEsc(score[i] ?? '')}</b></span>` : ''}</div>`).join('')}
+    </div>
+  </section>`;
+}
+
+function openSettledExpressReference(bet,showToast){
+  let dialog=document.getElementById('share-coupon');
+  if(!dialog){dialog=document.createElement('dialog');dialog.id='share-coupon';document.body.append(dialog);}
+  dialog.className='share-coupon share-express-result-reference';
+  dialog.setAttribute('aria-label',t('Поділитися ставкою'));
+  const payoutLabel=bet.status==='cashout' || Number(bet.payout||0)>0 ? t('Повернення') : t('Виплата');
+  const payoutPositive=Number(bet.payout||0)>0;
+  dialog.innerHTML=`<div class="express-share-screen">
+    <header class="express-share-appbar">
+      <img src="/assets/wordmark.png" class="express-share-wordmark" alt="PARIK24">
+      <div class="express-share-app-actions">
+        <span class="express-share-app-icon">${icon('message-square')}<b>99+</b></span>
+        <span class="express-share-app-icon">${icon('search')}</span>
+        <span class="express-share-app-icon">${icon('bell')}<b>6</b></span>
+        <span class="express-share-topup">${htmlEsc(t('Поповнити'))}</span>
+      </div>
+    </header>
+    <div class="express-share-titlebar">
+      <button class="express-share-back" aria-label="${htmlEsc(t('Назад'))}">${icon('chevron-left')}</button>
+      <div><strong>${htmlEsc(t('Експрес'))} №${htmlEsc(bet.number||'')}</strong><span>${htmlEsc(date(bet.date))}</span></div>
+    </div>
+    <main class="express-share-content">
+      <div class="express-share-selections">${(bet.selections||[]).map((selection,index)=>expressShareSelection(selection,bet,index)).join('')}</div>
+      <div class="express-share-fill"></div>
+    </main>
+    <footer class="express-share-footer">
+      <dl>
+        <div><dt>${htmlEsc(t('Сума ставки'))}</dt><dd>${htmlEsc(amount(bet.cost))}</dd></div>
+        <div><dt>${htmlEsc(t('Загальний коефіцієнт'))}</dt><dd>${htmlEsc(totalOdds(bet))}</dd></div>
+        <div class="${payoutPositive?'positive':''}"><dt>${htmlEsc(payoutLabel)}</dt><dd>${htmlEsc(amount(bet.payout||0))}</dd></div>
+      </dl>
+      <button class="express-share-native">${icon('share-2')}${htmlEsc(t('Поділитися'))}</button>
+    </footer>
+  </div>`;
+
+  const cleanup=()=>{
+    document.documentElement.classList.remove('share-coupon-open','share-express-result-open');
+    document.body.classList.remove('share-coupon-open','share-express-result-open');
+    dialog.classList.remove('share-express-result-reference');
+  };
+  dialog.querySelector('.express-share-back').onclick=()=>dialog.close();
+  dialog.addEventListener('close',cleanup,{once:true});
+  dialog.querySelector('.express-share-native').onclick=async()=>{
+    try{
+      if(navigator.share) await navigator.share({title:`${t('Експрес')} №${bet.number||''}`});
+      else showToast(t('Поділитися'));
+    }catch(problem){ if(problem?.name!=='AbortError') showToast('Не вдалося поділитися'); }
+  };
+  document.documentElement.classList.add('share-coupon-open','share-express-result-open');
+  document.body.classList.add('share-coupon-open','share-express-result-open');
+  if(!dialog.open) dialog.showModal();
+  window.lucide?.createIcons();
+}
+
 export function openShareCoupon(bet, showToast) {
+  if (bet?.type === 'express' && bet?.status !== 'open' && bet?.status !== 'won') return openSettledExpressReference(bet,showToast);
   let dialog=document.getElementById('share-coupon');
   if (!dialog) {dialog=document.createElement('dialog');dialog.id='share-coupon';dialog.className='share-coupon';document.body.append(dialog);}
   const legacyOpenExpress = bet?.type === 'express' && bet?.status === 'open';
