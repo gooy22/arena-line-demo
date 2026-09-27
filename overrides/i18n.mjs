@@ -114,6 +114,9 @@ const phrases = [
  ["Доступних результатів","Доступных исходов","Available outcomes"],
  ["Виведено","Выведено","Cashed out"],
  ["Редагувати","Редактировать","Edit"],
+ ["Загальний коефіцієнт","Общий коэффициент","Total odds"],
+ ["Назад","Назад","Back"],
+ ["Мої ставки","Мои ставки","My bets"],
 ];
 let language='uk';
 try {language=localStorage.getItem('arena-language-v1')||'uk';}catch{}
