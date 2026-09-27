@@ -320,15 +320,6 @@ export class Accounts {
           ...(score.every(value => value != null) ? { score, periods:[score] } : {})
         };
       });
-      if ((winnerIndex === 0 || winnerIndex === 1) && selections.length === 1) {
-        const chosenSide = selections[0].outcomeType === 0 || /^П1$/i.test(selections[0].shortLabel || '') ? 0 :
-          selections[0].outcomeType === 3 || /^П2$/i.test(selections[0].shortLabel || '') ? 1 : null;
-        if (chosenSide != null && effectiveStatus !== 'cashout') {
-          effectiveStatus = chosenSide === winnerIndex ? 'won' : 'lost';
-          payout = effectiveStatus === 'won' ? totals.potential : 0;
-          selections[0].settlement.status = effectiveStatus;
-        }
-      }
     }
 
     const nextBalance = account.balance + oldCost - totals.cost + payout - oldPayout;
