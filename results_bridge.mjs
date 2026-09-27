@@ -240,7 +240,7 @@ export async function completedHistory(teamName, limit = 20) {
 
 export async function probeResultsSource() {
   const data = await cachedJSON(bo3URL('matches',{
-    'page[limit]':'5',
+    'page[limit]':'100',
     sort:'-start_date',
     'filter[matches.status][eq]':'finished'
   }),15_000);
