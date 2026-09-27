@@ -151,16 +151,50 @@ function teamMetaByProviderId(id) {
 
 function patchIndexHtml(source) {
   let html=String(source || '');
-  html=html.replace(/\?+v=\d+/g,'?v=61');
+  html=html.replace(/\?+v=\d+/g,'?v=62');
+  const runtimeBoot = `
+<script>
+window.__arenaRuntimeReady=(async()=>{
+  const build='62', key='arena-runtime-build';
+  try{
+    if(localStorage.getItem(key)!==build){
+      document.documentElement.style.visibility='hidden';
+      try{
+        if('caches' in window){
+          const keys=await caches.keys();
+          await Promise.all(keys.filter(name=>name.startsWith('arena-line-')).map(name=>caches.delete(name)));
+        }
+        if('serviceWorker' in navigator){
+          const regs=await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(reg=>reg.unregister()));
+        }
+      }catch(error){
+        console.warn('Arena runtime cache reset',error);
+      }
+      localStorage.setItem(key,build);
+      location.replace(location.href);
+      return false;
+    }
+  }catch{}
+  return true;
+})();
+</script>`;
+  if(!html.includes("window.__arenaRuntimeReady")){
+    html=html.replace('<title>Arena Line</title>','<title>Arena Line</title>'+runtimeBoot);
+  }
+  html=html.replace(
+    /<script type="module" src="\/app\.js\?v=62"><\/script>/,
+    '<script type="module">if(await window.__arenaRuntimeReady){await import("/app.js?v=62")}</script>'
+  );
   if (!html.includes('apple-touch-icon')) {
     html=html.replace(
       '<link rel="manifest" href="/manifest.webmanifest">',
       '<link rel="manifest" href="/manifest.webmanifest">\n  <link rel="apple-touch-icon" href="/assets/icons/esports.png">\n  <meta name="apple-mobile-web-app-capable" content="yes">\n  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">'
     );
   }
-  if (!html.includes('arena-editor-hotfix-v61')) {
+  if (!html.includes('arena-editor-hotfix-v62')) {
     html=html.replace('</head>', `
-<style id="arena-editor-hotfix-v61">
+<style id="arena-editor-hotfix-v62">
 dialog#dialog.edit-bet-dialog{
   position:fixed!important;
   top:auto!important;
@@ -338,10 +372,7 @@ dialog#dialog.edit-bet-dialog .edit-bet-hide{
 }
 </style>
 <script>
-window.__ARENA_BUILD__='59';
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.update())).catch(()=>{});
-}
+window.__ARENA_BUILD__='62';
 </script>
 </head>`);
   }
