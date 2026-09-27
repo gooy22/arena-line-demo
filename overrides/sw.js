@@ -89,7 +89,7 @@ self.addEventListener('fetch', event => {
   }
 
   if (url.pathname.startsWith('/api/media/')) {
-    event.respondWith(cacheFirst(request,{cacheMissing:true}));
+    event.respondWith(cacheFirst(request));
     return;
   }
 
