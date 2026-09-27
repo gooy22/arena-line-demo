@@ -818,3 +818,91 @@ html.share-coupon-open .share-close:active{
   transform:scale(1.08)!important;
   transform-origin:center!important;
 }
+
+
+/* v76: compact accumulator detail rows — one event must never consume half the screen. */
+.bet-detail-head{
+  min-height:70px!important;
+  padding:2px 8px!important;
+}
+.bet-detail-title strong{
+  font-size:18px!important;
+  line-height:22px!important;
+}
+.bet-detail-title span{
+  font-size:14px!important;
+  line-height:18px!important;
+}
+.bet-detail-selections{
+  min-height:0!important;
+}
+.bet-detail-selections .bet-selection{
+  margin:0!important;
+  padding:10px 14px 12px!important;
+  min-height:0!important;
+}
+.bet-detail-selections .bet-selection-summary{
+  min-height:56px!important;
+  padding:9px 14px!important;
+  border-radius:12px!important;
+  gap:10px!important;
+}
+.bet-detail-selections .bet-selection-label>.meta{
+  font-size:12px!important;
+  line-height:15px!important;
+}
+.bet-detail-selections .bet-selection-label>strong{
+  font-size:16px!important;
+  line-height:19px!important;
+}
+.bet-detail-selections .bet-coefficient{
+  font-size:16px!important;
+  line-height:20px!important;
+}
+.bet-detail-selections .bet-sport,
+.bet-detail-selections .bet-result{
+  flex:0 0 22px!important;
+  width:22px!important;
+  height:22px!important;
+}
+.bet-detail-selections .bet-result{
+  width:20px!important;
+  height:20px!important;
+  flex-basis:20px!important;
+}
+.bet-detail-selections .bet-event-time{
+  margin:7px 0 5px!important;
+  font-size:10px!important;
+  line-height:13px!important;
+}
+.bet-detail-selections .bet-teams{
+  gap:5px!important;
+  font-size:14px!important;
+  line-height:18px!important;
+}
+.bet-detail-selections .bet-team-score{
+  gap:6px!important;
+}
+.bet-detail-selections .bet-team-score small,
+.bet-detail-selections .bet-team-score b,
+.bet-detail-selections .bet-period-labels small{
+  width:15px!important;
+  font-size:12px!important;
+}
+.bet-detail-selections .bet-team-score b{
+  font-size:14px!important;
+}
+.bet-detail-footer{
+  padding:11px 16px max(10px,env(safe-area-inset-bottom))!important;
+}
+.bet-detail-footer dl{
+  gap:6px!important;
+  font-size:14px!important;
+  line-height:19px!important;
+}
+.bet-detail-share{
+  margin-top:10px!important;
+  min-height:34px!important;
+  padding:0 12px!important;
+  font-size:14px!important;
+}
