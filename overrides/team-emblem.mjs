@@ -15,23 +15,18 @@ function normalizedPath(team) {
 }
 
 export function emblemCandidates(team) {
-  const path = normalizedPath(team);
   const id = String(team?.id ?? '').trim();
+  const name = String(team?.name || '').trim();
+  const category = String(team?.categoryName || '').trim();
   const candidates = [];
 
-  if (/^https?:\/\//i.test(String(team?.icon?.url || team?.iconUrl || ''))) {
-    candidates.push(String(team.icon?.url || team.iconUrl));
-  }
-
-  if (/^(?:taxonomyicons\/competitors\/\d{1,12}-164w|assets\/images\/[A-Za-z0-9._/-]+)$/i.test(path)) {
-    for (const origin of ORIGINS) candidates.push(`${origin}/${path}`);
-  }
-
   if (/^\d{1,12}$/.test(id)) {
-    candidates.unshift('/api/media/team?id=' + encodeURIComponent(id));
-    for (const origin of ORIGINS) {
-      candidates.push(`${origin}/taxonomyicons/competitors/${id}-164w`);
-    }
+    candidates.push('/api/media/team?id=' + encodeURIComponent(id) +
+      '&name=' + encodeURIComponent(name) +
+      '&category=' + encodeURIComponent(category));
+  } else {
+    const raw = String(team?.icon?.url || team?.iconUrl || '').trim();
+    if (/^https?:\/\//i.test(raw)) candidates.push(raw);
   }
 
   return [...new Set(candidates)];
