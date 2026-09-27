@@ -246,7 +246,7 @@ dialog#dialog.edit-bet-dialog,
    navigation row too far. Keep only a small guard while the black surface
    itself still reaches the physical bottom edge. */
 @media (display-mode:standalone){
-  :root{--arena-pwa-bottom-safe:min(env(safe-area-inset-bottom),10px)}
+  :root{--arena-pwa-bottom-safe:min(env(safe-area-inset-bottom),6px)}
   .sports-nav{
     padding-bottom:var(--arena-pwa-bottom-safe)!important;
     min-height:calc(var(--sports-footer) + var(--arena-pwa-bottom-safe))!important;
