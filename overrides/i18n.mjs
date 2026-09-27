@@ -1,0 +1,165 @@
+const phrases = [
+ ['Темна','Тёмная','Dark'],['Стандартна','Стандартная','Standard'],['Авто','Авто','Auto'],['Вибрати тему','Выбрать тему','Choose theme'],['Виберіть вашу тему','Выберите вашу тему','Choose your theme'],['Виберіть бажану тему, щоб налаштувати інтерфейс','Выберите предпочтительную тему, чтобы настроить интерфейс','Choose your preferred interface theme'],['Темна тема для всіх розділів','Тёмная тема для всех разделов','Dark theme for every section'],['Світлий спорт, темне казино','Светлый спорт, тёмное казино','Light sports, dark casino'],['Відповідає налаштуванням вашого пристрою','Соответствует настройкам вашего устройства','Matches your device settings'],['Мій акаунт','Мой аккаунт','My account'],['Служба підтримки','Служба поддержки','Support'],['Бонуси','Бонусы','Bonuses'],
+ ['Головне','Главное','Main'],['Події','События','Events'],['Час матчів','Время матчей','Match time'],
+ ['Головна','Главная','Home'],['Спорт','Спорт','Sport'],['Мої ставки','Мои ставки','My bets'],['Казино','Казино','Casino'],['Профіль','Профиль','Profile'],['Меню','Меню','Menu'],
+ ['Поповнити','Пополнить','Deposit'],['Поповнити рахунок','Пополнить счёт','Deposit funds'],['+ Поповнити рахунок','+ Пополнить счёт','+ Deposit funds'],['Вивести','Вывести','Withdraw'],['Баланс','Баланс','Balance'],
+ ['Акції','Акции','Promotions'],['Персональні дані','Персональные данные','Personal details'],['Підтвердження акаунта','Подтверждение аккаунта','Account verification'],['Історія платежів','История платежей','Payment history'],
+ ['Залишити відгук','Оставить отзыв','Leave feedback'],['Налаштування','Настройки','Settings'],['Допомога та інформація','Помощь и информация','Help and information'],['Вихід','Выход','Log out'],['Вийти','Выйти','Log out'],['Вийти з акаунта','Выйти из аккаунта','Log out of account'],
+ ['Змінити мову','Изменить язык','Change language'],['Редагувати ставки','Редактировать ставки','Edit bets'],['Видалити','Удалить','Delete'],['Мова','Язык','Language'],['Безпека','Безопасность','Security'],['Налаштування сповіщень','Настройки уведомлений','Notification settings'],['Налаштування спорту','Настройки спорта','Sport settings'],['Зберегти','Сохранить','Save'],
+ ['Магазин бонусів','Магазин бонусов','Bonus shop'],['Турніри','Турниры','Tournaments'],['Головне','Главное','Overview'],['Події','События','Events'],
+ ['Нерозраховані','Нерассчитанные','Unsettled'],['Розраховані','Рассчитанные','Settled'],['Сума ставки','Сумма ставки','Stake'],['Можлива виплата','Возможная выплата','Potential payout'],['Виплата','Выплата','Payout'],
+ ['Повторити','Повторить','Repeat'],['Поділитися','Поделиться','Share'],['Поділитися ставкою','Поделиться ставкой','Share bet'],['Показати суму ставки:','Показать сумму ставки:','Show stake:'],['Зберегти зображення','Сохранить изображение','Save image'],['зображення','изображение','image'],['ставкою','ставкой','bet'],
+ ['Переможець','Победитель','Winner'],['Результат матчу','Результат матча','Match result'],['Тотал','Тотал','Total'],['Тотал карт','Тотал карт','Total maps'],['Фора','Фора','Handicap'],['Фора за картами','Фора по картам','Map handicap'],['Точний рахунок','Точный счёт','Correct score'],['Нічия','Ничья','Draw'],['Більше','Больше','Over'],['Менше','Меньше','Under'],['Парний / непарний','Чётный / нечётный','Even / odd'],['Парний','Чётный','Even'],['Непарний','Нечётный','Odd'],
+ ['Ординар','Ординар','Single'],['Експрес','Экспресс','Accumulator'],['Система','Система','System'],['Лайв','Лайв','Live'],['ЛАЙВ','ЛАЙВ','LIVE'],['Прематч','Прематч','Prematch'],['ПРЕМАТЧ','ПРЕМАТЧ','PREMATCH'],['ЛОББІ','ЛОББИ','LOBBY'],['ПЕРЕРВА','ПЕРЕРЫВ','BREAK'],['СЬОГОДНІ','СЕГОДНЯ','TODAY'],['ЗАВЕРШЕНО','ЗАВЕРШЕНО','FINISHED'],
+ ['Вибране','Избранное','Favorites'],['Футбол','Футбол','Football'],['Теніс','Теннис','Tennis'],['Настільний теніс','Настольный теннис','Table tennis'],['Хокей','Хоккей','Hockey'],['Кіберспорт','Киберспорт','Esports'],['Баскетбол','Баскетбол','Basketball'],['Волейбол','Волейбол','Volleyball'],['Снукер','Снукер','Snooker'],
+ ['Всі','Все','All'],['Основне','Основное','Main'],['Всі події','Все события','All events'],['Скоро','Скоро','Soon'],['Сьогодні','Сегодня','Today'],['Завтра','Завтра','Tomorrow'],['Вихідні','Выходные','Weekend'],['Огляд матчу','Обзор матча','Match overview'],['Огляд коефіцієнтів','Обзор коэффициентов','Odds overview'],['Особисті зустрічі','Личные встречи','Head to head'],['При відкритті','При открытии','On opening'],['Зараз','Сейчас','Now'],['Результат','Результат','Result'],
+ ['Увійти','Войти','Sign in'],['Увійти','Увійти','Sign in'],['Реєстрація','Регистрация','Registration'],['Вхід','Вход','Sign in'],['Створити акаунт','Создать аккаунт','Create account'],['Ім’я','Имя','First name'],['Прізвище','Фамилия','Last name'],['Пароль','Пароль','Password'],['Змінити пароль','Изменить пароль','Change password'],['Поточний пароль','Текущий пароль','Current password'],['Новий пароль','Новый пароль','New password'],['Контакти','Контакты','Contact details'],['Номер рахунку','Номер счёта','Account number'],['Номер телефону','Номер телефона','Phone number'],['Не вказано','Не указан','Not provided'],['Персональна інформація','Персональная информация','Personal information'],['Мої дані','Мои данные','My details'],
+ ['Назад','Назад','Back'],['Закрити','Закрыть','Close'],['Пошук','Поиск','Search'],['Сповіщення','Уведомления','Notifications'],['Нових сповіщень немає','Новых уведомлений нет','No new notifications'],['Допомога','Помощь','Help'],['Продовжити','Продолжить','Continue'],
+ ['Зробити ставку','Сделать ставку','Place bet'],['Ставку прийнято','Ставка принята','Bet accepted'],['Сума купону','Сумма купона','Bet slip total'],['Можливий виграш','Возможный выигрыш','Potential winnings'],['Твій купон порожній','Твой купон пуст','Your bet slip is empty'],['Клікни на коефіцієнт, щоб додати ставку до купону','Нажми на коэффициент, чтобы добавить ставку в купон','Select odds to add a bet to your slip'],['На все','На всё','All in'],['Коефіцієнти недоступні','Коэффициенты недоступны','Odds unavailable'],['Прийняти зміни коефіцієнтів','Принять изменения коэффициентов','Accept odds changes'],
+ ['Оновити','Обновить','Refresh'],['Пошук матчу','Поиск матча','Search matches'],['Команда або турнір','Команда или турнир','Team or tournament'],['Матчів не знайдено','Матчи не найдены','No matches found'],['Завантаження матчів','Загрузка матчей','Loading matches'],['Завантаження коефіцієнтів…','Загрузка коэффициентов…','Loading odds…'],['Ринки призупинено','Рынки приостановлены','Markets suspended'],['Вибраних матчів поки немає','Избранных матчей пока нет','No favorite matches yet'],['У цьому розділі зараз немає матчів','В этом разделе сейчас нет матчей','No matches in this section'],['Переглянути прематч','Посмотреть прематч','View prematch'],['До спорту','К спорту','Back to sport'],
+ ['Нерозрахованих ставок немає','Нерассчитанных ставок нет','No unsettled bets'],['Розрахованих ставок ще немає','Рассчитанных ставок ещё нет','No settled bets yet'],['Операцій поки немає','Операций пока нет','No transactions yet'],['Виплата за ставкою','Выплата по ставке','Bet payout'],['Поповнення','Пополнение','Deposit'],['Виведення','Вывод','Withdrawal'],
+ ['Активних бонусів немає','Активных бонусов нет','No active bonuses'],['Відгук','Отзыв','Feedback'],['Текст відгуку','Текст отзыва','Your feedback'],['Зберегти відгук','Сохранить отзыв','Save feedback'],['Відгук збережено на цьому пристрої','Отзыв сохранён на этом устройстве','Feedback saved on this device'],['Розрахунок ставок','Расчёт ставок','Bet settlement'],['Початковий розділ','Начальный раздел','Default section'],['Сортування матчів','Сортировка матчей','Match sorting'],['За часом','По времени','By start time'],['За турніром','По турниру','By tournament'],
+ ['Готуємо купон…','Готовим купон…','Preparing coupon…'],['Профіль і віртуальний баланс зберігаються в цьому браузері.','Профиль и виртуальный баланс хранятся в этом браузере.','Your profile and virtual balance are stored in this browser.'],['Дані цього профілю належать лише Arena Line.','Данные этого профиля относятся только к Arena Line.','This profile belongs only to Arena Line.'],['Зміни з моменту відкриття цієї сторінки. Поточні коефіцієнти оновлюються з лінії.','Изменения с момента открытия этой страницы. Текущие коэффициенты обновляются из линии.','Changes since this page was opened. Current odds update from the live feed.']
+ ["Разрешите хранение данных сайта в браузере","Дозвольте зберігання даних сайту в браузері","Allow this site to store data in your browser"],
+ ["Копировать номер счёта","Копіювати номер рахунку","Copy account number"],
+ ["Копировать","Копіювати","Copy"],
+ ["Аккаунт создан","Акаунт створено","Account created"],
+ ["Вход по почте и паролю.","Вхід за електронною поштою та паролем.","Sign in with email and password."],
+ ["Виртуальный счёт активен.","Віртуальний рахунок активний.","Virtual account is active."],
+ ["Для цього профілю поки немає нагород.","Для этого профиля пока нет наград.","No rewards for this profile yet."],
+ ["У профілі немає активних бонусних турнірів.","В профиле нет активных бонусных турниров.","There are no active bonus tournaments in this profile."],
+ ["Вы вошли в аккаунт","Ви увійшли в акаунт","You are signed in"],
+ ["Баланс обновлён","Баланс оновлено","Balance updated"],
+ ["Пароль изменён","Пароль змінено","Password changed"],
+ ["Вы вышли из аккаунта","Ви вийшли з акаунта","You are signed out"],
+ ["Ставку приховано","Ставку приховано","Bet hidden"],
+ ["Номер счёта скопирован","Номер рахунку скопійовано","Account number copied"],
+ ["Не удалось скопировать","Не вдалося скопіювати","Could not copy"],
+ ["Показать пароль","Показати пароль","Show password"],
+ ["Скрыть пароль","Приховати пароль","Hide password"],
+ ["Добавление","Поповнення","Deposit"],
+ ["Списание","Списання","Withdrawal"],
+ ["Личный профиль Arena Line с виртуальным балансом. Он не является аккаунтом Parik24.","Особистий профіль Arena Line з віртуальним балансом. Це не акаунт Parik24.","Arena Line personal profile with a virtual balance. It is not a Parik24 account."],
+ ["Профіль синхронізується з серверною копією: баланс, платежі та історія ставок доступні після входу на іншому пристрої.","Профиль синхронизируется с серверной копией: баланс, платежи и история ставок доступны после входа на другом устройстве.","Your profile is synced with the server copy: balance, payments and bet history are available after signing in on another device."],
+ ["Матчі та коефіцієнти надходять із лінії. Виплата за ставкою зараховується після підтвердження результату.","Матчи и коэффициенты поступают из линии. Выплата по ставке зачисляется после подтверждения результата.","Matches and odds come from the line. Bet payout is credited after the result is confirmed."],
+ ["Коефіцієнт","Коэффициент","Odds"],
+ ["Нерозрахована","Нерассчитанная","Unsettled"],
+ ["Виграна","Выиграна","Won"],
+ ["Програна","Проиграна","Lost"],
+ ["Повернення","Возврат","Refund"],
+ ["Сума cash-out, €","Сумма cash-out, €","Cash-out amount, €"],
+ ["Рахунок 1","Счёт 1","Score 1"],
+ ["Рахунок 2","Счёт 2","Score 2"],
+ ["Можлива виплата:","Возможная выплата:","Potential payout:"],
+ ["Ставку оновлено","Ставка обновлена","Bet updated"],
+ ["Ставка не знайдена","Ставка не найдена","Bet not found"],
+ ["Ставка не найдена","Ставка не знайдена","Bet not found"],
+ ["Некорректная сумма ставки","Некоректна сума ставки","Invalid stake amount"],
+ ["У ставки нет исходов","У ставки немає результатів","The bet has no selections"],
+ ["Некорректный коэффициент","Некоректний коефіцієнт","Invalid odds"],
+ ["Некорректный статус","Некоректний статус","Invalid status"],
+ ["Некорректная сумма cash-out","Некоректна сума cash-out","Invalid cash-out amount"],
+ ["Недостаточно средств для изменения ставки","Недостатньо коштів для зміни ставки","Insufficient funds to edit the bet"],
+ ["Не вдалося синхронізувати пароль","Не удалось синхронизировать пароль","Could not sync password"],
+ ["Укажите сумму с точностью до копеек","Вкажіть суму з точністю до копійок","Enter the amount to two decimal places"],
+ ["Сумма должна быть больше нуля","Сума має бути більшою за нуль","Amount must be greater than zero"],
+ ["Слишком большая сумма купона","Занадто велика сума купона","Bet slip amount is too large"],
+ ["Не удалось прочитать данные профиля","Не вдалося прочитати дані профілю","Could not read profile data"],
+ ["Неверная почта или пароль","Неправильна пошта або пароль","Incorrect email or password"],
+ ["Проверьте адрес почты","Перевірте адресу електронної пошти","Check the email address"],
+ ["Пароль должен содержать минимум 8 символов","Пароль має містити щонайменше 8 символів","Password must contain at least 8 characters"],
+ ["Укажите имя и фамилию","Вкажіть ім’я та прізвище","Enter first and last name"],
+ ["Этот аккаунт уже создан. Войдите по почте и паролю.","Цей акаунт уже створено. Увійдіть за поштою та паролем.","This account already exists. Sign in with your email and password."],
+ ["Сначала войдите в аккаунт","Спочатку увійдіть в акаунт","Sign in first"],
+ ["Не удалось создать купон","Не вдалося створити купон","Could not create bet slip"],
+ ["Минимальная сумма ставки 20 €","Мінімальна сума ставки 20 €","Minimum stake is €20"],
+ ["Проверьте купон","Перевірте купон","Check the bet slip"],
+ ["Коэффициент недоступен","Коефіцієнт недоступний","Odds unavailable"],
+ ["Недостаточно средств","Недостатньо коштів","Insufficient funds"],
+ ["Некорректная операция","Некоректна операція","Invalid operation"],
+ ["Превышен лимит виртуального баланса","Перевищено ліміт віртуального балансу","Virtual balance limit exceeded"],
+ ["Минимум 8 символов","Мінімум 8 символів","Minimum 8 characters"],
+ ["Текущий пароль неверен","Поточний пароль неправильний","Current password is incorrect"],
+ ["Відновлюємо з’єднання","Восстанавливаем соединение","Reconnecting"],
+ ["З’єднання перервано. Відновлюємо лінію…","Соединение прервано. Восстанавливаем линию…","Connection interrupted. Reconnecting to the line…"],
+ ["Матчі тимчасово недоступні","Матчи временно недоступны","Matches are temporarily unavailable"],
+ ["Ринки матчу","Рынки матча","Match markets"],
+ ["Ці результати вже недоступні. Оберіть актуальний коефіцієнт у матчі.","Эти исходы уже недоступны. Выберите актуальный коэффициент в матче.","These selections are no longer available. Choose current odds in the match."],
+ ["Коефіцієнт тимчасово недоступний","Коэффициент временно недоступен","Odds are temporarily unavailable"],
+ ["Прибрати результат","Убрать исход","Remove selection"],
+ ["Коефіцієнти оновлено. Підтвердьте ставку.","Коэффициенты обновлены. Подтвердите ставку.","Odds were updated. Confirm the bet."],
+ ["Коэффициент изменился. Проверьте купон ещё раз.","Коефіцієнт змінився. Перевірте купон ще раз.","Odds changed. Check the bet slip again."],
+ ["Ставку розраховано. Виплата та історія оновлені.","Ставка рассчитана. Выплата и история обновлены.","Bet settled. Payout and history updated."],
+ ["Профіль і баланс","Профиль и баланс","Profile and balance"],
+ ["Всі події","Все события","All events"],
+ ["Сповіщення про матч","Уведомления о матче","Match notifications"],
+ ["В історії джерела немає особистих зустрічей цих команд.","В истории источника нет личных встреч этих команд.","The source has no head-to-head history for these teams."],
+ ["Історія поки недоступна","История пока недоступна","History is not available yet"],
+ ["Інформація про матч","Информация о матче","Match information"],
+ ["Матч завершено","Матч завершён","Match finished"],
+ ["Не вдалося створити зображення","Не удалось создать изображение","Could not create image"],
+ ["Не вдалося зберегти купон","Не удалось сохранить купон","Could not save bet slip"],
+ ["Купон Arena Line","Купон Arena Line","Arena Line bet slip"],
+ ["Не вдалося поділитися. Купон можна зберегти зображенням.","Не удалось поделиться. Купон можно сохранить изображением.","Could not share. You can save the bet slip as an image."],
+ ["Основні розділи","Основные разделы","Main sections"],
+ ["Лінія","Линия","Line"],
+ ["Купон","Купон","Bet slip"],
+ ["Види спорту","Виды спорта","Sports"],
+ ["Ринок","Рынок","Market"],
+ ["Головна навігація","Главная навигация","Main navigation"],
+ ["Згорнути купон","Свернуть купон","Collapse bet slip"],
+ ["Розмір системи","Размер системы","System size"],
+ ["Сума ставки, €","Сумма ставки, €","Stake, €"],
+ ["Профиль Arena Line","Профіль Arena Line","Arena Line profile"],
+ ["Навигация профиля","Навігація профілю","Profile navigation"],
+ ["Доступних результатів","Доступных исходов","Available outcomes"],
+ ["Выведено","Виведено","Cashed out"],
+ ["Виведено","Выведено","Cashed out"],
+];
+let language='uk';
+try {language=localStorage.getItem('arena-language-v1')||'uk';}catch{}
+if(!['uk','ru','en'].includes(language))language='uk';
+const lookup=new Map();
+for(const values of phrases)for(const value of values)if(!lookup.has(value))lookup.set(value,values);
+export const getLanguage=()=>language;
+export const getLocale=()=>({uk:'uk-UA',ru:'ru-UA',en:'en-GB'})[language];
+export function t(value) {
+  const text=String(value??''),trim=text.trim(),column={uk:0,ru:1,en:2}[language];
+  const exact=lookup.get(trim);
+  if(exact)return text.replace(trim,exact[column]);
+  let result=text.replace(/\b(\d+)\s*[чЧгГ]\b/g,(_,n)=>`${n}${language==='uk'?'Г':language==='ru'?'Ч':'H'}`);
+  result=result.replace(/(?:Карта|Map)\s+(\d+)/gi,(_,n)=>`${language==='en'?'Map':'Карта'} ${n}`);
+  result=result.replace(/^(\d+)\s+доступних\s+результатів$/i,(_,n)=>language==='uk'?`${n} доступних результатів`:language==='ru'?`${n} доступных исходов`:`${n} available outcomes`);
+  result=result.replace(/^(\d+)\s+з\s+(\d+)$/i,(_,a,b)=>language==='uk'?`${a} з ${b}`:language==='ru'?`${a} из ${b}`:`${a} of ${b}`);
+  result=result.replace(/^Коефіцієнт змінився:\s*(.+)$/i,(_,tail)=>language==='uk'?`Коефіцієнт змінився: ${tail}`:language==='ru'?`Коэффициент изменился: ${tail}`:`Odds changed: ${tail}`);
+  result=result.replace(/^Матч завершено\s*·\s*(.+)$/i,(_,tail)=>language==='uk'?`Матч завершено · ${tail}`:language==='ru'?`Матч завершён · ${tail}`:`Match finished · ${tail}`);
+  result=result.replace(/^(Менше|Меньше|Under)\s+(.+)$/i,(_,__,tail)=>language==='uk'?`Менше ${tail}`:language==='ru'?`Меньше ${tail}`:`Under ${tail}`);
+  result=result.replace(/^(Більше|Больше|Over)\s+(.+)$/i,(_,__,tail)=>language==='uk'?`Більше ${tail}`:language==='ru'?`Больше ${tail}`:`Over ${tail}`);
+  if(/ · | — /.test(result))result=result.split(/( · | — )/).map(part=>lookup.get(part)?.[column]||part).join('');
+  return result;
+}
+const originals=new WeakMap();
+export function translatePage(root=document.body) {
+  const walker=document.createTreeWalker(root,4);let node;
+  while((node=walker.nextNode())) {
+    if(node.parentElement?.closest('script,style,textarea,[data-no-translate]'))continue;
+    const prior=originals.get(node),original=prior&&node.nodeValue===prior.translated?prior.original:node.nodeValue;
+    const translated=t(original);originals.set(node,{original,translated});if(node.nodeValue!==translated)node.nodeValue=translated;
+  }
+  for(const element of root.querySelectorAll('[placeholder],[aria-label],[title]')) for(const attr of ['placeholder','aria-label','title']) {
+    if(!element.hasAttribute(attr))continue;
+    const value=element.getAttribute(attr),data=originals.get(element)||{},prior=data[attr];
+    const original=prior&&value===prior.translated?prior.original:value,translated=t(original);
+    data[attr]={original,translated};originals.set(element,data);if(value!==translated)element.setAttribute(attr,translated);
+  }
+  document.documentElement.lang=language;
+}
+export function setLanguage(value) {
+  if(!['uk','ru','en'].includes(value))return;
+  language=value;localStorage.setItem('arena-language-v1',value);
+  window.dispatchEvent(new CustomEvent('arena-language-change'));translatePage();
+}
+export function startTranslations() {
+  translatePage();let scheduled=false;
+  new MutationObserver(()=>{if(scheduled)return;scheduled=true;queueMicrotask(()=>{scheduled=false;translatePage();});}).observe(document.body,{childList:true,subtree:true,characterData:true});
+}
