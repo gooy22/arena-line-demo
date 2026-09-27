@@ -375,13 +375,13 @@ function patchSportsModule(source) {
     const categoryId = String(event.categoryId || '');
     const taxonomyId = /^(?:\\d{1,16}|[a-f0-9]{32})$/i;
     const providerPrimary = event.tournamentIconUrl ||
-      (taxonomyId.test(tournamentId) ? `https://parik24.pro/taxonomyicons/tournaments/\${tournamentId}-164w` : '') ||
+      (taxonomyId.test(tournamentId) ? 'https://parik24.pro/taxonomyicons/tournaments/' + tournamentId + '-164w' : '') ||
       event.categoryIconUrl ||
-      (taxonomyId.test(categoryId) ? `https://parik24.pro/taxonomyicons/categories/\${categoryId}-164w` : '');
+      (taxonomyId.test(categoryId) ? 'https://parik24.pro/taxonomyicons/categories/' + categoryId + '-164w' : '');
     const providerFallback = taxonomyId.test(tournamentId)
-      ? `https://24parik-bet.org/taxonomyicons/tournaments/\${tournamentId}-164w`
+      ? 'https://24parik-bet.org/taxonomyicons/tournaments/' + tournamentId + '-164w'
       : taxonomyId.test(categoryId)
-        ? `https://24parik-bet.org/taxonomyicons/categories/\${categoryId}-164w`
+        ? 'https://24parik-bet.org/taxonomyicons/categories/' + categoryId + '-164w'
         : '';
 
     if (!providerPrimary) {
