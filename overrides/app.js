@@ -158,39 +158,73 @@ function openEditBet(id) {
   if (!bet) { showToast('Ставка не знайдена'); return; }
 
   const selections = bet.selections || [];
-  const primary = selections[0] || {};
-  const teams = primary.competitors?.length
-    ? primary.competitors.map(team => typeof team === 'string' ? team : team.name)
-    : String(primary.eventName || '').split(/\s+[-–—]\s+/);
-
-  const settlementScore = primary.settlement?.score || [];
-  let winnerIndex = settlementScore.length === 2 && settlementScore[0] !== settlementScore[1]
-    ? (Number(settlementScore[0]) > Number(settlementScore[1]) ? 0 : 1)
-    : '';
-
   const status = ['open','won','lost','void','cashout'].includes(bet.status) ? bet.status : 'open';
-  const oddsFields = selections.map((selection,index) => `
-    <label for="edit-odds-${index}">Коефіцієнт${selections.length > 1 ? ' · ' + esc(selection.label || String(index + 1)) : ''}</label>
-    <input id="edit-odds-${index}" class="edit-odds" data-index="${index}" inputmode="decimal" value="${Number(selection.odds || 0).toFixed(2)}" required>
-  `).join('');
 
-  const winner = teams.length >= 2 ? `
-    <div class="edit-bet-winner">
-      <div class="edit-bet-label">Переможець</div>
-      <div class="edit-winner-buttons">
-        <button type="button" class="${winnerIndex === 0 ? 'selected' : ''}" data-edit-winner="0">П1<small>${esc(teams[0])}</small></button>
-        <button type="button" class="${winnerIndex === 1 ? 'selected' : ''}" data-edit-winner="1">П2<small>${esc(teams[1])}</small></button>
-      </div>
-    </div>
-  ` : '';
+  const selectionState = selections.map(selection => {
+    const teams = selection.competitors?.length
+      ? selection.competitors.map(team => typeof team === 'string' ? team : team.name)
+      : String(selection.eventName || '').split(/\s+[-–—]\s+/);
+    const score = Array.isArray(selection.settlement?.score) ? selection.settlement.score : [];
+    const chosenSide = selection.outcomeType === 0 || /^П1$/i.test(selection.shortLabel || '') ? 0 :
+      selection.outcomeType === 3 || /^П2$/i.test(selection.shortLabel || '') ? 1 : null;
+    let winnerIndex = '';
+    let state = 'open';
+    if (selection.settlement?.status === 'void') state = 'void';
+    else if (score.length === 2 && Number(score[0]) !== Number(score[1])) {
+      winnerIndex = Number(score[0]) > Number(score[1]) ? 0 : 1;
+      state = 'winner';
+    } else if (selection.settlement?.status && chosenSide != null) {
+      if (selection.settlement.status === 'won') winnerIndex = chosenSide;
+      if (selection.settlement.status === 'lost') winnerIndex = chosenSide === 0 ? 1 : 0;
+      if (winnerIndex === 0 || winnerIndex === 1) state = 'winner';
+    }
+    return {teams,score,winnerIndex,state};
+  });
+
+  const selectionCards = selections.map((selection,index) => {
+    const state = selectionState[index];
+    const team1 = state.teams[0] || 'П1';
+    const team2 = state.teams[1] || 'П2';
+    return `
+      <section class="edit-selection-card" data-edit-selection="${index}">
+        <div class="edit-selection-head">
+          <strong>${esc(selection.eventName || `Матч ${index + 1}`)}</strong>
+          <span>#${index + 1}</span>
+        </div>
+        <div class="edit-bet-market">${esc(selection.marketName || '')}${selection.label ? ' · ' + esc(selection.label) : ''}</div>
+
+        <div class="edit-bet-label">Переможець матчу</div>
+        <div class="edit-winner-buttons" data-selection-winner="${index}">
+          <button type="button" class="${state.state === 'winner' && state.winnerIndex === 0 ? 'selected' : ''}" data-edit-selection-winner="${index}" data-side="0">П1<small>${esc(team1)}</small></button>
+          <button type="button" class="${state.state === 'winner' && state.winnerIndex === 1 ? 'selected' : ''}" data-edit-selection-winner="${index}" data-side="1">П2<small>${esc(team2)}</small></button>
+        </div>
+        <div class="edit-result-controls">
+          <button type="button" class="${state.state === 'open' ? 'selected' : ''}" data-edit-selection-state="${index}" data-state="open">Не зіграно</button>
+          <button type="button" class="${state.state === 'void' ? 'selected' : ''}" data-edit-selection-state="${index}" data-state="void">Повернення</button>
+        </div>
+
+        <label for="edit-odds-${index}">Коефіцієнт</label>
+        <input id="edit-odds-${index}" class="edit-odds" data-index="${index}" inputmode="decimal" value="${Number(selection.odds || 0).toFixed(2)}" required>
+
+        <div class="edit-score-grid">
+          <div>
+            <label for="edit-score-${index}-1">Рахунок 1</label>
+            <input id="edit-score-${index}-1" inputmode="numeric" type="number" min="0" value="${state.score[0] ?? ''}">
+          </div>
+          <div>
+            <label for="edit-score-${index}-2">Рахунок 2</label>
+            <input id="edit-score-${index}-2" inputmode="numeric" type="number" min="0" value="${state.score[1] ?? ''}">
+          </div>
+        </div>
+      </section>
+    `;
+  }).join('');
 
   openDialog('Редагувати ставку', `
     <form id="edit-bet-form" class="edit-bet-form">
-      <p class="dialog-copy">Зміни суми, коефіцієнта або результату одразу перераховують ставку, виплату та баланс профілю. Зміна номера зсуває всі інші номери вище й нижче без розривів.</p>
-      <div class="edit-bet-card">
-        <strong class="edit-bet-event">${esc(primary.eventName || selections.map(s => s.eventName).filter(Boolean).join(' / '))}</strong>
-        <div class="edit-bet-market">${esc(primary.marketName || '')}${primary.label ? ' · ' + esc(primary.label) : ''}</div>
-        ${winner}
+      <p class="dialog-copy">Кожен матч редагується окремо: переможець П1/П2, коефіцієнт і рахунок. Для експресу можна детально налаштувати кожен вихід.</p>
+
+      <div class="edit-bet-card edit-bet-general">
         <div class="edit-bet-grid">
           <div>
             <label for="edit-bet-number">Номер ставки</label>
@@ -201,8 +235,8 @@ function openEditBet(id) {
             <input id="edit-bet-stake" inputmode="decimal" value="${(Number(bet.stake || 0) / 100).toFixed(2)}" required>
           </div>
         </div>
-        ${oddsFields}
-        <label for="edit-bet-status">Статус</label>
+
+        <label for="edit-bet-status">Статус ставки</label>
         <select id="edit-bet-status">
           <option value="open" ${status === 'open' ? 'selected' : ''}>Нерозрахована</option>
           <option value="won" ${status === 'won' ? 'selected' : ''}>Виграна</option>
@@ -214,24 +248,21 @@ function openEditBet(id) {
           <label for="edit-cashout">Сума cash-out, €</label>
           <input id="edit-cashout" inputmode="decimal" value="${status === 'cashout' ? (Number(bet.payout || 0) / 100).toFixed(2) : ''}">
         </div>
-        <div class="edit-score-grid">
-          <div><label for="edit-score-1">Рахунок 1</label><input id="edit-score-1" inputmode="numeric" type="number" min="0" value="${settlementScore[0] ?? ''}"></div>
-          <div><label for="edit-score-2">Рахунок 2</label><input id="edit-score-2" inputmode="numeric" type="number" min="0" value="${settlementScore[1] ?? ''}"></div>
-        </div>
       </div>
+
+      <div class="edit-selection-list">${selectionCards}</div>
+
       <div class="edit-payout-preview">Можлива виплата: <strong id="edit-payout-value">${money(status === 'won' || status === 'cashout' ? Number(bet.payout || bet.potential || 0) : Number(bet.potential || 0))} €</strong></div>
       <div id="form-error" class="error" role="alert"></div>
       <button class="submit edit-bet-save" type="submit">Save</button>
       <button class="edit-bet-hide" type="button" data-action="delete-bet" data-value="${esc(bet.id)}">Приховати ставку з історії</button>
     </form>
   `, 'edit-bet-dialog');
+
   const form = $('#edit-bet-form');
   const statusInput = $('#edit-bet-status');
   const cashoutWrap = $('#edit-cashout-wrap');
   const payoutValue = $('#edit-payout-value');
-
-  const chosenSide = primary.outcomeType === 0 || /^П1$/i.test(primary.shortLabel || '') ? 0 :
-    primary.outcomeType === 3 || /^П2$/i.test(primary.shortLabel || '') ? 1 : null;
 
   const preview = () => {
     try {
@@ -252,14 +283,25 @@ function openEditBet(id) {
     } catch {}
   };
 
-  form.querySelectorAll('[data-edit-winner]').forEach(button => {
+  form.querySelectorAll('[data-edit-selection-winner]').forEach(button => {
     button.addEventListener('click', () => {
-      winnerIndex = Number(button.dataset.editWinner);
-      form.querySelectorAll('[data-edit-winner]').forEach(item => item.classList.toggle('selected', item === button));
-      if (chosenSide != null && statusInput.value !== 'cashout') {
-        statusInput.value = chosenSide === winnerIndex ? 'won' : 'lost';
-      }
-      preview();
+      const index = Number(button.dataset.editSelectionWinner);
+      const side = Number(button.dataset.side);
+      selectionState[index].state = 'winner';
+      selectionState[index].winnerIndex = side;
+      form.querySelectorAll(`[data-edit-selection-winner="${index}"]`).forEach(item => item.classList.toggle('selected', item === button));
+      form.querySelectorAll(`[data-edit-selection-state="${index}"]`).forEach(item => item.classList.remove('selected'));
+    });
+  });
+
+  form.querySelectorAll('[data-edit-selection-state]').forEach(button => {
+    button.addEventListener('click', () => {
+      const index = Number(button.dataset.editSelectionState);
+      const state = button.dataset.state;
+      selectionState[index].state = state;
+      selectionState[index].winnerIndex = '';
+      form.querySelectorAll(`[data-edit-selection-winner="${index}"]`).forEach(item => item.classList.remove('selected'));
+      form.querySelectorAll(`[data-edit-selection-state="${index}"]`).forEach(item => item.classList.toggle('selected', item === button));
     });
   });
 
@@ -275,15 +317,19 @@ function openEditBet(id) {
     submit.disabled = true;
     $('#form-error').textContent = '';
     try {
-      const odds = selections.map((_,index) => Number(String(form.querySelector(`#edit-odds-${index}`).value).replace(',', '.')));
+      const selectionEdits = selections.map((_,index) => ({
+        state:selectionState[index].state,
+        winnerIndex:selectionState[index].winnerIndex,
+        odds:Number(String(form.querySelector(`#edit-odds-${index}`).value).replace(',', '.')),
+        score1:form.querySelector(`#edit-score-${index}-1`).value,
+        score2:form.querySelector(`#edit-score-${index}-2`).value
+      }));
       const change = {
         number:Number($('#edit-bet-number').value),
         stake:cents($('#edit-bet-stake').value),
-        odds,
-        status:statusInput.value,
-        winnerIndex,
-        score1:$('#edit-score-1').value,
-        score2:$('#edit-score-2').value
+        odds:selectionEdits.map(item => item.odds),
+        selectionEdits,
+        status:statusInput.value
       };
       if (statusInput.value === 'cashout') change.cashoutPayout = cents($('#edit-cashout').value || '0');
       accounts.editBet(bet.id,change);
