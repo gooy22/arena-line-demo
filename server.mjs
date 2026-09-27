@@ -136,16 +136,16 @@ function teamMetaByProviderId(id) {
 
 function patchIndexHtml(source) {
   let html=String(source || '');
-  html=html.replace(/\?v=\d+/g,'?v=46');
+  html=html.replace(/\?v=\d+/g,'?v=47');
   if (!html.includes('apple-touch-icon')) {
     html=html.replace(
       '<link rel="manifest" href="/manifest.webmanifest">',
       '<link rel="manifest" href="/manifest.webmanifest">\n  <link rel="apple-touch-icon" href="/assets/icons/esports.png">\n  <meta name="apple-mobile-web-app-capable" content="yes">\n  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">'
     );
   }
-  if (!html.includes('arena-editor-hotfix-v46')) {
+  if (!html.includes('arena-editor-hotfix-v47')) {
     html=html.replace('</head>', `
-<style id="arena-editor-hotfix-v46">
+<style id="arena-editor-hotfix-v47">
 dialog#dialog.edit-bet-dialog{
   position:fixed!important;
   top:auto!important;
@@ -323,7 +323,7 @@ dialog#dialog.edit-bet-dialog .edit-bet-hide{
 }
 </style>
 <script>
-window.__ARENA_BUILD__='46';
+window.__ARENA_BUILD__='47';
 if('serviceWorker' in navigator){
   navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.update())).catch(()=>{});
 }
@@ -356,33 +356,18 @@ function patchSportsModule(source) {
       'Call of Duty':'call-of-duty'
     };
     const fallback = games[event.categoryName] || SPORTS.find(s => s[0] === event.sport)?.[1] || 'esports';
-    const fallbackMarks = {
-      'Dota 2':['D','dota'],
-      'Counter-Strike':['CS','cs'],
-      'Valorant':['V','valorant'],
-      'League of Legends':['L','lol'],
-      'Free Fire':['FF','freefire'],
-      'Mobile Legends':['ML','mlbb'],
-      'PUBG':['P','pubg'],
-      'Rainbow Six':['R6','r6']
+    const fallbackImages = {
+      'Dota 2':'/assets/icons/dota.png',
+      'Counter-Strike':'/assets/icons/counter-strike.png',
+      'League of Legends':'/assets/icons/lol.png'
     };
-    const mark = fallbackMarks[event.categoryName];
-    const fallbackGraphic = mark
-      ? '<span class="discipline-monogram discipline-' + mark[1] + '">' + mark[0] + '</span>'
-      : '<span class="discipline-monogram">🎮</span>';
+    const fallbackImage=fallbackImages[event.categoryName] || '/assets/icons/esports.png';
+    const fallbackGraphic='<img class="synced-discipline-logo local-fallback-logo" src="' + fallbackImage + '" alt="">';
 
-    const tournamentId = String(event.tournamentId || '');
-    const categoryId = String(event.categoryId || '');
-    const taxonomyId = /^(?:\\d{1,16}|[a-f0-9]{32})$/i;
-    const providerPrimary = event.tournamentIconUrl ||
-      (taxonomyId.test(tournamentId) ? 'https://parik24.pro/taxonomyicons/tournaments/' + tournamentId + '-164w' : '') ||
-      event.categoryIconUrl ||
-      (taxonomyId.test(categoryId) ? 'https://parik24.pro/taxonomyicons/categories/' + categoryId + '-164w' : '');
-    const providerFallback = taxonomyId.test(tournamentId)
-      ? 'https://24parik-bet.org/taxonomyicons/tournaments/' + tournamentId + '-164w'
-      : taxonomyId.test(categoryId)
-        ? 'https://24parik-bet.org/taxonomyicons/categories/' + categoryId + '-164w'
-        : '';
+    const providerPrimary = '/api/media/tournament?name=' +
+      encodeURIComponent(String(event.tournamentName || '')) +
+      '&category=' + encodeURIComponent(String(event.categoryName || ''));
+    const providerFallback = '';
 
     if (!providerPrimary) {
       return \`<span class="game-badge game-badge-dark">\${fallbackGraphic}</span>\`;
@@ -555,6 +540,96 @@ async function probeParikIconPaths() {
   console.log('PARIK_ICON_PROBE '+JSON.stringify(rows));
 }
 
+
+const mediaCache = new Map();
+const disciplineIds = {
+  'Counter-Strike':1,
+  'Valorant':2,
+  'League of Legends':3,
+  'Dota 2':4,
+  'Rainbow6':7,
+  'Rainbow Six':7,
+  'Mobile Legends':8
+};
+const localDisciplineIcon = category => {
+  const map = {
+    'Counter-Strike':'/assets/icons/counter-strike.png',
+    'Dota 2':'/assets/icons/dota.png',
+    'League of Legends':'/assets/icons/lol.png'
+  };
+  return map[category] || '/assets/icons/esports.png';
+};
+const mediaName = value => String(value || '')
+  .normalize('NFKC')
+  .toLowerCase()
+  .replace(/\b(players? duel|duel players?|kills?|maps?|bo\d|closed qualifier|open qualifier)\b.*$/giu,'')
+  .replace(/[^\p{L}\p{N}]+/gu,' ')
+  .trim();
+const mediaWords = value => new Set(mediaName(value).split(/\s+/).filter(Boolean));
+const mediaScore = (query,candidate) => {
+  const a=mediaName(query), b=mediaName(candidate);
+  if (!a || !b) return 0;
+  if (a === b) return 1000;
+  if (a.startsWith(b) || b.startsWith(a)) return 700 + Math.min(a.length,b.length);
+  const aw=mediaWords(a), bw=mediaWords(b);
+  let same=0;
+  for(const word of aw) if(bw.has(word)) same++;
+  const denom=Math.max(aw.size,bw.size,1);
+  return Math.round((same/denom)*500);
+};
+async function bo3TournamentLogo(name,category) {
+  const key='t:'+category+':'+mediaName(name);
+  const cached=mediaCache.get(key);
+  if (cached && Date.now()-cached.at < 6*3600_000) return cached.url;
+  const discipline=disciplineIds[category];
+  if (!discipline) return '';
+  let best=null,bestScore=0;
+  for (let offset=0; offset<=300; offset+=100) {
+    const qs=new URLSearchParams({
+      'page[limit]':'100',
+      'page[offset]':String(offset),
+      'sort':'-start_date',
+      'filter[tournaments.discipline_id][eq]':String(discipline)
+    });
+    const response=await fetch('https://api.bo3.gg/api/v1/tournaments?'+qs,{
+      signal:AbortSignal.timeout(12000),
+      headers:{accept:'application/json'}
+    });
+    if(!response.ok) break;
+    const data=await response.json();
+    for(const row of data?.results || []) {
+      const score=mediaScore(name,row.name);
+      if(score>bestScore && row.image_url){best=row;bestScore=score;}
+    }
+    if(bestScore>=700 || !Array.isArray(data?.results) || data.results.length<100) break;
+  }
+  const url=bestScore>=220 ? String(best?.image_url || '') : '';
+  mediaCache.set(key,{at:Date.now(),url});
+  return url;
+}
+async function streamRemoteImage(res,url,fallback) {
+  if(!url){
+    res.statusCode=302;
+    res.setHeader('location',fallback);
+    res.setHeader('cache-control','public, max-age=300');
+    return res.end();
+  }
+  try{
+    const response=await fetch(url,{signal:AbortSignal.timeout(12000),headers:{accept:'image/*'}});
+    if(!response.ok || !String(response.headers.get('content-type')||'').startsWith('image/')) throw new Error('image HTTP '+response.status);
+    res.statusCode=200;
+    res.setHeader('content-type',response.headers.get('content-type')||'image/webp');
+    res.setHeader('cache-control','public, max-age=21600, stale-while-revalidate=86400');
+    res.setHeader('x-content-type-options','nosniff');
+    Readable.fromWeb(response.body).pipe(res);
+  }catch(error){
+    res.statusCode=302;
+    res.setHeader('location',fallback);
+    res.setHeader('cache-control','public, max-age=300');
+    res.end();
+  }
+}
+
 async function embeddedAsset(pathname,method,headers) {
   const request = new Request('http://localhost' + pathname,{method,headers});
   return app.fetch(request,env,ctx);
@@ -607,6 +682,14 @@ const server=http.createServer(async (req,res)=>{
   try {
     const method=req.method || 'GET';
     const url=new URL(req.url || '/','http://localhost');
+
+    if (url.pathname === '/api/media/tournament' && method === 'GET') {
+      const name=safeString(url.searchParams.get('name'),180);
+      const category=safeString(url.searchParams.get('category'),80);
+      const fallback=localDisciplineIcon(category);
+      const logo=await bo3TournamentLogo(name,category);
+      return streamRemoteImage(res,logo,fallback);
+    }
 
     if (url.pathname === '/health') {
       const profileStorage=await profileStorageStatus();
@@ -849,8 +932,6 @@ const server=http.createServer(async (req,res)=>{
 
 server.listen(port,'0.0.0.0',()=>{
   console.log('Arena Line Parik sync v4 listening on '+port);
-  probeParikIconPaths().catch(error=>console.error('PARIK_ICON_PROBE_ERROR '+String(error?.message||error)));
-  probeBo3Media().catch(error=>console.error('BO3_MEDIA_PROBE_ERROR '+String(error?.message||error)));
   profileStorageStatus().then(status=>{
     console.log('PROFILE_STORAGE '+JSON.stringify(status));
   }).catch(error=>{
