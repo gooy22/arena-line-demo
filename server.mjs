@@ -152,9 +152,27 @@ function patchSportsModule(source) {
       'Call of Duty':'esports'
     };
     const fallback = games[event.categoryName] || SPORTS.find(s => s[0] === event.sport)?.[1] || 'esports';
-    const remote = event.categoryIconUrl || event.tournamentIconUrl || '';
-    if (!remote) return \`<span class="game-badge game-badge-dark">\${graphic(fallback)}</span>\`;
-    return \`<span class="game-badge game-badge-dark"><img class="synced-discipline-logo" src="\${escape(remote)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span class="discipline-fallback" hidden>\${graphic(fallback)}</span></span>\`;
+    const valorant = 'https://commons.wikimedia.org/wiki/Special:Redirect/file/Valorant_logo_-_pink_color_version.svg';
+    const fallbackGraphic = event.categoryName === 'Valorant'
+      ? \`<img class="reference-graphic valorant-restored" src="\${valorant}" alt="" aria-hidden="true" draggable="false">\`
+      : graphic(fallback);
+
+    const tournamentId = String(event.tournamentId || '');
+    const providerPrimary = event.categoryIconUrl || event.tournamentIconUrl ||
+      (/^\\d{1,16}$/.test(tournamentId) ? \`https://parik24.pro/taxonomyicons/tournaments/\${tournamentId}-164w\` : '');
+    const providerFallback = /^\\d{1,16}$/.test(tournamentId)
+      ? \`https://24parik-bet.org/taxonomyicons/tournaments/\${tournamentId}-164w\`
+      : '';
+
+    if (!providerPrimary) {
+      return \`<span class="game-badge game-badge-dark">\${fallbackGraphic}</span>\`;
+    }
+
+    return \`<span class="game-badge game-badge-dark">
+      <img class="synced-discipline-logo" src="\${escape(providerPrimary)}" data-provider-fallback="\${escape(providerFallback)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"
+        onerror="const f=this.dataset.providerFallback;if(f&&this.src!==f){this.src=f;this.dataset.providerFallback='';}else{this.hidden=true;this.nextElementSibling.hidden=false;}">
+      <span class="discipline-fallback" hidden>\${fallbackGraphic}</span>
+    </span>\`;
   }`;
 
   if (!source.includes(oldBlock)) {
@@ -184,8 +202,15 @@ const sportsCssPatch = `
   display:block;
   width:100%;
   height:100%;
+  padding:7px;
+  box-sizing:border-box;
   object-fit:contain;
   background:#101010;
+}
+.valorant-restored{
+  width:30px!important;
+  height:30px!important;
+  object-fit:contain;
 }
 .discipline-fallback{
   display:grid;
