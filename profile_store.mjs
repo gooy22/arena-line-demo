@@ -116,9 +116,7 @@ export async function syncProfile(incoming, bearerHash) {
     if (current) {
       const currentRevision = Number(current.profileRevision || 0);
       const incomingRevision = Number(clean.profileRevision || 0);
-      const currentTime = Date.parse(current.updatedAt || 0) || 0;
-      const incomingTime = Date.parse(clean.updatedAt || 0) || 0;
-      if (currentRevision > incomingRevision && currentTime > incomingTime) {
+      if (currentRevision > incomingRevision) {
         const error = new Error('Profile conflict');
         error.statusCode = 409;
         error.profile = current;
