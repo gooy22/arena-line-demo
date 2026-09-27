@@ -193,7 +193,6 @@ export class Accounts {
     data.push(account);
     this._persist(data, account);
     this.storage.setItem(SESSION, email);
-    this._queueSync(account);
   }
   signOut() { this.storage.removeItem(SESSION); }
   placeBet({ id, stake, selections, type = 'single', systemSize = 2 }) {
