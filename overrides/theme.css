@@ -1840,3 +1840,26 @@ html.share-coupon-open .share-close{
     letter-spacing:1.35px!important;
   }
 }
+
+
+/* v100: intentionally blank brand slot in the header. */
+.brand-placeholder{
+  display:inline-block!important;
+  width:120px!important;
+  min-width:120px!important;
+  max-width:120px!important;
+  height:24px!important;
+  margin:0!important;
+  padding:0!important;
+  font-size:0!important;
+  line-height:0!important;
+  color:transparent!important;
+  background:transparent!important;
+}
+@media(max-width:370px){
+  .brand-placeholder{
+    width:112px!important;
+    min-width:112px!important;
+    max-width:112px!important;
+  }
+}
