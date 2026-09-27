@@ -1,6 +1,7 @@
 import http from 'node:http';
 import { Readable } from 'node:stream';
 import { readFile } from 'node:fs/promises';
+import sharp from 'sharp';
 import app from './dist/server/index.js';
 import { augmentSettlements, completedHistory, probeResultsSource } from './results_bridge.mjs';
 import { readProfile, loginProfile, syncProfile, profileStorageStatus, changeProfilePassword } from './profile_store.mjs';
@@ -136,16 +137,16 @@ function teamMetaByProviderId(id) {
 
 function patchIndexHtml(source) {
   let html=String(source || '');
-  html=html.replace(/\?v=\d+/g,'?v=49');
+  html=html.replace(/\?v=\d+/g,'?v=50');
   if (!html.includes('apple-touch-icon')) {
     html=html.replace(
       '<link rel="manifest" href="/manifest.webmanifest">',
       '<link rel="manifest" href="/manifest.webmanifest">\n  <link rel="apple-touch-icon" href="/assets/icons/esports.png">\n  <meta name="apple-mobile-web-app-capable" content="yes">\n  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">'
     );
   }
-  if (!html.includes('arena-editor-hotfix-v49')) {
+  if (!html.includes('arena-editor-hotfix-v50')) {
     html=html.replace('</head>', `
-<style id="arena-editor-hotfix-v49">
+<style id="arena-editor-hotfix-v50">
 dialog#dialog.edit-bet-dialog{
   position:fixed!important;
   top:auto!important;
@@ -323,7 +324,7 @@ dialog#dialog.edit-bet-dialog .edit-bet-hide{
 }
 </style>
 <script>
-window.__ARENA_BUILD__='49';
+window.__ARENA_BUILD__='50';
 if('serviceWorker' in navigator){
   navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.update())).catch(()=>{});
 }
@@ -368,11 +369,11 @@ function patchSportsModule(source) {
     const exactCategory = String(event.categoryIconUrl || '');
     const sameOrigin = '/api/media/tournament?name=' +
       encodeURIComponent(String(event.tournamentName || '')) +
-      '&category=' + encodeURIComponent(String(event.categoryName || ''));
-    const providerPrimary = exactTournament || exactCategory || sameOrigin;
-    const fallbacks = [exactCategory,sameOrigin].filter((value,index,array) =>
-      value && value !== providerPrimary && array.indexOf(value) === index
-    );
+      '&category=' + encodeURIComponent(String(event.categoryName || '')) +
+      '&source=' + encodeURIComponent(exactTournament) +
+      '&categorySource=' + encodeURIComponent(exactCategory);
+    const providerPrimary = sameOrigin;
+    const fallbacks = [];
 
     if (!providerPrimary) {
       return '<span class="game-badge game-badge-parik">' + fallbackGraphic + '</span>';
@@ -420,6 +421,8 @@ const sportsCssPatch = `
   margin:0!important;
   box-sizing:border-box;
   object-fit:contain;
+  object-position:center center!important;
+  transform:none!important;
   background:transparent;
 }
 .valorant-restored{
@@ -615,28 +618,98 @@ async function bo3TournamentLogo(name,category) {
   mediaCache.set(key,{at:Date.now(),url});
   return url;
 }
-async function streamRemoteImage(res,url,fallback) {
-  if(!url){
-    res.statusCode=302;
-    res.setHeader('location',fallback);
-    res.setHeader('cache-control','public, max-age=300');
-    return res.end();
-  }
-  try{
-    const response=await fetch(url,{signal:AbortSignal.timeout(12000),headers:{accept:'image/*'}});
-    if(!response.ok || !String(response.headers.get('content-type')||'').startsWith('image/')) throw new Error('image HTTP '+response.status);
-    res.statusCode=200;
-    res.setHeader('content-type',response.headers.get('content-type')||'image/webp');
-    res.setHeader('cache-control','public, max-age=21600, stale-while-revalidate=86400');
-    res.setHeader('x-content-type-options','nosniff');
-    Readable.fromWeb(response.body).pipe(res);
-  }catch(error){
-    res.statusCode=302;
-    res.setHeader('location',fallback);
-    res.setHeader('cache-control','public, max-age=300');
-    res.end();
-  }
+const normalizedImageCache = new Map();
+const PARIK_MEDIA_HOSTS = new Set(['parik24.pro','www.parik24.pro','24parik-bet.org','www.24parik-bet.org']);
+
+function safeParikMediaURL(value) {
+  try {
+    const url=new URL(String(value || ''));
+    if(url.protocol !== 'https:' || !PARIK_MEDIA_HOSTS.has(url.hostname)) return '';
+    if(!/^\/taxonomyicons\/(?:tournaments|categories|competitors)\/[A-Za-z0-9._-]+(?:-164w)?$/.test(url.pathname)) return '';
+    return url.href;
+  } catch { return ''; }
 }
+
+async function normalizedLogo(url,{trusted=false,box=96,content=72}={}) {
+  if(!url) return null;
+  if(!trusted && !safeParikMediaURL(url)) return null;
+
+  const cacheKey=box+':'+content+':'+url;
+  const cached=normalizedImageCache.get(cacheKey);
+  if(cached && Date.now()-cached.at < 6*3600_000) return cached.buffer;
+
+  const response=await fetch(url,{
+    signal:AbortSignal.timeout(12000),
+    headers:{
+      accept:'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+      'user-agent':'Mozilla/5.0 ArenaLine/1.0'
+    }
+  });
+  if(!response.ok) throw new Error('image HTTP '+response.status);
+  const type=String(response.headers.get('content-type') || '');
+  if(!type.startsWith('image/')) throw new Error('not an image');
+
+  const input=Buffer.from(await response.arrayBuffer());
+  if(!input.length || input.length > 5_000_000) throw new Error('invalid image bytes');
+
+  let pipeline=sharp(input,{density:240,animated:false,limitInputPixels:16_000_000});
+  try {
+    pipeline=pipeline.trim({threshold:12});
+    await pipeline.metadata();
+  } catch {
+    pipeline=sharp(input,{density:240,animated:false,limitInputPixels:16_000_000});
+  }
+
+  const side=Math.max(24,Math.min(box,content));
+  const outer=Math.max(side,box);
+  const pad=Math.max(0,Math.floor((outer-side)/2));
+
+  const buffer=await pipeline
+    .ensureAlpha()
+    .resize({
+      width:side,
+      height:side,
+      fit:'contain',
+      position:'centre',
+      withoutEnlargement:false,
+      background:{r:0,g:0,b:0,alpha:0}
+    })
+    .extend({
+      top:pad,
+      bottom:outer-side-pad,
+      left:pad,
+      right:outer-side-pad,
+      background:{r:0,g:0,b:0,alpha:0}
+    })
+    .png({compressionLevel:9,adaptiveFiltering:true})
+    .toBuffer();
+
+  if(normalizedImageCache.size > 800) normalizedImageCache.delete(normalizedImageCache.keys().next().value);
+  normalizedImageCache.set(cacheKey,{at:Date.now(),buffer});
+  return buffer;
+}
+
+async function sendNormalizedLogo(res,candidates,fallback,{box=96,content=72}={}) {
+  for(const candidate of candidates){
+    if(!candidate?.url) continue;
+    try{
+      const buffer=await normalizedLogo(candidate.url,{trusted:!!candidate.trusted,box,content});
+      if(!buffer) continue;
+      res.statusCode=200;
+      res.setHeader('content-type','image/png');
+      res.setHeader('cache-control','public, max-age=21600, stale-while-revalidate=86400');
+      res.setHeader('x-content-type-options','nosniff');
+      res.setHeader('x-arena-logo-normalized','1');
+      return res.end(buffer);
+    }catch{}
+  }
+
+  res.statusCode=302;
+  res.setHeader('location',fallback);
+  res.setHeader('cache-control','public, max-age=300');
+  return res.end();
+}
+
 
 async function embeddedAsset(pathname,method,headers) {
   const request = new Request('http://localhost' + pathname,{method,headers});
@@ -694,9 +767,15 @@ const server=http.createServer(async (req,res)=>{
     if (url.pathname === '/api/media/tournament' && method === 'GET') {
       const name=safeString(url.searchParams.get('name'),180);
       const category=safeString(url.searchParams.get('category'),80);
+      const exactTournament=safeParikMediaURL(url.searchParams.get('source'));
+      const exactCategory=safeParikMediaURL(url.searchParams.get('categorySource'));
       const fallback=localDisciplineIcon(category);
-      const logo=await bo3TournamentLogo(name,category);
-      return streamRemoteImage(res,logo,fallback);
+      const bo3=await bo3TournamentLogo(name,category).catch(()=> '');
+      return sendNormalizedLogo(res,[
+        {url:exactTournament},
+        {url:exactCategory},
+        {url:bo3,trusted:true}
+      ],fallback,{box:96,content:72});
     }
 
     if (url.pathname === '/health') {
