@@ -399,7 +399,7 @@ function patchSportsModule(source) {
       '" data-arena-source="' + escape(providerPrimary) +
       '" data-fallbacks="' + escape(JSON.stringify(fallbacks)) +
       '" data-fallback-index="0" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onload="window.__arenaNormalizeLogo&&window.__arenaNormalizeLogo(this)"' +
-      ' onerror="let a=[];try{a=JSON.parse(this.dataset.fallbacks||&quot;[]&quot;)}catch{};const i=Number(this.dataset.fallbackIndex||0);if(i<a.length){this.dataset.fallbackIndex=String(i+1);this.src=a[i];}else{this.hidden=true;this.nextElementSibling.hidden=false;}">' +
+      ' onerror="if(!(window.__arenaNextLogo&&window.__arenaNextLogo(this))){this.hidden=true;this.nextElementSibling.hidden=false;}">' +
       '<span class="discipline-fallback" hidden>' + fallbackGraphic + '</span></span>';
   }`;
 
@@ -859,7 +859,7 @@ async function bo3CompetitorLogo(name, category='') {
 
     // Active/recent entities are normally near the front; scan a bounded window as fallback.
     for(const sort of ['-updated_at','-id']){
-      for(let offset=0; offset<=600 && bestScore<900; offset+=100){
+      for(let offset=0; offset<=300 && bestScore<900; offset+=100){
         const qs=new URLSearchParams({'page[limit]':'100','page[offset]':String(offset),'sort':sort});
         if(discipline) qs.set(`filter[${table}.discipline_id][eq]`,String(discipline));
         try{
@@ -888,27 +888,36 @@ async function bo3CompetitorLogo(name, category='') {
   return url;
 }
 
+async function remoteImageResponse(candidate) {
+  if(!candidate?.url) return null;
+  if(!candidate.trusted && !safeParikMediaURL(candidate.url)) return null;
+  try{
+    const response=await fetch(candidate.url,{
+      signal:AbortSignal.timeout(9000),
+      headers:{
+        accept:'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+        'user-agent':'Mozilla/5.0 ArenaLine/1.0'
+      }
+    });
+    const type=String(response.headers.get('content-type') || '');
+    if(!response.ok || !type.startsWith('image/')) return null;
+    return response;
+  }catch{return null;}
+}
+
+function sendRemoteImage(res,response) {
+  res.statusCode=200;
+  res.setHeader('content-type',response.headers.get('content-type') || 'image/png');
+  res.setHeader('cache-control','public, max-age=21600, stale-while-revalidate=86400');
+  res.setHeader('x-content-type-options','nosniff');
+  res.setHeader('x-arena-media-proxy','1');
+  return Readable.fromWeb(response.body).pipe(res);
+}
+
 async function streamImageCandidates(res,candidates,fallback='') {
   for(const candidate of candidates){
-    if(!candidate?.url) continue;
-    if(!candidate.trusted && !safeParikMediaURL(candidate.url)) continue;
-    try{
-      const response=await fetch(candidate.url,{
-        signal:AbortSignal.timeout(12000),
-        headers:{
-          accept:'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-          'user-agent':'Mozilla/5.0 ArenaLine/1.0'
-        }
-      });
-      const type=String(response.headers.get('content-type') || '');
-      if(!response.ok || !type.startsWith('image/')) continue;
-      res.statusCode=200;
-      res.setHeader('content-type',type);
-      res.setHeader('cache-control','public, max-age=21600, stale-while-revalidate=86400');
-      res.setHeader('x-content-type-options','nosniff');
-      res.setHeader('x-arena-media-proxy','1');
-      return Readable.fromWeb(response.body).pipe(res);
-    }catch{}
+    const response=await remoteImageResponse(candidate);
+    if(response) return sendRemoteImage(res,response);
   }
   if(fallback){
     res.statusCode=302;
@@ -980,11 +989,19 @@ const server=http.createServer(async (req,res)=>{
       const meta=teamMetaByProviderId(id) || {};
       const name=safeString(url.searchParams.get('name') || meta.name || '',160);
       const category=safeString(url.searchParams.get('category') || meta.categoryName || '',80);
+      const parik={url:'https://parik24.pro/taxonomyicons/competitors/'+id+'-164w'};
+      const direct=await remoteImageResponse(parik);
+      if(direct) return sendRemoteImage(res,direct);
+
       const bo3=await bo3CompetitorLogo(name,category).catch(()=> '');
-      return streamImageCandidates(res,[
-        {url:'https://parik24.pro/taxonomyicons/competitors/'+id+'-164w'},
-        {url:bo3,trusted:true}
-      ]);
+      if(bo3) {
+        console.log('COMPETITOR_MEDIA '+JSON.stringify({id,name,category,source:'bo3'}));
+        return streamImageCandidates(res,[{url:bo3,trusted:true}]);
+      }
+      console.log('COMPETITOR_MEDIA '+JSON.stringify({id,name,category,source:'initials'}));
+      res.statusCode=404;
+      res.setHeader('cache-control','public, max-age=21600');
+      return res.end();
     }
 
     if (url.pathname === '/api/media/tournament' && method === 'GET') {
