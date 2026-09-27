@@ -1630,3 +1630,79 @@ html.share-coupon-open .share-actions{
     min-height:44px!important;
   }
 }
+
+
+/* v96: stable 44px bottom navigation across main/profile; share dark only at top. */
+@media (display-mode:standalone){
+  :root{
+    --sports-footer:44px!important;
+    --nav:44px!important;
+  }
+  .sports-nav,
+  .profile-nav{
+    height:44px!important;
+    min-height:44px!important;
+    padding-bottom:0!important;
+    border-top:1px solid #292621!important;
+  }
+  .profile-nav .nav-inner{
+    height:44px!important;
+    min-height:44px!important;
+  }
+  .sports-nav>button,
+  .profile-nav .nav-item{
+    height:44px!important;
+    min-height:44px!important;
+    padding:1px 1px 0!important;
+    transform:translateY(2px)!important;
+  }
+  .profile-content{
+    bottom:44px!important;
+  }
+  .profile-content.bet-detail-view{
+    bottom:0!important;
+  }
+  .sports-shell .slip-mini{
+    bottom:50px!important;
+  }
+}
+
+html.share-coupon-open{
+  background:#171717!important;
+}
+body.share-coupon-open{
+  background:#f5f4f0!important;
+}
+body.share-coupon-open::before{
+  content:""!important;
+  display:block!important;
+  position:fixed!important;
+  inset:0 0 auto 0!important;
+  height:env(safe-area-inset-top)!important;
+  background:#171717!important;
+  z-index:2147483647!important;
+  pointer-events:none!important;
+}
+body.share-coupon-open::after{
+  content:none!important;
+  display:none!important;
+}
+html.share-coupon-open dialog.share-coupon,
+body.share-coupon-open dialog.share-coupon{
+  inset:env(safe-area-inset-top) 0 0 0!important;
+  height:auto!important;
+  min-height:0!important;
+  background:#f5f4f0!important;
+  box-shadow:none!important;
+}
+html.share-coupon-open dialog.share-coupon::backdrop{
+  background:#171717!important;
+}
+html.share-coupon-open .share-layout{
+  max-width:393px!important;
+  padding:64px 16px max(12px,env(safe-area-inset-bottom))!important;
+  background:#f5f4f0!important;
+}
+html.share-coupon-open .share-close{
+  top:16px!important;
+}
