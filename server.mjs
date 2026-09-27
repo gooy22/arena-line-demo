@@ -1673,6 +1673,7 @@ server.listen(port,'0.0.0.0',()=>{
       const betText=await request('/v73/bet-view.mjs');
       const shareText=await request('/v73/share-coupon.mjs');
       const i18nText=await request('/v73/i18n.mjs');
+      const themeText=await request('/v73/theme.css');
       await request('/v73/feed.mjs');
       await request('/v73/event-view.mjs');
       const failures=[];
@@ -1695,7 +1696,6 @@ server.listen(port,'0.0.0.0',()=>{
       if(!shareText.includes("share-coupon-open") || !themeText.includes("background:#f5f4f0!important") || !themeText.includes("box-shadow:0 100vh 0 100vh #f5f4f0")) failures.push('share:pwa-background-cover-missing');
       if(!betText.includes("replace(/\\B(?=(\\d{3})+(?!\\d))/g, ' ')") || !betText.includes("${major}.${minor} €")) failures.push('bet:bad-money-format');
       if(!i18nText.includes('Редагувати') || !i18nText.includes('Edit')) failures.push('i18n:incomplete');
-      const themeText=await request('/v73/theme.css');
       if(!themeText.includes('--arena-pwa-bottom-safe:min(env(safe-area-inset-bottom),6px)')) failures.push('theme:no-compact-pwa-safe-area');
       if(!themeText.includes('.bet-detail-page') || !themeText.includes('grid-template-rows:auto minmax(0,1fr) auto') || !themeText.includes('.bet-detail-scroll')) failures.push('theme:bet-detail-layout-missing');
       if(/\]\s*\n\s*\[/.test(i18nText)) failures.push('i18n:malformed-row-boundary');
