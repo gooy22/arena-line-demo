@@ -144,7 +144,9 @@ function compactEvent(row) {
       name:String(team.name || ''),
       icon:team.icon?.url ? {url:String(team.icon.url)} : undefined
     })),
-    scoreboard:event.scoreboard || null
+    scoreboard:event.scoreboard || null,
+    categoryIconUrl:String(event.categoryIconUrl || event?.categoryIcon?.url || event?.subsportIcon?.url || ''),
+    tournamentIconUrl:String(event.tournamentIconUrl || event?.tournamentIcon?.url || '')
   };
 }
 
@@ -642,8 +644,17 @@ export class LiveFeed {
     if (this.eventsReady) {
       const bucketCounts = {};
       for (const [name,map] of this.eventMaps) bucketCounts[name] = map.size;
+      const samples=[...this.events.values()].slice(0,12).map(row=>({
+        id:String(row.value?.id || ''),
+        category:String(row.value?.categoryName || ''),
+        tournament:String(row.value?.tournamentName || ''),
+        providerSport:String(row.value?.providerSport || row.value?.sport || ''),
+        categoryIconUrl:String(row.value?.categoryIconUrl || ''),
+        tournamentIconUrl:String(row.value?.tournamentIconUrl || ''),
+        teams:(row.value?.competitors || []).slice(0,2).map(team=>({name:team.name,icon:team?.icon?.url || ''}))
+      }));
       this.report('events-ready', {
-        message:JSON.stringify({total:this.events.size,bucketCounts}).slice(0,2600)
+        message:JSON.stringify({total:this.events.size,bucketCounts,samples}).slice(0,3000)
       });
     }
   }
