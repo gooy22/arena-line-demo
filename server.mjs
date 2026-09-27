@@ -181,8 +181,8 @@ function patchSportsModule(source) {
     };
     const mark = fallbackMarks[event.categoryName];
     const fallbackGraphic = mark
-      ? `<span class="discipline-monogram discipline-${mark[1]}">${mark[0]}</span>`
-      : `<span class="discipline-monogram">🎮</span>`;
+      ? '<span class="discipline-monogram discipline-' + mark[1] + '">' + mark[0] + '</span>'
+      : '<span class="discipline-monogram">🎮</span>';
 
     const tournamentId = String(event.tournamentId || '');
     const providerPrimary = event.categoryIconUrl || event.tournamentIconUrl ||
