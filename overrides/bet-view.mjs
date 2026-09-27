@@ -12,7 +12,13 @@ function selectionRow(selection, bet, index) {
   const teams = selection.competitors?.length ? selection.competitors : selection.eventName.split(' - ').map(name => ({ name }));
   const score = result?.score;
   const symbol = state ? `<span class="bet-result result-${esc(state)}">${icon(state === 'won' ? 'check' : state === 'lost' ? 'x' : 'minus')}</span>` : `<span class="bet-sport">${graphic(selection.sport === 'CS' || !games[selection.sport] || ['CSGO','DOTA2','LOL'].includes(selection.subsport) ? 'esports' : games[selection.sport])}</span>`;
-  const periods = result?.periods || [];
+  const rawPeriods = Array.isArray(result?.periods) ? result.periods : [];
+  // Manual result editor used to store the final score twice: once in score and once
+  // as a fake first period. Suppress that legacy duplicate while preserving real periods.
+  const duplicateManualPeriod = result?.manual && rawPeriods.length === 1 && Array.isArray(score) &&
+    Array.isArray(rawPeriods[0]) && score.length >= 2 && rawPeriods[0].length >= 2 &&
+    Number(rawPeriods[0][0]) === Number(score[0]) && Number(rawPeriods[0][1]) === Number(score[1]);
+  const periods = duplicateManualPeriod ? [] : rawPeriods;
   return `<section class="bet-selection"><button class="bet-selection-summary" data-action="bet-event" data-value="${esc(bet.id)}:${index}">${symbol}<span class="bet-selection-label"><span class="meta">${esc(selection.marketName)}</span><strong>${esc(selection.label)}</strong></span><span class="bet-coefficient">${Number(selection.odds.toFixed(2))}</span>${icon('chevron-right')}</button><div class="bet-event-time">${esc(date(selection.startTime ? selection.startTime * 1000 : bet.date))}</div><div class="bet-teams">${periods.length ? `<div class="bet-period-labels"><span></span><span>${periods.map((_,i) => `<small>${i+1}</small>`).join('')}<small></small></span></div>` : ''}${teams.map((team,i) => `<div><span>${esc(team.name)}</span>${score ? `<span class="bet-team-score">${periods.map(period => `<small>${esc(period[i])}</small>`).join('')}<b>${esc(score[i] ?? '')}</b></span>` : ''}</div>`).join('')}</div></section>`;
 }
 
