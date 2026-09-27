@@ -233,11 +233,11 @@ export async function augmentSettlements(events, existing = []) {
   }
 }
 
-export async function completedHistory(teamName, limit = 20) {
+export async function completedHistory(teamName, limit = 20, categoryName = '') {
   const needle = normalize(teamName);
   if (!needle) return [];
 
-  const archive = await finishedArchive([],4);
+  const archive = await finishedArchive(categoryName ? [{categoryName}] : [],4);
   const teams = await teamMapFor(archive);
   const rows = [];
 
