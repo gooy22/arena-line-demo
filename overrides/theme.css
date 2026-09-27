@@ -1098,3 +1098,147 @@ html.share-coupon-open .share-close:active{
   .bet-detail-selections .bet-selection{padding:7px 10px 9px!important}
   .bet-detail-selections .bet-selection-summary{min-height:46px!important;padding:6px 10px!important}
 }
+
+
+/* v82: share screen copied to the supplied reference proportions. */
+html.share-coupon-open,
+body.share-coupon-open{
+  background:#171717!important;
+}
+body.share-coupon-open::before{
+  content:none!important;
+}
+html.share-coupon-open dialog.share-coupon,
+body.share-coupon-open dialog.share-coupon{
+  position:fixed!important;
+  inset:env(safe-area-inset-top) 0 0 0!important;
+  width:100vw!important;
+  max-width:100vw!important;
+  height:auto!important;
+  min-height:0!important;
+  max-height:none!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:#f5f4f0!important;
+  box-shadow:0 -8px 14px rgba(0,0,0,.16)!important;
+  overflow:hidden!important;
+}
+html.share-coupon-open dialog.share-coupon::backdrop{
+  background:#171717!important;
+}
+html.share-coupon-open .share-layout{
+  width:100%!important;
+  max-width:393px!important;
+  height:100%!important;
+  min-height:100%!important;
+  margin:0 auto!important;
+  display:flex!important;
+  flex-direction:column!important;
+  box-sizing:border-box!important;
+  padding:64px 16px max(12px,env(safe-area-inset-bottom))!important;
+  background:#f5f4f0!important;
+}
+html.share-coupon-open .share-spacer{
+  flex:1 1 auto!important;
+  min-height:24px!important;
+}
+html.share-coupon-open .share-close{
+  position:absolute!important;
+  top:16px!important;
+  right:16px!important;
+  width:28px!important;
+  height:28px!important;
+  padding:0!important;
+  margin:0!important;
+  border:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+  background:transparent!important;
+  color:#7b756b!important;
+  z-index:3!important;
+  -webkit-tap-highlight-color:transparent!important;
+}
+html.share-coupon-open .share-close svg{
+  width:24px!important;
+  height:24px!important;
+}
+html.share-coupon-open .share-close:focus,
+html.share-coupon-open .share-close:focus-visible,
+html.share-coupon-open .share-close:active{
+  outline:0!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+html.share-coupon-open .share-ticket{
+  width:100%!important;
+  margin:0!important;
+  padding:0!important;
+  background:transparent!important;
+}
+html.share-coupon-open .share-ticket canvas{
+  display:block!important;
+  width:100%!important;
+  height:auto!important;
+  margin:0!important;
+}
+html.share-coupon-open .share-amount{
+  width:auto!important;
+  margin:20px 16px 16px!important;
+  gap:12px!important;
+  font-size:16px!important;
+  line-height:24px!important;
+  color:#4b4944!important;
+}
+html.share-coupon-open .share-switch{
+  width:36px!important;
+  height:20px!important;
+  padding:3px!important;
+  border-radius:20px!important;
+}
+html.share-coupon-open .share-switch:after{
+  width:14px!important;
+  height:14px!important;
+}
+html.share-coupon-open .share-amount input:checked+.share-switch:after{
+  transform:translateX(16px)!important;
+}
+html.share-coupon-open .share-actions{
+  gap:32px!important;
+  margin-top:4px!important;
+  transform:none!important;
+}
+html.share-coupon-open .share-actions button{
+  min-width:84px!important;
+  padding:0!important;
+  gap:8px!important;
+  font-size:14px!important;
+  line-height:18px!important;
+}
+html.share-coupon-open .share-actions button>span{
+  width:48px!important;
+  height:48px!important;
+  background:#fff!important;
+}
+html.share-coupon-open .share-actions svg{
+  width:22px!important;
+  height:22px!important;
+}
+html.share-coupon-open .share-error{
+  margin:12px 0 0!important;
+}
+@media(display-mode:standalone){
+  html.share-coupon-open,
+  body.share-coupon-open{
+    background:#171717!important;
+  }
+}
+@media(min-width:768px){
+  html.share-coupon-open .share-layout{
+    padding-bottom:32px!important;
+  }
+  html.share-coupon-open .share-close{
+    right:24px!important;
+  }
+}
