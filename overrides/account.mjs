@@ -280,6 +280,7 @@ export class Accounts {
     const totals = betTotals(nextStake, selections, bet.type, bet.systemSize);
     const status = String(changes.status || bet.status || 'open');
     if (!['open','won','lost','void','cashout'].includes(status)) throw new Error('Некорректный статус');
+    let effectiveStatus = status;
 
     let payout = 0;
     if (status === 'won') payout = totals.potential;
