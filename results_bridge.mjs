@@ -239,14 +239,26 @@ export async function completedHistory(teamName, limit = 20) {
 }
 
 export async function probeResultsSource() {
-  const data = await cachedJSON(bo3URL('matches',{
-    'page[limit]':'100',
-    sort:'-start_date',
-    'filter[matches.status][eq]':'finished'
-  }),15_000);
+  const probes=[];
+  for (let id=1; id<=16; id++) {
+    try {
+      const data=await cachedJSON(bo3URL('matches',{
+        'page[limit]':'3',
+        sort:'-start_date',
+        'filter[matches.status][eq]':'finished',
+        'filter[matches.discipline_id][eq]':String(id)
+      }),15_000);
+      if (Array.isArray(data?.results) && data.results.length) {
+        probes.push({
+          id,
+          count:data.results.length,
+          slugs:data.results.slice(0,2).map(row=>row.slug)
+        });
+      }
+    } catch {}
+  }
   return {
-    ok:Array.isArray(data?.results),
-    count:Array.isArray(data?.results)?data.results.length:0,
-    disciplines:[...new Set((data?.results || []).map(row => row.discipline_id).filter(v => v != null))]
+    ok:probes.length>0,
+    disciplines:probes
   };
 }
