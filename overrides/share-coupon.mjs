@@ -47,7 +47,6 @@ function sportImage(selection) {
 
 export function couponData(bet, showAmount) {
   const status = bet.status;
-  const openExpress = bet?.type === 'express' && status === 'open';
   const payoutLabel=t(status === 'open' ? 'Можлива виплата' : status === 'cashout' ? 'Виведено' : 'Виплата');
   return {
     date:date(bet.date),
@@ -56,7 +55,7 @@ export function couponData(bet, showAmount) {
       title:`${t(selection.marketName)} ${t(selection.label)}`,
       detail:`${date(selection.startTime ? selection.startTime * 1000 : bet.date)} ${selection.eventName}`,
       odds:String(Number(selection.odds.toFixed(2))),
-      status:openExpress ? null : selection.settlement?.status,
+      status:selection.settlement?.status,
       selection,
     })),
     showAmount,
