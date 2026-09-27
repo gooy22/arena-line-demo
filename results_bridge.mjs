@@ -1,4 +1,13 @@
 const CACHE_TTL = 60_000;
+const BO3_DISCIPLINES = {
+  'Counter-Strike':1,
+  'Valorant':2,
+  'League of Legends':3,
+  'Dota 2':4,
+  'Rainbow Six':7,
+  'Mobile Legends':8
+};
+const BO3_DISCIPLINE_IDS = [...new Set(Object.values(BO3_DISCIPLINES))];
 const cache = new Map();
 const cooldown = new Map();
 
@@ -68,25 +77,44 @@ const bo3URL = (path, query = {}) => {
   return 'https://api.bo3.gg/api/v1/' + path + (qs.size ? '?' + qs : '');
 };
 
+function eventDisciplineId(event) {
+  const text=[event?.categoryName,event?.subsport,event?.eventName,event?.name].filter(Boolean).join(' ');
+  if (/counter[- ]?strike|\bcs2\b|cs:go/i.test(text)) return BO3_DISCIPLINES['Counter-Strike'];
+  if (/valorant/i.test(text)) return BO3_DISCIPLINES['Valorant'];
+  if (/league\s*of\s*legends|\blol\b/i.test(text)) return BO3_DISCIPLINES['League of Legends'];
+  if (/dota/i.test(text)) return BO3_DISCIPLINES['Dota 2'];
+  if (/rainbow\s*six/i.test(text)) return BO3_DISCIPLINES['Rainbow Six'];
+  if (/mobile\s*legends|\bmlbb\b/i.test(text)) return BO3_DISCIPLINES['Mobile Legends'];
+  return null;
+}
+
 async function finishedArchive(events = [], pages = 4) {
   const all = [];
   const times = events.map(eventTime).filter(Number.isFinite);
   const oldest = times.length ? Math.min(...times) - 2 * 3600_000 : Date.now() - 14 * 24 * 3600_000;
+  const requested = [...new Set(events.map(eventDisciplineId).filter(Boolean))];
+  const disciplines = requested.length ? requested : BO3_DISCIPLINE_IDS;
 
-  for (let page = 0; page < pages; page++) {
-    const data = await cachedJSON(bo3URL('matches', {
-      'page[limit]':'100',
-      'page[offset]':String(page * 100),
-      sort:'-start_date',
-      'filter[matches.status][eq]':'finished'
-    }));
-    if (!Array.isArray(data?.results)) throw new Error('invalid BO3 archive');
-    all.push(...data.results);
-    if (data.results.length < 100) break;
-    const last = data.results.at(-1);
-    if (last?.start_date && Date.parse(last.start_date) < oldest) break;
-  }
-  return all;
+  await Promise.all(disciplines.map(async disciplineId => {
+    for (let page = 0; page < pages; page++) {
+      const data = await cachedJSON(bo3URL('matches', {
+        'page[limit]':'100',
+        'page[offset]':String(page * 100),
+        sort:'-start_date',
+        'filter[matches.status][eq]':'finished',
+        'filter[matches.discipline_id][eq]':String(disciplineId)
+      }));
+      if (!Array.isArray(data?.results)) throw new Error('invalid BO3 archive');
+      all.push(...data.results);
+      if (data.results.length < 100) break;
+      const last = data.results.at(-1);
+      if (last?.start_date && Date.parse(last.start_date) < oldest) break;
+    }
+  }));
+
+  const unique=new Map();
+  for (const row of all) unique.set(String(row.id || row.slug),row);
+  return [...unique.values()].sort((a,b)=>Date.parse(b.start_date)-Date.parse(a.start_date));
 }
 
 async function teamMapFor(matches) {
@@ -168,6 +196,8 @@ export async function augmentSettlements(events, existing = []) {
     const candidates = archive.filter(match => pending.some(event => {
       const when = eventTime(event);
       const start = Date.parse(match.start_date);
+      const expected = eventDisciplineId(event);
+      if (expected && Number(match.discipline_id) !== expected) return false;
       return Number.isFinite(when) && Number.isFinite(start) && Math.abs(when-start) <= 2*3600_000;
     }));
     const teams = await teamMapFor(candidates);
