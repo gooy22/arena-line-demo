@@ -264,3 +264,21 @@ dialog#dialog.edit-bet-dialog,
     padding-bottom:var(--arena-pwa-bottom-safe)!important;
   }
 }
+
+
+/* v70: original-style compact express/system history card. */
+.bet-record-multi .bet-multi-summary{
+  margin:10px 0 12px;
+}
+.bet-record-multi .bet-multi-summary .bet-selection-label>strong{
+  font-size:16px;
+  line-height:20px;
+  font-weight:400;
+}
+.bet-record-multi .bet-payment{
+  border-top:0!important;
+  padding-top:0!important;
+}
+.bet-record-multi .bet-result.result-open{
+  background:#969186;
+}
