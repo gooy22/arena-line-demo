@@ -400,6 +400,14 @@ document.addEventListener('click', async event => {
     }
   }
   else if (action === 'bet-tab') { betTab = value; renderProfile(); }
+  else if (action === 'toggle-multi-bet') {
+    const article = control.closest('.bet-record-multi');
+    const details = article?.querySelector('.bet-multi-details');
+    const expanded = control.getAttribute('aria-expanded') === 'true';
+    if (details) details.hidden = expanded;
+    control.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+    article?.classList.toggle('expanded', !expanded);
+  }
   else if (action === 'bet-event') {
     const split = value.lastIndexOf(':'), bet = getAccount()?.bets.find(bet => bet.id === value.slice(0,split));
     const selection = bet?.selections[Number(value.slice(split+1))];
