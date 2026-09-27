@@ -24,6 +24,7 @@ const themeCssModule = await readFile(new URL('./overrides/theme.css', import.me
 const serviceWorkerModule = await readFile(new URL('./overrides/sw.js', import.meta.url), 'utf8');
 const manifestModule = await readFile(new URL('./overrides/manifest.webmanifest', import.meta.url), 'utf8');
 const uiModule = await readFile(new URL('./overrides/ui.mjs', import.meta.url), 'utf8');
+const i18nModule = await readFile(new URL('./overrides/i18n.mjs', import.meta.url), 'utf8');
 
 const syncedEvents = new Map();
 let resultsSource = {ok:null,error:null,disciplines:[]};
@@ -150,16 +151,16 @@ function teamMetaByProviderId(id) {
 
 function patchIndexHtml(source) {
   let html=String(source || '');
-  html=html.replace(/\?+v=\d+/g,'?v=60');
+  html=html.replace(/\?+v=\d+/g,'?v=61');
   if (!html.includes('apple-touch-icon')) {
     html=html.replace(
       '<link rel="manifest" href="/manifest.webmanifest">',
       '<link rel="manifest" href="/manifest.webmanifest">\n  <link rel="apple-touch-icon" href="/assets/icons/esports.png">\n  <meta name="apple-mobile-web-app-capable" content="yes">\n  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">'
     );
   }
-  if (!html.includes('arena-editor-hotfix-v60')) {
+  if (!html.includes('arena-editor-hotfix-v61')) {
     html=html.replace('</head>', `
-<style id="arena-editor-hotfix-v60">
+<style id="arena-editor-hotfix-v61">
 dialog#dialog.edit-bet-dialog{
   position:fixed!important;
   top:auto!important;
@@ -1357,6 +1358,7 @@ const server=http.createServer(async (req,res)=>{
     if (url.pathname === '/feed.mjs' && ['GET','HEAD'].includes(method)) return js(res,method,feedModule);
     if (url.pathname === '/team-emblem.mjs' && ['GET','HEAD'].includes(method)) return js(res,method,emblemModule);
     if (url.pathname === '/ui.mjs' && ['GET','HEAD'].includes(method)) return js(res,method,uiModule);
+    if (url.pathname === '/i18n.mjs' && ['GET','HEAD'].includes(method)) return js(res,method,i18nModule);
     if (url.pathname === '/account.mjs' && ['GET','HEAD'].includes(method)) return js(res,method,accountModule);
     if (url.pathname === '/app.js' && ['GET','HEAD'].includes(method)) return js(res,method,appModule);
     if (url.pathname === '/bet-view.mjs' && ['GET','HEAD'].includes(method)) return js(res,method,betViewModule);
