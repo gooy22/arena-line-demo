@@ -214,3 +214,19 @@ dialog#dialog.edit-bet-dialog,
   outline:0!important;
   box-shadow:none!important;
 }
+
+.bet-record-date .bet-status-pill{
+  margin-left:8px;
+  padding:3px 7px;
+  border-radius:999px;
+  font-size:10px;
+  font-weight:700;
+}
+.bet-status-pill.status-won{background:#dff5e8;color:#087847}
+.bet-status-pill.status-lost{background:#f8e1df;color:#a22c27}
+.bet-status-pill.status-cashout{background:#e5eef5;color:#35627d}
+.bet-status-pill.status-void{background:#ebe9e4;color:#6c675e}
+:root[data-theme=dark] .bet-status-pill.status-won{background:#153d2d;color:#7bdcad}
+:root[data-theme=dark] .bet-status-pill.status-lost{background:#472522;color:#ff9a93}
+:root[data-theme=dark] .bet-status-pill.status-cashout{background:#203642;color:#8fc8e8}
+:root[data-theme=dark] .bet-status-pill.status-void{background:#34312d;color:#c5c0b6}
