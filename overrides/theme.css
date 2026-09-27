@@ -239,3 +239,28 @@ dialog#dialog.edit-bet-dialog,
 
 /* Bet history: cash-out uses the same green return marker as the original UI. */
 .bet-result.result-cashout{background:#009e69}
+
+
+/* v68: compact iPhone standalone bottom navigation.
+   iOS reports ~34px safe-area at the bottom; using all of it lifted the whole
+   navigation row too far. Keep only a small guard while the black surface
+   itself still reaches the physical bottom edge. */
+@media (display-mode:standalone){
+  :root{--arena-pwa-bottom-safe:min(env(safe-area-inset-bottom),10px)}
+  .sports-nav{
+    padding-bottom:var(--arena-pwa-bottom-safe)!important;
+    min-height:calc(var(--sports-footer) + var(--arena-pwa-bottom-safe))!important;
+  }
+  .profile-nav{
+    padding-bottom:var(--arena-pwa-bottom-safe)!important;
+  }
+  .profile-content{
+    bottom:calc(var(--nav) + var(--arena-pwa-bottom-safe))!important;
+  }
+  .slip-mini{
+    bottom:calc(var(--sports-footer) + var(--arena-pwa-bottom-safe) + 6px)!important;
+  }
+  dialog.betslip{
+    padding-bottom:var(--arena-pwa-bottom-safe)!important;
+  }
+}
