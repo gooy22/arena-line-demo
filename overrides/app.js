@@ -81,7 +81,13 @@ function bets() {
 }
 function payments() {
   if (!account.payments.length) return empty('history', 'Операций пока нет');
-  return account.payments.map(payment => `<div class="payment"><div><strong>${payment.type === 'bet-payout' ? 'Виплата за ставкою' : payment.type === 'deposit' ? 'Пополнение' : 'Вывод'}</strong><div class="meta">${esc(new Date(payment.date).toLocaleString(getLocale()))}</div></div><div class="${payment.type !== 'withdraw' ? 'positive' : ''}">${payment.type !== 'withdraw' ? '+' : '-'}${money(payment.amount)} €</div></div>`).join('');
+  return account.payments.map(payment => {
+    const label = payment.type === 'bet-payout' ? 'Виплата за ставкою' :
+      payment.type === 'bet-cashout' ? 'Cash-out' :
+      payment.type === 'deposit' ? 'Пополнение' : 'Вывод';
+    const positive = payment.type !== 'withdraw';
+    return `<div class="payment"><div><strong>${label}</strong><div class="meta">${esc(new Date(payment.date).toLocaleString(getLocale()))}</div></div><div class="${positive ? 'positive' : ''}">${positive ? '+' : '-'}${money(payment.amount)} €</div></div>`;
+  }).join('');
 }
 function profileMenu() {
   return profileRows();
@@ -441,6 +447,13 @@ window.addEventListener('focus', () => {
     if (!$('#profile-layer').hidden) renderProfile();
   }).catch(() => {});
 });
+const profileSyncTimer = setInterval(() => {
+  if (document.visibilityState !== 'visible' || !getAccount()) return;
+  accounts.syncCurrentFromServer().then(() => {
+    syncFeedControls();
+    if (!$('#profile-layer').hidden) renderProfile();
+  }).catch(() => {});
+}, 5000);
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') accounts.syncCurrentFromServer().then(syncFeedControls).catch(() => {});
 });
