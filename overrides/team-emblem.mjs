@@ -51,10 +51,10 @@ export function teamEmblem(team) {
   const primarySource = ordered[0] || '';
   const fallbackSource = ordered[1] || '';
   const primary = globalThis.window?.__arenaStableLogoSrc ? window.__arenaStableLogoSrc(primarySource) : primarySource;
-  const fallback = globalThis.window?.__arenaStableLogoSrc ? window.__arenaStableLogoSrc(fallbackSource) : fallbackSource;
+  const fallbacks = fallbackSource ? [fallbackSource] : [];
   const image = primary
-    ? `<img class="team-logo" src="${escape(primary)}" data-arena-source="${escape(primarySource)}" data-fallback-src="${escape(fallback)}" data-fallback-source="${escape(fallbackSource)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onload="window.__arenaNormalizeLogo&&window.__arenaNormalizeLogo(this)" onerror="const current=this.dataset.arenaSource||'';if(window.__arenaLogoRetry&&current){window.__arenaLogoRetry.set(current,Date.now()+(current.includes('prefer=bo3')?5000:600000));}const f=this.dataset.fallbackSrc;if(f&&this.src!==f){this.src=f;this.dataset.arenaSource=this.dataset.fallbackSource||f;this.dataset.fallbackSrc='';}else{this.hidden=true;this.nextElementSibling.hidden=false;}">`
+    ? `<img class="team-logo" src="${escape(primary)}" data-arena-source="${escape(primarySource)}" data-fallbacks="${escape(JSON.stringify(fallbacks))}" data-fallback-index="0" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onload="window.__arenaNormalizeLogo&&window.__arenaNormalizeLogo(this)" onerror="window.__arenaFailLogo?window.__arenaFailLogo(this):(this.hidden=true)">`
     : '';
 
-  return `<span class="team-emblem-picture">${image}<span class="team-emblem-fallback" ${primary ? 'hidden' : ''} title="${escape(team?.name)}">${escape(initials)}</span></span>`;
+  return `<span class="team-emblem-picture">${image}<span class="team-emblem-fallback" title="${escape(team?.name)}">${escape(initials)}</span></span>`;
 }
