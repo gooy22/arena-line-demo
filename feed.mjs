@@ -671,6 +671,7 @@ export class LiveFeed {
   }
 
   setView(sport,stage) {
+    const previousSport=this.sport;
     if (sport === this.sport && stage === this.stage) {
       if (this.ready) this.subscribeEvents(true);
       return;
@@ -689,7 +690,7 @@ export class LiveFeed {
     this.state = this.ready ? 'connected' : 'connecting';
 
     if (this.ready) {
-      if (this.sport === 'CS' && sport === 'CS') {
+      if (previousSport === 'CS' && sport === 'CS') {
         this.marketSignature='';
         this.scheduleMarkets();
       } else {
