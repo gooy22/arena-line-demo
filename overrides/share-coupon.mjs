@@ -126,7 +126,7 @@ async function drawLegacyCoupon(canvas, bet, showAmount) {
 }
 
 export async function drawCoupon(canvas, bet, showAmount) {
-  if (bet?.type !== 'single') return drawLegacyCoupon(canvas,bet,showAmount);
+  if (bet?.type === 'express') return drawLegacyCoupon(canvas,bet,showAmount);
   await document.fonts?.ready;
   const model = couponData(bet,showAmount), images = await Promise.all(model.rows.map(row => sportImage(row.selection)));
   const width = 361, scale = 3, context = canvas.getContext('2d');
@@ -196,9 +196,8 @@ export async function drawCoupon(canvas, bet, showAmount) {
 export function openShareCoupon(bet, showToast) {
   let dialog=document.getElementById('share-coupon');
   if (!dialog) {dialog=document.createElement('dialog');dialog.id='share-coupon';dialog.className='share-coupon';document.body.append(dialog);}
-  const legacyNonSingle = bet?.type !== 'single';
-  dialog.classList.toggle('share-nonsingle-legacy',legacyNonSingle);
-  dialog.classList.toggle('share-reference-single',!legacyNonSingle);
+  const legacyExpress = bet?.type === 'express';
+  dialog.classList.toggle('share-express-legacy',legacyExpress);
   dialog.setAttribute('aria-label',t('Поділитися ставкою'));
   dialog.innerHTML=`<button class="share-close" aria-label="Закрити">${icon('x')}</button><div class="share-layout"><div class="share-spacer"></div><div class="share-ticket"><canvas role="img"></canvas><p class="share-error" role="status">Готуємо купон…</p></div><label class="share-amount"><span>${t('Показати суму ставки:')}</span><input type="checkbox" role="switch" checked aria-label="${t('Показати суму ставки:')}"><span class="share-switch" aria-hidden="true"></span></label><div class="share-actions">${bet.status==='open'?`<button class="share-send" disabled><span>${icon('share')}</span>${t('Поділитися')}<br>${t('ставкою')}</button>`:''}<button class="share-save" disabled><span>${icon('images')}</span>${t('Зберегти')}<br>${t('зображення')}</button></div></div>`;
   let file=null, revision=0;
@@ -220,9 +219,9 @@ export function openShareCoupon(bet, showToast) {
     document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
   }
   const releaseShareBackdrop=()=>{
-    document.documentElement.classList.remove('share-coupon-open','share-nonsingle-legacy','share-reference-single');
-    document.body.classList.remove('share-coupon-open','share-nonsingle-legacy','share-reference-single');
-    dialog.classList.remove('share-nonsingle-legacy','share-reference-single');
+    document.documentElement.classList.remove('share-coupon-open','share-express-legacy');
+    document.body.classList.remove('share-coupon-open','share-express-legacy');
+    dialog.classList.remove('share-express-legacy');
   };
   dialog.querySelector('.share-close').onclick=()=>dialog.close();
   dialog.addEventListener('close',releaseShareBackdrop,{once:true});
@@ -237,9 +236,7 @@ export function openShareCoupon(bet, showToast) {
   };
   document.documentElement.classList.add('share-coupon-open');
   document.body.classList.add('share-coupon-open');
-  document.documentElement.classList.toggle('share-nonsingle-legacy',legacyNonSingle);
-  document.body.classList.toggle('share-nonsingle-legacy',legacyNonSingle);
-  document.documentElement.classList.toggle('share-reference-single',!legacyNonSingle);
-  document.body.classList.toggle('share-reference-single',!legacyNonSingle);
+  document.documentElement.classList.toggle('share-express-legacy',legacyExpress);
+  document.body.classList.toggle('share-express-legacy',legacyExpress);
   if(!dialog.open)dialog.showModal();window.lucide?.createIcons();render();
 }
