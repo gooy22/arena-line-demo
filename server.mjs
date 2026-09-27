@@ -1696,7 +1696,7 @@ server.listen(port,'0.0.0.0',()=>{
       if(!betText.includes("const multi = bet.type === 'express' || bet.type === 'system'")) failures.push('bet:multi-detection-missing');
       if(!betText.includes('data-action="open-bet-detail"') || !betText.includes('export function betDetail')) failures.push('bet:detail-page-missing');
       if(!appText.includes("action === 'open-bet-detail'") || !appText.includes("profileView = 'bet-detail'")) failures.push('app:detail-navigation-missing');
-      if(!shareText.includes("esports-exact-20260927.png") || !shareText.includes("stakeLabel:showAmount ? t('Сума ставки') : t('Коефіцієнт')")) failures.push('share:original-behavior-missing');
+      if(!shareText.includes("esports-controller-clean-v77.png") || !shareText.includes("stakeLabel:showAmount ? t('Сума ставки') : t('Коефіцієнт')")) failures.push('share:original-behavior-missing');
       if(!shareText.includes("share-coupon-open") || !themeText.includes("html.share-coupon-open") || !themeText.includes("background:#171716!important")) failures.push('share:pwa-background-cover-missing');
       if(!betText.includes("replace(/\\B(?=(\\d{3})+(?!\\d))/g, ' ')") || !betText.includes("${major}.${minor} €")) failures.push('bet:bad-money-format');
       if(!i18nText.includes('Редагувати') || !i18nText.includes('Edit')) failures.push('i18n:incomplete');
@@ -1706,7 +1706,7 @@ server.listen(port,'0.0.0.0',()=>{
       if(!themeText.includes('.share-close:focus-visible') || !themeText.includes('.gamepad-graphic') || !themeText.includes('width:84%!important')) failures.push('theme:share-focus-or-emblem-normalization-missing');
       if(!shareText.includes('cropRatio') || !shareText.includes('font(12.5)')) failures.push('share:scale-or-gamepad-crop-missing');
       const swText=await request('/sw.js');
-      if(!swText.includes("arena-line-sync-v77") || !swText.includes("esports-exact-20260927.png")) failures.push('sw:v75-refresh-missing');
+      if(!swText.includes("arena-line-sync-v77") || !swText.includes("esports-controller-clean-v77.png")) failures.push('sw:v77-refresh-missing');
       if(!themeText.includes('body.share-coupon-open::before') || !themeText.includes('height:env(safe-area-inset-top)')) failures.push('theme:share-top-strip-missing');
       if(!themeText.includes('v76: compact accumulator detail rows') || !themeText.includes('min-height:56px!important')) failures.push('theme:compact-accumulator-missing');
       if(!themeText.includes('v77: clean transparent esports controller') || !themeText.includes('clip-path:none!important')) failures.push('theme:clean-controller-missing');
