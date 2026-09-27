@@ -148,6 +148,84 @@ function compactEvent(row) {
   };
 }
 
+
+const ESPORTS_RE = /(?:кібер|кибер|esport|cyber|counter[- ]?strike|cs2|cs:go|dota|valorant|league\s*of\s*legends|\blol\b|starcraft|overwatch|rainbow\s*six|rocket\s*league|efootball|esportsbattle)/i;
+
+function flatStrings(value, depth = 0, out = []) {
+  if (depth > 3 || value == null) return out;
+  if (typeof value === 'string' || typeof value === 'number') {
+    out.push(String(value));
+    return out;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value.slice(0,40)) flatStrings(item, depth + 1, out);
+    return out;
+  }
+  if (typeof value === 'object') {
+    for (const [key, item] of Object.entries(value).slice(0,60)) {
+      out.push(String(key));
+      flatStrings(item, depth + 1, out);
+    }
+  }
+  return out;
+}
+
+function sportRowText(row) {
+  return [...flatStrings(row?.key), ...flatStrings(row?.value)].join(' ');
+}
+
+function sportCode(row) {
+  const candidates = [
+    row?.key,
+    row?.value?.code,
+    row?.value?.sport,
+    row?.value?.sportCode,
+    row?.value?.id,
+    row?.value?.key
+  ];
+  for (const candidate of candidates) {
+    if ((typeof candidate === 'string' || typeof candidate === 'number') && String(candidate).trim()) {
+      return String(candidate).trim();
+    }
+  }
+  return '';
+}
+
+function inferDiscipline(event) {
+  const text = [event?.categoryName,event?.subsport,event?.tournamentName,event?.name].filter(Boolean).join(' ');
+  if (/dota/i.test(text)) return 'Dota 2';
+  if (/valorant/i.test(text)) return 'Valorant';
+  if (/league\s*of\s*legends|\blol\b/i.test(text)) return 'League of Legends';
+  if (/counter[- ]?strike|cs2|cs:go/i.test(text)) return 'Counter-Strike';
+  if (/starcraft/i.test(text)) return 'StarCraft';
+  if (/overwatch/i.test(text)) return 'Overwatch';
+  if (/rainbow\s*six/i.test(text)) return 'Rainbow Six';
+  if (/rocket\s*league/i.test(text)) return 'Rocket League';
+  if (/efootball|esportsbattle|кіберфутбол|киберфутбол/i.test(text)) return 'Кіберфутбол';
+  return event?.categoryName || event?.subsport || 'Кіберспорт';
+}
+
+function normalizeEsportsRow(row) {
+  if (!row?.value) return row;
+  const event = row.value;
+  return {
+    ...row,
+    value:{
+      ...event,
+      providerSport:event.sport,
+      sport:'CS',
+      categoryName:inferDiscipline(event),
+      subsport:inferDiscipline(event)
+    }
+  };
+}
+
+function looksEsportsEvent(event) {
+  if (!event) return false;
+  if (ESPORTS_RE.test([event.categoryName,event.subsport,event.tournamentName,event.name].filter(Boolean).join(' '))) return true;
+  return String(event.sport || '').toUpperCase() === 'CS';
+}
+
 export class LiveFeed {
   constructor({
     onChange = () => {},
@@ -160,9 +238,7 @@ export class LiveFeed {
     this.sport = 'CS';
     this.stage = 'live';
     this.range = { fromInHours:0, toInHours:24 };
-    try {
-      if (localStorage.getItem('arena-default-stage') === 'prematch') this.stage = 'prematch';
-    } catch {}
+    try { if (localStorage.getItem('arena-default-stage') === 'prematch') this.stage = 'prematch'; } catch {}
 
     this.state = 'connecting';
     this.error = '';
@@ -174,6 +250,7 @@ export class LiveFeed {
 
     this.selectedIds = [];
     this.subscriptions = new Map();
+    this.eventMaps = new Map();
     this.marketMaps = new Map();
     this.viewCache = new Map();
 
@@ -182,10 +259,12 @@ export class LiveFeed {
     this.endpointIndex = 0;
     this.endpointAttempts = 0;
     this.ready = false;
+    this.sportsReady = false;
     this.eventsReady = false;
     this.marketsReady = false;
     this.lastMessage = 0;
     this.stopped = false;
+    this.eventBucketSignature = '';
     this.marketSignature = '';
     this.syncRevision = 0;
   }
@@ -202,10 +281,7 @@ export class LiveFeed {
 
   saveView() {
     if (!this.events.size) return;
-    this.viewCache.set(this.viewKey(), {
-      at:Date.now(),
-      events:new Map(this.events)
-    });
+    this.viewCache.set(this.viewKey(), {at:Date.now(), events:new Map(this.events)});
     while (this.viewCache.size > 12) this.viewCache.delete(this.viewCache.keys().next().value);
   }
 
@@ -247,6 +323,7 @@ export class LiveFeed {
     this.stopped = false;
     clearTimeout(this.retry);
     clearTimeout(this.timeout);
+    clearTimeout(this.catalogTimer);
     clearInterval(this.heartbeat);
     this.state = this.events.size ? 'offline' : 'connecting';
     this.error = '';
@@ -259,15 +336,19 @@ export class LiveFeed {
     if (this.stopped || !this.endpoints.length) return;
     clearTimeout(this.retry);
     clearTimeout(this.timeout);
+    clearTimeout(this.catalogTimer);
     clearInterval(this.heartbeat);
 
     this.endpointIndex = ((index % this.endpoints.length) + this.endpoints.length) % this.endpoints.length;
     const url = this.endpoints[this.endpointIndex];
     this.currentUrl = url;
     this.ready = false;
+    this.sportsReady = false;
     this.subscriptions.clear();
+    this.eventMaps.clear();
     this.marketMaps.clear();
     this.marketsReady = false;
+    this.eventBucketSignature = '';
     this.marketSignature = '';
 
     const socket = this.socket = new this.WebSocket(url);
@@ -282,7 +363,7 @@ export class LiveFeed {
     socket.onopen = () => {
       if (socket !== this.socket) return;
       opened = true;
-      socket.send(JSON.stringify({ protocol:'json', version:1 }) + RECORD_END);
+      socket.send(JSON.stringify({protocol:'json',version:1}) + RECORD_END);
     };
 
     socket.onmessage = ({data}) => {
@@ -308,12 +389,12 @@ export class LiveFeed {
     socket.onclose = event => {
       if (socket !== this.socket) return;
       clearTimeout(this.timeout);
+      clearTimeout(this.catalogTimer);
       clearInterval(this.heartbeat);
       const hadReady = this.ready;
       this.ready = false;
       this.state = this.events.size ? 'offline' : 'connecting';
       this.notify();
-
       if (this.stopped) return;
 
       this.report('closed', {
@@ -336,9 +417,7 @@ export class LiveFeed {
   }
 
   send(message) {
-    if (this.socket?.readyState === 1) {
-      this.socket.send(JSON.stringify(message) + RECORD_END);
-    }
+    if (this.socket?.readyState === 1) this.socket.send(JSON.stringify(message) + RECORD_END);
   }
 
   message(message) {
@@ -368,8 +447,14 @@ export class LiveFeed {
       }, 10_000);
 
       this.subscribe('sports', 'GetSports', [], this.sports);
-      this.subscribeEvents();
       this.subscribeWatched();
+
+      if (this.sport !== 'CS') {
+        this.subscribeEvents(true);
+      } else {
+        this.catalogTimer = setTimeout(() => this.subscribeEvents(true), 1800);
+      }
+
       this.report('connected');
       this.notify();
       return;
@@ -388,9 +473,10 @@ export class LiveFeed {
       subscription.error = String(message.error);
       if (subscription.name.startsWith('markets:')) {
         this.marketsReady = false;
-      } else {
+      } else if (subscription.name.startsWith('events:')) {
+        this.rebuildEvents();
+      } else if (subscription.name !== 'sports') {
         this.error = 'Джерело тимчасово не віддає цей розділ';
-        this.state = 'error';
       }
       this.report('subscription-error', {
         subscription:subscription.name,
@@ -405,12 +491,21 @@ export class LiveFeed {
     applyBatch(subscription.map, message.item);
     if (message.item.isInitialBatch) subscription.initial = true;
 
-    if (subscription.name === 'events') {
-      this.eventsReady = true;
-      this.saveView();
-      this.rebuildTournaments();
-      this.scheduleMarkets();
-      this.scheduleSync();
+    if (subscription.name === 'sports') {
+      this.sportsReady = !!subscription.initial;
+      if (subscription.initial) {
+        clearTimeout(this.catalogTimer);
+        const catalog = [...this.sports.values()].slice(0,40).map(row => ({
+          code:sportCode(row),
+          text:sportRowText(row).slice(0,220)
+        }));
+        this.report('sport-catalog', {
+          message:JSON.stringify(catalog).slice(0,2800)
+        });
+        this.subscribeEvents(true);
+      }
+    } else if (subscription.name.startsWith('events:')) {
+      this.rebuildEvents();
     } else if (subscription.name === 'watched') {
       this.scheduleMarkets();
       this.scheduleSync();
@@ -424,12 +519,12 @@ export class LiveFeed {
   subscribe(name, target, args, map) {
     this.cancel(name);
     const id = String(++this.nextId);
-    this.subscriptions.set(id, {name, map, initial:false, target});
+    this.subscriptions.set(id, {name,map,initial:false,target,error:''});
     this.send({
       type:4,
       invocationId:id,
       target,
-      arguments:[...args, {...CONTEXT, language:getLanguage()}]
+      arguments:[...args, {...CONTEXT,language:getLanguage()}]
     });
     return id;
   }
@@ -437,7 +532,7 @@ export class LiveFeed {
   cancel(name) {
     for (const [id, subscription] of [...this.subscriptions]) {
       if (subscription.name !== name) continue;
-      this.send({type:5, invocationId:id});
+      this.send({type:5,invocationId:id});
       this.subscriptions.delete(id);
     }
   }
@@ -445,26 +540,105 @@ export class LiveFeed {
   cancelPrefix(prefix) {
     for (const [id, subscription] of [...this.subscriptions]) {
       if (!subscription.name.startsWith(prefix)) continue;
-      this.send({type:5, invocationId:id});
+      this.send({type:5,invocationId:id});
       this.subscriptions.delete(id);
     }
   }
 
-  subscribeEvents() {
+  providerSportBuckets() {
+    if (this.sport !== 'CS') return [this.sport];
+
+    const catalog = [...this.sports.values()]
+      .map(row => ({code:sportCode(row),text:sportRowText(row)}))
+      .filter(row => row.code);
+
+    let buckets = catalog
+      .filter(row => ESPORTS_RE.test(row.text))
+      .map(row => row.code);
+
+    buckets = [...new Set(buckets)];
+
+    if (!buckets.length && catalog.length) {
+      // Provider taxonomy changed but did not expose friendly names.
+      // Query the full current catalogue and keep only actual esports events.
+      buckets = [...new Set(catalog.map(row => row.code))].slice(0,32);
+    }
+
+    if (!buckets.length) {
+      buckets = ['CS','ESPORTS','CYBERSPORT','CYBER','DOTA2','VALORANT'];
+    }
+
+    return buckets;
+  }
+
+  subscribeEvents(force = false) {
     if (!this.ready) return;
+
+    const buckets = this.providerSportBuckets();
+    const signature = canonical({
+      stage:this.stage,
+      range:this.stage === 'prematch' ? this.range : null,
+      buckets
+    });
+    if (!force && signature === this.eventBucketSignature) return;
+    this.eventBucketSignature = signature;
+
+    this.cancelPrefix('events:');
+    this.eventMaps.clear();
     this.eventsReady = this.events.size > 0;
+
     const target = this.stage === 'live'
       ? 'GetLiveRichEventsBySport'
       : 'GetRichEventsBySportAndTimeRange';
-    const args = this.stage === 'live'
-      ? [this.sport]
-      : [this.sport, this.range];
-    this.subscribe('events', target, args, this.events);
+
+    buckets.forEach((bucket,index) => {
+      const map = new Map();
+      const name = 'events:' + index + ':' + bucket;
+      this.eventMaps.set(name,map);
+      const args = this.stage === 'live' ? [bucket] : [bucket,this.range];
+      this.subscribe(name,target,args,map);
+    });
+
+    this.report('event-buckets', {
+      message:JSON.stringify(buckets).slice(0,1800)
+    });
   }
 
-  setView(sport, stage) {
+  rebuildEvents() {
+    const combined = new Map();
+
+    for (const map of this.eventMaps.values()) {
+      for (const [id,row] of map) {
+        if (this.sport === 'CS') {
+          if (!looksEsportsEvent(row?.value)) continue;
+          combined.set(String(id),normalizeEsportsRow(row));
+        } else {
+          combined.set(String(id),row);
+        }
+      }
+    }
+
+    this.events = combined;
+    const eventSubs = [...this.subscriptions.values()].filter(s => s.name.startsWith('events:'));
+    this.eventsReady = eventSubs.length > 0 && eventSubs.every(s => s.initial || s.error);
+
+    this.saveView();
+    this.rebuildTournaments();
+    this.scheduleMarkets();
+    this.scheduleSync();
+
+    if (this.eventsReady) {
+      const bucketCounts = {};
+      for (const [name,map] of this.eventMaps) bucketCounts[name] = map.size;
+      this.report('events-ready', {
+        message:JSON.stringify({total:this.events.size,bucketCounts}).slice(0,2600)
+      });
+    }
+  }
+
+  setView(sport,stage) {
     if (sport === this.sport && stage === this.stage) {
-      if (this.ready) this.subscribeEvents();
+      if (this.ready) this.subscribeEvents(true);
       return;
     }
 
@@ -477,9 +651,10 @@ export class LiveFeed {
     this.marketMaps.clear();
     this.marketSignature = '';
     this.marketsReady = false;
+    this.eventBucketSignature = '';
     this.state = this.ready ? 'connected' : 'connecting';
 
-    if (this.ready) this.subscribeEvents();
+    if (this.ready) this.subscribeEvents(true);
     this.notify();
   }
 
@@ -496,19 +671,17 @@ export class LiveFeed {
   subscribeWatched() {
     this.watched.clear();
     this.cancel('watched');
-    if (this.selectedIds.length) {
-      this.subscribe('watched', 'GetRichEventsByIds', [this.selectedIds], this.watched);
-    }
+    if (this.selectedIds.length) this.subscribe('watched','GetRichEventsByIds',[this.selectedIds],this.watched);
   }
 
   scheduleMarkets() {
     clearTimeout(this.marketTimer);
-    this.marketTimer = setTimeout(() => this.subscribeMarkets(), 120);
+    this.marketTimer = setTimeout(() => this.subscribeMarkets(),120);
   }
 
   subscribeMarkets() {
     if (!this.ready) return;
-    const ids = [...new Set([...this.events.keys(), ...this.selectedIds])].sort();
+    const ids = [...new Set([...this.events.keys(),...this.selectedIds])].sort();
     const signature = canonical(ids);
     if (signature === this.marketSignature) return;
     this.marketSignature = signature;
@@ -519,38 +692,36 @@ export class LiveFeed {
     this.marketsReady = ids.length === 0;
 
     const chunks = [];
-    for (let i=0; i<ids.length; i+=MARKET_CHUNK) chunks.push(ids.slice(i, i+MARKET_CHUNK));
+    for (let i=0;i<ids.length;i+=MARKET_CHUNK) chunks.push(ids.slice(i,i+MARKET_CHUNK));
 
-    chunks.forEach((chunk, index) => {
-      const name = `markets:${index}`;
-      const map = new Map();
-      this.marketMaps.set(name, map);
-      this.subscribe(name, 'GetMarketsByEventIds', [chunk, null], map);
+    chunks.forEach((chunk,index) => {
+      const name='markets:'+index;
+      const map=new Map();
+      this.marketMaps.set(name,map);
+      this.subscribe(name,'GetMarketsByEventIds',[chunk,null],map);
     });
 
     if (!chunks.length) this.notify();
   }
 
   rebuildMarkets() {
-    const combined = new Map();
-    for (const map of this.marketMaps.values()) {
-      for (const [id, row] of map) combined.set(id, row);
-    }
-    this.markets = combined;
+    const combined=new Map();
+    for (const map of this.marketMaps.values()) for (const [id,row] of map) combined.set(id,row);
+    this.markets=combined;
 
-    const marketSubs = [...this.subscriptions.values()].filter(s => s.name.startsWith('markets:'));
-    this.marketsReady = marketSubs.length === 0 || marketSubs.every(s => s.initial && !s.error);
+    const marketSubs=[...this.subscriptions.values()].filter(s => s.name.startsWith('markets:'));
+    this.marketsReady=marketSubs.length===0 || marketSubs.every(s => s.initial && !s.error);
   }
 
   rebuildTournaments() {
-    const tournaments = new Map();
+    const tournaments=new Map();
     for (const row of this.events.values()) {
-      const event = row.value;
+      const event=row.value;
       if (!event?.tournamentId) continue;
-      const key = String(event.tournamentId);
-      const old = tournaments.get(key);
+      const key=String(event.tournamentId);
+      const old=tournaments.get(key);
       if (!old) {
-        tournaments.set(key, {
+        tournaments.set(key,{
           id:key,
           name:event.tournamentName || '',
           categoryName:event.categoryName || '',
@@ -559,24 +730,23 @@ export class LiveFeed {
         });
       } else old.eventIds.push(String(event.id));
     }
-    this.tournaments = tournaments;
+    this.tournaments=tournaments;
   }
 
   scheduleSync() {
     clearTimeout(this.syncTimer);
-    this.syncTimer = setTimeout(() => this.pushSync(), 1200);
+    this.syncTimer=setTimeout(() => this.pushSync(),1200);
   }
 
   pushSync() {
-    const rows = [...new Map([...this.events, ...this.watched]).values()]
+    const rows=[...new Map([...this.events,...this.watched]).values()]
       .map(compactEvent)
       .filter(Boolean)
-      .slice(0, MAX_SYNC_EVENTS);
-
+      .slice(0,MAX_SYNC_EVENTS);
     if (!rows.length) return;
-    const revision = ++this.syncRevision;
 
-    fetch('/api/sync/events', {
+    const revision=++this.syncRevision;
+    fetch('/api/sync/events',{
       method:'POST',
       headers:{'content-type':'application/json'},
       body:JSON.stringify({
@@ -593,6 +763,7 @@ export class LiveFeed {
   get fresh() {
     return this.ready &&
       this.state === 'connected' &&
+      this.eventsReady &&
       this.marketsReady &&
       Date.now() - this.lastMessage < 45_000;
   }
@@ -602,30 +773,31 @@ export class LiveFeed {
   }
 
   selections(eventId) {
-    const event = this.event(eventId);
+    const event=this.event(eventId);
     if (!event) return [];
     return [...this.markets.values()]
       .filter(row => String(row.key?.eventId) === String(eventId))
       .sort((a,b) =>
-        Number(a.key?.period || 0) - Number(b.key?.period || 0) ||
-        Number(a.value?.sortOrder || 0) - Number(b.value?.sortOrder || 0))
-      .flatMap(row => marketSelections(row, event));
+        Number(a.key?.period || 0)-Number(b.key?.period || 0) ||
+        Number(a.value?.sortOrder || 0)-Number(b.value?.sortOrder || 0))
+      .flatMap(row => marketSelections(row,event));
   }
 
   quote(id) {
     for (const row of this.markets.values()) {
-      const event = this.event(row.key?.eventId);
+      const event=this.event(row.key?.eventId);
       if (!event) continue;
-      const result = marketSelections(row, event).find(selection => selection.id === id);
+      const result=marketSelections(row,event).find(selection => selection.id === id);
       if (result) return result;
     }
     return null;
   }
 
   close() {
-    this.stopped = true;
+    this.stopped=true;
     clearTimeout(this.retry);
     clearTimeout(this.timeout);
+    clearTimeout(this.catalogTimer);
     clearTimeout(this.marketTimer);
     clearTimeout(this.syncTimer);
     clearInterval(this.heartbeat);
