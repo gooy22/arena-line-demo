@@ -309,10 +309,22 @@ export class Accounts {
       selections[0].odds = odd;
     }
 
+    const selectionEdits = Array.isArray(changes.selectionEdits) ? changes.selectionEdits : null;
+    if (selectionEdits) {
+      selectionEdits.forEach((edit,index) => {
+        if (!edit || !selections[index]) return;
+        if (edit.odds != null) {
+          const odd = Number(edit.odds);
+          if (!Number.isFinite(odd) || odd <= 1 || odd > 10000) throw new Error(`Некорректный коэффициент матча #${index + 1}`);
+          selections[index].odds = odd;
+        }
+      });
+    }
+
     const totals = betTotals(nextStake, selections, bet.type, bet.systemSize);
     const status = String(changes.status || bet.status || 'open');
     if (!['open','won','lost','void','cashout'].includes(status)) throw new Error('Некорректный статус');
-    let effectiveStatus = status;
+    const effectiveStatus = status;
 
     let payout = 0;
     if (status === 'won') payout = totals.potential;
@@ -322,29 +334,90 @@ export class Accounts {
       if (!Number.isSafeInteger(payout) || payout < 0) throw new Error('Некорректная сумма cash-out');
     }
 
-    const winnerIndex = changes.winnerIndex == null || changes.winnerIndex === '' ? null : Number(changes.winnerIndex);
-    const score = [changes.score1, changes.score2].map(value => value === '' || value == null ? null : Number(value));
-    if (score.some(value => value != null && (!Number.isInteger(value) || value < 0 || value > 999))) throw new Error('Некорректный счёт');
+    const makeScore = (a,b,index) => {
+      const score = [a,b].map(value => value === '' || value == null ? null : Number(value));
+      if (score.some(value => value != null && (!Number.isInteger(value) || value < 0 || value > 999))) {
+        throw new Error(`Некорректный счёт матча #${index + 1}`);
+      }
+      return score;
+    };
 
-    if (effectiveStatus === 'open') {
-      for (const selection of selections) delete selection.settlement;
-    } else {
+    if (selectionEdits) {
       selections.forEach((selection,index) => {
-        let selectionStatus = effectiveStatus === 'cashout' ? 'void' : effectiveStatus;
-        if (winnerIndex === 0 || winnerIndex === 1) {
+        const edit = selectionEdits[index];
+        if (!edit) return;
+        const state = String(edit.state || 'open');
+        const score = makeScore(edit.score1,edit.score2,index);
+
+        if (state === 'open' && effectiveStatus === 'open') {
+          delete selection.settlement;
+          return;
+        }
+
+        if (state === 'void') {
+          selection.settlement = {
+            status:'void',
+            manual:true,
+            date:new Date().toISOString(),
+            ...(score.every(value => value != null) ? {score,periods:[]} : {})
+          };
+          return;
+        }
+
+        if (state === 'winner') {
+          const winnerIndex = Number(edit.winnerIndex);
+          if (winnerIndex !== 0 && winnerIndex !== 1) throw new Error(`Оберіть П1 або П2 для матча #${index + 1}`);
           const chosenSide = selection.outcomeType === 0 || /^П1$/i.test(selection.shortLabel || '') ? 0 :
             selection.outcomeType === 3 || /^П2$/i.test(selection.shortLabel || '') ? 1 : null;
+          let selectionStatus;
           if (chosenSide != null) selectionStatus = chosenSide === winnerIndex ? 'won' : 'lost';
+          else selectionStatus = effectiveStatus === 'lost' ? 'lost' : 'won';
+          selection.settlement = {
+            status:selectionStatus,
+            winnerIndex,
+            manual:true,
+            date:new Date().toISOString(),
+            ...(score.every(value => value != null) ? {score,periods:[]} : {})
+          };
+          return;
         }
-        selection.settlement = {
-          status:selectionStatus,
-          manual:true,
-          date:new Date().toISOString(),
-          // A manually entered score is the final score. Do not invent a fake period
-          // containing the same pair, otherwise history renders the result twice.
-          ...(score.every(value => value != null) ? { score, periods:[] } : {})
-        };
+
+        if (state === 'open') {
+          const fallbackStatus = effectiveStatus === 'cashout' ? 'void' : effectiveStatus;
+          selection.settlement = {
+            status:fallbackStatus,
+            manual:true,
+            date:new Date().toISOString(),
+            ...(score.every(value => value != null) ? {score,periods:[]} : {})
+          };
+          return;
+        }
+
+        throw new Error(`Некорректний стан матча #${index + 1}`);
       });
+    } else {
+      const winnerIndex = changes.winnerIndex == null || changes.winnerIndex === '' ? null : Number(changes.winnerIndex);
+      const score = makeScore(changes.score1,changes.score2,0);
+
+      if (effectiveStatus === 'open') {
+        for (const selection of selections) delete selection.settlement;
+      } else {
+        selections.forEach(selection => {
+          let selectionStatus = effectiveStatus === 'cashout' ? 'void' : effectiveStatus;
+          if (winnerIndex === 0 || winnerIndex === 1) {
+            const chosenSide = selection.outcomeType === 0 || /^П1$/i.test(selection.shortLabel || '') ? 0 :
+              selection.outcomeType === 3 || /^П2$/i.test(selection.shortLabel || '') ? 1 : null;
+            if (chosenSide != null) selectionStatus = chosenSide === winnerIndex ? 'won' : 'lost';
+          }
+          selection.settlement = {
+            status:selectionStatus,
+            ...(winnerIndex === 0 || winnerIndex === 1 ? {winnerIndex} : {}),
+            manual:true,
+            date:new Date().toISOString(),
+            ...(score.every(value => value != null) ? { score, periods:[] } : {})
+          };
+        });
+      }
     }
 
     const nextBalance = account.balance + oldCost - totals.cost + payout - oldPayout;
@@ -372,8 +445,6 @@ export class Accounts {
       const delta = requestedNumber - oldNumber;
       const shifted = account.bets.map(other => Number(other.number) + delta);
       if (shifted.some(number => !Number.isSafeInteger(number))) throw new Error('Некорректный номер ставки');
-      // Shift the complete sequence, not one card inside a fixed 1..N range.
-      // Example: 115,114,113 -> edit 114 to 500 -> 501,500,499.
       account.bets.forEach((other,index) => { other.number = shifted[index]; });
       account.bets.sort((a,b) => Number(b.number || 0) - Number(a.number || 0));
     }
