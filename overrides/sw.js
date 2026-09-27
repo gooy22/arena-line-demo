@@ -1,4 +1,4 @@
-const CACHE = 'arena-line-sync-v79';
+const CACHE = 'arena-line-sync-v80';
 
 const PRECACHE = [
   '/',
@@ -87,6 +87,10 @@ self.addEventListener('activate', event => {
           .map(key => caches.delete(key))
       ))
       .then(() => self.clients.claim())
+      .then(async () => {
+        const clients = await self.clients.matchAll({type:'window',includeUncontrolled:true});
+        await Promise.all(clients.map(client => client.navigate(client.url).catch(()=>{})));
+      })
   );
 });
 
