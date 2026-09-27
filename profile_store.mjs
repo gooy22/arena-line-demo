@@ -144,3 +144,27 @@ export async function profileStorageStatus() {
   } catch {}
   return {directory,persistent};
 }
+
+
+export async function changeProfilePassword(email, oldHash, newHash) {
+  email = safeEmail(email);
+  if (!/^[a-f0-9]{64}$/i.test(String(oldHash || '')) || !/^[a-f0-9]{64}$/i.test(String(newHash || ''))) {
+    const error = new Error('Invalid credential');
+    error.statusCode = 400;
+    throw error;
+  }
+  return withLock(email, async () => {
+    const current = await readProfile(email);
+    if (!current) return null;
+    if (!safeEqual(current.hash,oldHash)) {
+      const error = new Error('Unauthorized');
+      error.statusCode = 401;
+      throw error;
+    }
+    current.hash = newHash;
+    current.profileRevision = Math.max(0,Number(current.profileRevision || 0)) + 1;
+    current.updatedAt = new Date().toISOString();
+    await atomicWrite(email,current);
+    return current;
+  });
+}
