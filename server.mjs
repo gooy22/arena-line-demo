@@ -25,6 +25,7 @@ const serviceWorkerModule = await readFile(new URL('./overrides/sw.js', import.m
 const manifestModule = await readFile(new URL('./overrides/manifest.webmanifest', import.meta.url), 'utf8');
 const uiModule = await readFile(new URL('./overrides/ui.mjs', import.meta.url), 'utf8');
 const i18nModule = await readFile(new URL('./overrides/i18n.mjs', import.meta.url), 'utf8');
+const exactEsportsController = await readFile(new URL('./assets/icons/esports-exact-20260927.png', import.meta.url));
 
 const syncedEvents = new Map();
 let resultsSource = {ok:null,error:null,disciplines:[]};
@@ -1338,6 +1339,15 @@ const server=http.createServer(async (req,res)=>{
       return streamImageCandidates(res,[{url:exactTournament},{url:exactCategory}],fallback);
     }
 
+    if (url.pathname === '/assets/icons/esports-exact-20260927.png' && ['GET','HEAD'].includes(method)) {
+      res.statusCode=200;
+      res.setHeader('content-type','image/png');
+      res.setHeader('cache-control','public, max-age=31536000, immutable');
+      res.setHeader('content-length',String(exactEsportsController.length));
+      if(method==='HEAD') return res.end();
+      return res.end(exactEsportsController);
+    }
+
     if (url.pathname === '/health') {
       const profileStorage=await profileStorageStatus();
       return json(res,200,{
@@ -1674,7 +1684,11 @@ server.listen(port,'0.0.0.0',()=>{
       if(!betText.includes('duplicateManualPeriod')) failures.push('bet:no-score-dedupe');
       if(!i18nText.includes('Редагувати') || !i18nText.includes('Edit')) failures.push('i18n:incomplete');
       if(/\]\s*\n\s*\[/.test(i18nText)) failures.push('i18n:malformed-row-boundary');
+      const controllerResponse=await fetch(base+'/assets/icons/esports-exact-20260927.png',{cache:'no-store'});
+      const controllerBytes=(await controllerResponse.arrayBuffer()).byteLength;
+      if(controllerResponse.status!==200 || !String(controllerResponse.headers.get('content-type')||'').startsWith('image/png') || controllerBytes!==8293) failures.push('controller:bad-asset-'+controllerResponse.status+'-'+controllerBytes);
       const summary=checks.map(({path,status,type,bytes})=>({path,status,type,bytes}));
+      summary.push({path:'/assets/icons/esports-exact-20260927.png',status:controllerResponse.status,type:controllerResponse.headers.get('content-type')||'',bytes:controllerBytes});
       if(failures.length) console.error('FRONTEND_SELFTEST_FAILED '+JSON.stringify({failures,summary}));
       else console.log('FRONTEND_SELFTEST_OK '+JSON.stringify({build:'65',summary}));
     }catch(error){
