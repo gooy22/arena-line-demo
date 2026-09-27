@@ -174,9 +174,26 @@ export class Accounts {
     if (!firstName || !lastName || firstName.length > 80 || lastName.length > 80) throw new Error('Укажите имя и фамилию');
     const hash = await digest(password), data = this.read();
     if (data.some(a => a.email === email)) throw new Error('Этот аккаунт уже создан. Войдите по почте и паролю.');
+
+    try {
+      const response = await fetch(PROFILE_API + '/login', {
+        method:'POST',
+        headers:{'content-type':'application/json'},
+        body:JSON.stringify({email,hash}),
+        cache:'no-store'
+      });
+      if (response.status === 401 || response.ok) {
+        throw new Error('Этот аккаунт уже создан. Войдите по почте и паролю.');
+      }
+    } catch (error) {
+      if (error?.message === 'Этот аккаунт уже создан. Войдите по почте и паролю.') throw error;
+    }
+
     const account = { id: crypto.randomUUID().slice(0, 8).toUpperCase(), email, firstName, lastName, hash, balance: 0, payments: [], bets: [], profileRevision:0, updatedAt:new Date().toISOString() };
     data.push(account);
-    this._persist(data, account); this.storage.setItem(SESSION, email);
+    this._persist(data, account);
+    this.storage.setItem(SESSION, email);
+    this._queueSync(account);
   }
   signOut() { this.storage.removeItem(SESSION); }
   placeBet({ id, stake, selections, type = 'single', systemSize = 2 }) {
