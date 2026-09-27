@@ -11,6 +11,8 @@ const CONTEXT = { channel:'MOBILE_WEB', brand:BRAND, user:null, currency:'UAH' }
 const RECORD_END = '\x1e';
 const MARKET_CHUNK = 40;
 const MAX_SYNC_EVENTS = 250;
+const TAXONOMY_ID_RE = /^(?:\d{1,16}|[a-f0-9]{32})$/i;
+const taxonomyURL = (kind,id,origin='https://parik24.pro') => TAXONOMY_ID_RE.test(String(id || '')) ? `${origin}/taxonomyicons/${kind}/${id}-164w` : '';
 const canonical = value => JSON.stringify(value, (_, v) =>
   v && !Array.isArray(v) && typeof v === 'object'
     ? Object.fromEntries(Object.keys(v).sort().map(k => [k, v[k]]))
@@ -226,13 +228,16 @@ function normalizeEsportsRow(row) {
       sport:'CS',
       categoryName:inferDiscipline(event),
       subsport:inferDiscipline(event),
-      categoryIconUrl:String(event?.categoryIcon?.url || event?.subsportIcon?.url || event?.category?.icon?.url || event?.icon?.url || ''),
+      categoryIconUrl:String(
+        event?.categoryIcon?.url ||
+        event?.subsportIcon?.url ||
+        event?.category?.icon?.url ||
+        taxonomyURL('categories',event?.categoryId)
+      ),
       tournamentIconUrl:String(
         event?.tournamentIcon?.url ||
         event?.tournament?.icon?.url ||
-        (/^\d{1,16}$/.test(String(event?.tournamentId || ''))
-          ? 'https://parik24.pro/taxonomyicons/tournaments/' + String(event.tournamentId) + '-164w'
-          : '')
+        taxonomyURL('tournaments',event?.tournamentId)
       )
     }
   };
