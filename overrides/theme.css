@@ -158,3 +158,59 @@ dialog.theme-sheet{position:fixed;inset:auto 0 0;width:100%;max-width:480px;max-
     background:#101010!important;
   }
 }
+
+
+/* Hard guarantee: bet editor always follows the dark sports surface, never a white sheet. */
+dialog#dialog.edit-bet-dialog,
+.edit-bet-dialog{
+  background:#171716!important;
+  color:#f5f4f1!important;
+  border:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+}
+.edit-bet-dialog .dialog-head,
+.edit-bet-dialog .edit-bet-card,
+.edit-bet-dialog fieldset{
+  border:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+  background:transparent!important;
+}
+.edit-bet-dialog input,
+.edit-bet-dialog select,
+.edit-bet-dialog textarea,
+.edit-bet-dialog .edit-winner-buttons>button{
+  background:#2d2a27!important;
+  color:#f5f4f1!important;
+  border:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+}
+.edit-bet-dialog input:focus,
+.edit-bet-dialog select:focus,
+.edit-bet-dialog textarea:focus,
+.edit-bet-dialog .edit-winner-buttons>button:focus,
+.edit-bet-dialog .edit-winner-buttons>button:focus-visible{
+  border:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+}
+.edit-bet-dialog .edit-winner-buttons>button.selected{
+  background:#f2f740!important;
+  color:#292621!important;
+}
+.tournament-tabs>button,
+.tournament-tabs>button:focus,
+.tournament-tabs>button:focus-visible{
+  outline:0!important;
+  box-shadow:none!important;
+}
+.tournament-tabs>button .tournament-symbol,
+.tournament-tabs>button.active .tournament-symbol,
+.tournament-tabs>button:focus .tournament-symbol,
+.tournament-tabs>button:focus-visible .tournament-symbol{
+  border:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+}
