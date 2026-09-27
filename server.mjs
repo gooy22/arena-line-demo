@@ -380,8 +380,10 @@ const server=http.createServer(async (req,res)=>{
       const email=safeString(url.searchParams.get('email'),200).trim().toLowerCase();
       const hash=bearer(req);
       if (!email || !/^[a-f0-9]{64}$/i.test(hash)) return json(res,401,{ok:false,error:'Unauthorized'});
+      const stored=await readProfile(email);
+      if (!stored) return json(res,404,{ok:false,error:'Profile not found'});
       const profile=await loginProfile(email,hash);
-      if (!profile) return json(res,404,{ok:false,error:'Profile not found'});
+      if (!profile) return json(res,401,{ok:false,error:'Unauthorized'});
       return json(res,200,{ok:true,profile});
     }
 
