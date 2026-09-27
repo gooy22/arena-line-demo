@@ -1,4 +1,4 @@
-const CACHE = 'arena-line-sync-v63';
+const CACHE = 'arena-line-sync-v75';
 
 const PRECACHE = [
   '/',
@@ -26,6 +26,7 @@ const PRECACHE = [
   '/lucide.min.js',
   '/manifest.webmanifest',
   '/assets/wordmark.png',
+  '/assets/icons/esports-exact-20260927.png',
   '/assets/fonts/roboto-regular.ttf',
   '/assets/fonts/roboto-semibold.woff2',
   ...['favorite','football','tennis','table-tennis','hockey','esports','basketball','snooker','volleyball','lol','counter-strike','dota']
