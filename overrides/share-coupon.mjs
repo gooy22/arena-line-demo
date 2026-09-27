@@ -214,6 +214,9 @@ export async function drawCoupon(canvas, bet, showAmount) {
 }
 
 export function openShareCoupon(bet, showToast) {
+  const themeMeta=document.querySelector('meta[name="theme-color"]');
+  const previousThemeColor=themeMeta?.getAttribute('content') || '#171716';
+  if(themeMeta) themeMeta.setAttribute('content','#f5f4f0');
   let dialog=document.getElementById('share-coupon');
   if (!dialog) {dialog=document.createElement('dialog');dialog.id='share-coupon';dialog.className='share-coupon';document.body.append(dialog);}
   dialog.classList.remove('share-open-express-legacy');
@@ -241,6 +244,7 @@ export function openShareCoupon(bet, showToast) {
     document.documentElement.classList.remove('share-coupon-open');
     document.body.classList.remove('share-coupon-open');
     dialog.classList.remove('share-open-express-legacy');
+    if(themeMeta) themeMeta.setAttribute('content',previousThemeColor);
   };
   dialog.querySelector('.share-close').onclick=()=>dialog.close();
   dialog.addEventListener('close',releaseShareBackdrop,{once:true});
