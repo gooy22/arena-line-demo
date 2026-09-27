@@ -766,3 +766,55 @@ html.share-coupon-open .share-ticket canvas{
   background:transparent!important;
   mix-blend-mode:normal!important;
 }
+
+
+/* v75: force the share screen to match the original PWA frame after live SW refresh. */
+body.share-coupon-open::before{
+  content:"";
+  position:fixed;
+  top:0;
+  left:0;
+  right:0;
+  height:env(safe-area-inset-top);
+  background:#171716;
+  z-index:2147483647;
+  pointer-events:none;
+}
+html.share-coupon-open .share-close{
+  top:calc(env(safe-area-inset-top) + 14px)!important;
+}
+html.share-coupon-open .share-layout{
+  padding-top:calc(env(safe-area-inset-top) + 58px)!important;
+  padding-bottom:max(10px,env(safe-area-inset-bottom))!important;
+}
+html.share-coupon-open .share-ticket{
+  width:96%!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+}
+html.share-coupon-open .share-amount{
+  width:calc(96% - 32px)!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+}
+html.share-coupon-open .share-actions{
+  transform:scale(.94)!important;
+  transform-origin:top center!important;
+}
+html.share-coupon-open .share-close,
+html.share-coupon-open .share-close *,
+html.share-coupon-open button{
+  -webkit-tap-highlight-color:transparent!important;
+}
+html.share-coupon-open .share-close:focus,
+html.share-coupon-open .share-close:focus-visible,
+html.share-coupon-open .share-close:active{
+  outline:none!important;
+  border:none!important;
+  box-shadow:none!important;
+}
+.team-mark .team-logo,
+.event-team-emblem .team-logo{
+  transform:scale(1.08)!important;
+  transform-origin:center!important;
+}
