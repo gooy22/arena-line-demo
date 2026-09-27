@@ -149,16 +149,16 @@ function teamMetaByProviderId(id) {
 
 function patchIndexHtml(source) {
   let html=String(source || '');
-  html=html.replace(/\?+v=\d+/g,'?v=52');
+  html=html.replace(/\?+v=\d+/g,'?v=54');
   if (!html.includes('apple-touch-icon')) {
     html=html.replace(
       '<link rel="manifest" href="/manifest.webmanifest">',
       '<link rel="manifest" href="/manifest.webmanifest">\n  <link rel="apple-touch-icon" href="/assets/icons/esports.png">\n  <meta name="apple-mobile-web-app-capable" content="yes">\n  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">'
     );
   }
-  if (!html.includes('arena-editor-hotfix-v52')) {
+  if (!html.includes('arena-editor-hotfix-v54')) {
     html=html.replace('</head>', `
-<style id="arena-editor-hotfix-v52">
+<style id="arena-editor-hotfix-v54">
 dialog#dialog.edit-bet-dialog{
   position:fixed!important;
   top:auto!important;
@@ -336,7 +336,7 @@ dialog#dialog.edit-bet-dialog .edit-bet-hide{
 }
 </style>
 <script>
-window.__ARENA_BUILD__='52';
+window.__ARENA_BUILD__='54';
 if('serviceWorker' in navigator){
   navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.update())).catch(()=>{});
 }
@@ -379,14 +379,16 @@ function patchSportsModule(source) {
 
     const exactTournament = String(event.tournamentIconUrl || '');
     const exactCategory = String(event.categoryIconUrl || '');
-    const sameOrigin = '/api/media/tournament?name=' +
+    const baseMedia = '/api/media/tournament?name=' +
       encodeURIComponent(String(event.tournamentName || '')) +
       '&category=' + encodeURIComponent(String(event.categoryName || '')) +
       '&source=' + encodeURIComponent(exactTournament) +
       '&categorySource=' + encodeURIComponent(exactCategory);
-    const providerPrimary = sameOrigin;
+    const providerPrimary = baseMedia + '&prefer=parik';
+    const providerBo3 = baseMedia + '&prefer=bo3';
+    const providerCategory = baseMedia + '&prefer=category';
     const renderedPrimary = window.__arenaStableLogoSrc ? window.__arenaStableLogoSrc(providerPrimary) : providerPrimary;
-    const fallbacks = [];
+    const fallbacks = [providerBo3,providerCategory];
 
     if (!providerPrimary) {
       return '<span class="game-badge game-badge-parik">' + fallbackGraphic + '</span>';
@@ -409,6 +411,20 @@ function patchSportsModule(source) {
 window.__arenaLogoCache = window.__arenaLogoCache || new Map();
 window.__arenaStableLogoSrc = window.__arenaStableLogoSrc || function(url) {
   return window.__arenaLogoCache.get(String(url || '')) || String(url || '');
+};
+window.__arenaNextLogo = window.__arenaNextLogo || function(img) {
+  if(!img) return false;
+  let list=[];
+  try{ list=JSON.parse(img.dataset.fallbacks || '[]'); }catch{}
+  const index=Number(img.dataset.fallbackIndex || 0);
+  if(index >= list.length) return false;
+  const next=list[index];
+  img.dataset.fallbackIndex=String(index+1);
+  img.dataset.arenaSource=next;
+  img.dataset.arenaNormalized='0';
+  img.dataset.arenaNormalizing='0';
+  img.src=window.__arenaStableLogoSrc ? window.__arenaStableLogoSrc(next) : next;
+  return true;
 };
 window.__arenaApplyCachedLogo = window.__arenaApplyCachedLogo || function(img) {
   if (!img) return;
@@ -461,14 +477,53 @@ if (!window.__arenaNormalizeLogo) {
           const p=(y*w+x)*4;
           const r=pixels[p],g=pixels[p+1],b=pixels[p+2],a=pixels[p+3];
           if(a < 20) continue;
-          const bgDistance=Math.abs(r-bg[0])+Math.abs(g-bg[1])+Math.abs(b-bg[2])+Math.abs(a-bg[3])*0.35;
-          const opaqueBackground=bg[3] > 220 && a > 220 && bgDistance < 42;
-          if(opaqueBackground) continue;
+          const colorDistance=Math.abs(r-bg[0])+Math.abs(g-bg[1])+Math.abs(b-bg[2]);
+          const alphaDistance=Math.abs(a-bg[3]);
+          const bgDistance=colorDistance+alphaDistance*0.55;
+          const opaqueBackground=bg[3] > 220 && a > 220 && bgDistance < 82;
+          const transparentNoise=bg[3] < 40 && a < 32;
+          if(opaqueBackground || transparentNoise) continue;
           minX=Math.min(minX,x); minY=Math.min(minY,y);
           maxX=Math.max(maxX,x); maxY=Math.max(maxY,y);
         }
       }
-      if(maxX < minX || maxY < minY) return;
+      if(maxX < minX || maxY < minY) {
+        if(window.__arenaNextLogo(img)) return;
+        return;
+      }
+
+      const cropW0=maxX-minX+1, cropH0=maxY-minY+1;
+      let visible=0, strong=0, lightNeutral=0, darkNeutral=0;
+      let lumSum=0, chromaSum=0;
+      for(let y=minY;y<=maxY;y++){
+        for(let x=minX;x<=maxX;x++){
+          const p=(y*w+x)*4;
+          const r=pixels[p],g=pixels[p+1],b=pixels[p+2],a=pixels[p+3];
+          if(a<24) continue;
+          const chroma=Math.max(r,g,b)-Math.min(r,g,b);
+          const lum=(r+g+b)/3;
+          const bgDistance=Math.abs(r-bg[0])+Math.abs(g-bg[1])+Math.abs(b-bg[2])+Math.abs(a-bg[3])*0.55;
+          if(bgDistance<70) continue;
+          visible++; lumSum+=lum; chromaSum+=chroma;
+          if(bgDistance>=115) strong++;
+          if(lum>232 && chroma<22) lightNeutral++;
+          if(lum<24 && chroma<22) darkNeutral++;
+        }
+      }
+
+      const boxArea=Math.max(1,cropW0*cropH0);
+      const strongRatio=strong/boxArea;
+      const visibleRatio=visible/boxArea;
+      const meanLum=visible ? lumSum/visible : 255;
+      const meanChroma=visible ? chromaSum/visible : 0;
+      const darkTheme=document.documentElement.dataset.theme === 'dark' ||
+        (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
+      const invisibleOnSurface = !darkTheme
+        ? (visible && lightNeutral/visible>0.82 && meanLum>226 && meanChroma<24)
+        : (visible && darkNeutral/visible>0.82 && meanLum<30 && meanChroma<24);
+      const lowInformation = visible < 10 || strong < 6 || visibleRatio < 0.003 || strongRatio < 0.0015;
+
+      if((lowInformation || invisibleOnSurface) && window.__arenaNextLogo(img)) return;
 
       const expand=Math.max(1,Math.round(Math.max(w,h)*0.012));
       minX=Math.max(0,minX-expand); minY=Math.max(0,minY-expand);
@@ -479,7 +534,7 @@ if (!window.__arenaNormalizeLogo) {
       output.width=96; output.height=96;
       const out=output.getContext('2d');
       out.clearRect(0,0,96,96);
-      const inner=72;
+      const inner=80;
       const scale=Math.min(inner/cropW,inner/cropH);
       const drawW=Math.max(1,cropW*scale), drawH=Math.max(1,cropH*scale);
       out.drawImage(sourceCanvas,minX,minY,cropW,cropH,(96-drawW)/2,(96-drawH)/2,drawW,drawH);
@@ -746,6 +801,93 @@ function safeParikMediaURL(value) {
   } catch { return ''; }
 }
 
+
+const competitorMediaCache = new Map();
+
+function entityLogo(row) {
+  return String(
+    row?.image_url ||
+    row?.icon_url ||
+    row?.avatar_url ||
+    row?.photo_url ||
+    row?.image?.url ||
+    ''
+  );
+}
+
+async function bo3CompetitorLogo(name, category='') {
+  name=String(name || '').trim();
+  if(!name) return '';
+  const discipline=disciplineIds[category] || null;
+  const cacheKey='c:'+String(discipline || '')+':'+mediaName(name);
+  const cached=competitorMediaCache.get(cacheKey);
+  if(cached && Date.now()-cached.at < 12*3600_000) return cached.url;
+
+  const kinds = category === 'Dota 2' ? ['players','teams'] : ['teams','players'];
+  let best=null,bestScore=0;
+
+  for(const kind of kinds){
+    const table=kind;
+    const nameField=kind === 'players' ? 'nickname' : 'name';
+    const filters=[
+      ['eq',name],
+      ['ilike',name],
+      ['like',name]
+    ];
+
+    for(const [op,value] of filters){
+      const qs=new URLSearchParams({'page[limit]':'25'});
+      qs.set(`filter[${table}.${nameField}][${op}]`,value);
+      if(discipline) qs.set(`filter[${table}.discipline_id][eq]`,String(discipline));
+      try{
+        const response=await fetch(`https://api.bo3.gg/api/v1/${kind}?${qs}`,{
+          signal:AbortSignal.timeout(8000),
+          headers:{accept:'application/json'}
+        });
+        if(!response.ok) continue;
+        const data=await response.json();
+        for(const row of data?.results || []){
+          const logo=entityLogo(row);
+          if(!logo) continue;
+          const score=mediaScore(name,row.nickname || row.name || row.slug || '');
+          if(score>bestScore){best={...row,__logo:logo};bestScore=score;}
+        }
+        if(bestScore>=900) break;
+      }catch{}
+    }
+    if(bestScore>=900) break;
+
+    // Active/recent entities are normally near the front; scan a bounded window as fallback.
+    for(const sort of ['-updated_at','-id']){
+      for(let offset=0; offset<=600 && bestScore<900; offset+=100){
+        const qs=new URLSearchParams({'page[limit]':'100','page[offset]':String(offset),'sort':sort});
+        if(discipline) qs.set(`filter[${table}.discipline_id][eq]`,String(discipline));
+        try{
+          const response=await fetch(`https://api.bo3.gg/api/v1/${kind}?${qs}`,{
+            signal:AbortSignal.timeout(9000),
+            headers:{accept:'application/json'}
+          });
+          if(!response.ok) break;
+          const data=await response.json();
+          const rows=Array.isArray(data?.results) ? data.results : [];
+          for(const row of rows){
+            const logo=entityLogo(row);
+            if(!logo) continue;
+            const score=mediaScore(name,row.nickname || row.name || row.slug || '');
+            if(score>bestScore){best={...row,__logo:logo};bestScore=score;}
+          }
+          if(rows.length<100) break;
+        }catch{break;}
+      }
+      if(bestScore>=900) break;
+    }
+  }
+
+  const url=bestScore>=700 ? String(best?.__logo || '') : '';
+  competitorMediaCache.set(cacheKey,{at:Date.now(),url});
+  return url;
+}
+
 async function streamImageCandidates(res,candidates,fallback='') {
   for(const candidate of candidates){
     if(!candidate?.url) continue;
@@ -835,9 +977,13 @@ const server=http.createServer(async (req,res)=>{
     if (url.pathname === '/api/media/team' && method === 'GET') {
       const id=safeString(url.searchParams.get('id'),32);
       if(!/^\d{1,16}$/.test(id)) return json(res,400,{ok:false,error:'Invalid competitor id'});
+      const meta=teamMetaByProviderId(id) || {};
+      const name=safeString(url.searchParams.get('name') || meta.name || '',160);
+      const category=safeString(url.searchParams.get('category') || meta.categoryName || '',80);
+      const bo3=await bo3CompetitorLogo(name,category).catch(()=> '');
       return streamImageCandidates(res,[
         {url:'https://parik24.pro/taxonomyicons/competitors/'+id+'-164w'},
-        {url:'https://24parik-bet.org/taxonomyicons/competitors/'+id+'-164w'}
+        {url:bo3,trusted:true}
       ]);
     }
 
@@ -846,13 +992,20 @@ const server=http.createServer(async (req,res)=>{
       const category=safeString(url.searchParams.get('category'),80);
       const exactTournament=safeParikMediaURL(url.searchParams.get('source'));
       const exactCategory=safeParikMediaURL(url.searchParams.get('categorySource'));
+      const prefer=safeString(url.searchParams.get('prefer') || 'parik',20);
       const fallback=localDisciplineIcon(category);
-      const bo3=await bo3TournamentLogo(name,category).catch(()=> '');
-      return streamImageCandidates(res,[
-        {url:exactTournament},
-        {url:exactCategory},
-        {url:bo3,trusted:true}
-      ],fallback);
+
+      if(prefer === 'parik'){
+        return streamImageCandidates(res,[{url:exactTournament}]);
+      }
+      if(prefer === 'bo3'){
+        const bo3=await bo3TournamentLogo(name,category).catch(()=> '');
+        return streamImageCandidates(res,[{url:bo3,trusted:true}]);
+      }
+      if(prefer === 'category'){
+        return streamImageCandidates(res,[{url:exactCategory}],fallback);
+      }
+      return streamImageCandidates(res,[{url:exactTournament},{url:exactCategory}],fallback);
     }
 
     if (url.pathname === '/health') {
