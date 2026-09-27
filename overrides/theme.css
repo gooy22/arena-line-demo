@@ -932,3 +932,169 @@ html.share-coupon-open .share-close:active{
 .bet-sport .gamepad-graphic{width:22px!important;height:20px!important;max-width:22px!important;max-height:20px!important}
 .bet-detail-selections .bet-sport .gamepad-graphic{width:21px!important;height:19px!important;max-width:21px!important;max-height:19px!important}
 .tournament-symbol .gamepad-graphic{width:38px!important;height:34px!important;max-width:38px!important;max-height:34px!important}
+
+
+/* v81: compact express detail to match the reference screen. */
+.profile-content.bet-detail-view{
+  top:calc(var(--header) + env(safe-area-inset-top))!important;
+  bottom:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  background:#fff!important;
+}
+.bet-detail-page{
+  height:100%!important;
+  min-height:0!important;
+  display:grid!important;
+  grid-template-rows:52px minmax(0,1fr) auto!important;
+  background:#fff!important;
+}
+.bet-detail-head{
+  height:52px!important;
+  min-height:52px!important;
+  grid-template-columns:36px minmax(0,1fr) 36px!important;
+  padding:0 6px!important;
+  border-bottom:1px solid #e6e3de!important;
+}
+.bet-detail-back{
+  width:34px!important;
+  height:34px!important;
+  margin:0!important;
+}
+.bet-detail-back svg{
+  width:20px!important;
+  height:20px!important;
+}
+.bet-detail-title{
+  gap:0!important;
+}
+.bet-detail-title strong{
+  font-size:16px!important;
+  line-height:19px!important;
+  font-weight:600!important;
+}
+.bet-detail-title span{
+  margin-top:1px!important;
+  font-size:13px!important;
+  line-height:16px!important;
+}
+.bet-detail-scroll{
+  min-height:0!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  -webkit-overflow-scrolling:touch!important;
+  overscroll-behavior:contain!important;
+  scrollbar-width:none!important;
+  background:#fff!important;
+}
+.bet-detail-scroll::-webkit-scrollbar{display:none!important}
+.bet-detail-selections{
+  min-height:0!important;
+}
+.bet-detail-selections .bet-selection{
+  margin:0!important;
+  padding:8px 12px 10px!important;
+  min-height:0!important;
+  border-bottom:1px solid #e6e3de!important;
+  background:#fff!important;
+}
+.bet-detail-selections .bet-selection-summary{
+  min-height:48px!important;
+  padding:7px 12px!important;
+  gap:9px!important;
+  border-radius:11px!important;
+}
+.bet-detail-selections .bet-selection-label>.meta{
+  font-size:11px!important;
+  line-height:14px!important;
+}
+.bet-detail-selections .bet-selection-label>strong{
+  font-size:15px!important;
+  line-height:18px!important;
+  font-weight:400!important;
+}
+.bet-detail-selections .bet-coefficient{
+  font-size:15px!important;
+  line-height:18px!important;
+}
+.bet-detail-selections .bet-selection-summary>svg{
+  width:14px!important;
+  height:18px!important;
+  margin-left:-5px!important;
+}
+.bet-detail-selections .bet-sport{
+  width:20px!important;
+  height:20px!important;
+  flex:0 0 20px!important;
+}
+.bet-detail-selections .bet-result{
+  width:19px!important;
+  height:19px!important;
+  flex:0 0 19px!important;
+  margin:0!important;
+}
+.bet-detail-selections .bet-result svg{
+  width:13px!important;
+  height:13px!important;
+}
+.bet-detail-selections .bet-event-time{
+  margin:6px 0 4px!important;
+  font-size:9px!important;
+  line-height:12px!important;
+}
+.bet-detail-selections .bet-teams{
+  gap:4px!important;
+  font-size:13px!important;
+  line-height:17px!important;
+}
+.bet-detail-selections .bet-teams>div{
+  min-height:17px!important;
+  gap:10px!important;
+}
+.bet-detail-selections .bet-team-score{
+  gap:5px!important;
+}
+.bet-detail-selections .bet-team-score small,
+.bet-detail-selections .bet-team-score b,
+.bet-detail-selections .bet-period-labels small{
+  width:13px!important;
+}
+.bet-detail-selections .bet-team-score small,
+.bet-detail-selections .bet-period-labels small{
+  font-size:10px!important;
+}
+.bet-detail-selections .bet-team-score b{
+  font-size:13px!important;
+}
+.bet-detail-footer{
+  padding:10px 12px max(10px,env(safe-area-inset-bottom))!important;
+  border-top:1px solid #e6e3de!important;
+  background:#fff!important;
+}
+.bet-detail-footer dl{
+  gap:5px!important;
+  font-size:13px!important;
+  line-height:18px!important;
+}
+.bet-detail-footer dl>div{
+  gap:10px!important;
+}
+.bet-detail-share{
+  min-height:32px!important;
+  margin-top:8px!important;
+  padding:0 11px!important;
+  gap:5px!important;
+  font-size:13px!important;
+  line-height:17px!important;
+}
+.bet-detail-share svg{
+  width:16px!important;
+  height:16px!important;
+}
+
+@media(max-width:370px){
+  .bet-detail-page{grid-template-rows:50px minmax(0,1fr) auto!important}
+  .bet-detail-head{height:50px!important;min-height:50px!important}
+  .bet-detail-selections .bet-selection{padding:7px 10px 9px!important}
+  .bet-detail-selections .bet-selection-summary{min-height:46px!important;padding:6px 10px!important}
+}
