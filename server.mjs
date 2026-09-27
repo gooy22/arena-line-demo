@@ -150,16 +150,16 @@ function teamMetaByProviderId(id) {
 
 function patchIndexHtml(source) {
   let html=String(source || '');
-  html=html.replace(/\?+v=\d+/g,'??v=57');
+  html=html.replace(/\?+v=\d+/g,'?v=58');
   if (!html.includes('apple-touch-icon')) {
     html=html.replace(
       '<link rel="manifest" href="/manifest.webmanifest">',
       '<link rel="manifest" href="/manifest.webmanifest">\n  <link rel="apple-touch-icon" href="/assets/icons/esports.png">\n  <meta name="apple-mobile-web-app-capable" content="yes">\n  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">'
     );
   }
-  if (!html.includes('arena-editor-hotfix-v57')) {
+  if (!html.includes('arena-editor-hotfix-v58')) {
     html=html.replace('</head>', `
-<style id="arena-editor-hotfix-v57">
+<style id="arena-editor-hotfix-v58">
 dialog#dialog.edit-bet-dialog{
   position:fixed!important;
   top:auto!important;
@@ -337,7 +337,7 @@ dialog#dialog.edit-bet-dialog .edit-bet-hide{
 }
 </style>
 <script>
-window.__ARENA_BUILD__='57';
+window.__ARENA_BUILD__='58';
 if('serviceWorker' in navigator){
   navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.update())).catch(()=>{});
 }
@@ -355,21 +355,6 @@ function patchSportsModule(source) {
   }`;
 
   const newBlock = `  gameBadge(event) {
-    const games = {
-      'Counter-Strike':'counter-strike',
-      'Dota 2':'dota',
-      'League of Legends':'lol',
-      'Valorant':'valorant',
-      'Free Fire':'free-fire',
-      'Mobile Legends':'mobile-legends',
-      'PUBG':'pubg',
-      'Apex Legends':'apex',
-      'Overwatch':'overwatch',
-      'Rocket League':'rocket-league',
-      'Rainbow Six':'rainbow-six',
-      'Call of Duty':'call-of-duty'
-    };
-    const fallback = games[event.categoryName] || SPORTS.find(s => s[0] === event.sport)?.[1] || 'esports';
     const fallbackImages = {
       'Dota 2':'/assets/icons/dota.png',
       'Counter-Strike':'/assets/icons/counter-strike.png',
@@ -377,6 +362,20 @@ function patchSportsModule(source) {
     };
     const fallbackImage=fallbackImages[event.categoryName] || '/assets/icons/esports.png';
     const fallbackGraphic='<img class="synced-discipline-logo local-fallback-logo" src="' + fallbackImage + '" alt="">';
+
+    const rawEntityKey=String(event.tournamentId || event.tournamentName || event.categoryName || '');
+    const entityKey='tournament:' + rawEntityKey;
+    const stableEntity=window.__arenaEntityLogoCache?.get(entityKey);
+    if(stableEntity?.src){
+      return '<span class="game-badge game-badge-parik">' +
+        '<img class="synced-discipline-logo" src="' + escape(stableEntity.src) +
+        '" data-arena-source="' + escape(stableEntity.source || '') +
+        '" data-entity-kind="tournament" data-entity-key="' + escape(rawEntityKey) +
+        '" data-entity-name="' + escape(String(event.tournamentName || '')) +
+        '" data-category="' + escape(String(event.categoryName || '')) +
+        '" alt="" decoding="async">' +
+        '<span class="discipline-fallback">' + fallbackGraphic + '</span></span>';
+    }
 
     const exactTournament = String(event.tournamentIconUrl || '');
     const exactCategory = String(event.categoryIconUrl || '');
@@ -386,25 +385,24 @@ function patchSportsModule(source) {
       '&category=' + encodeURIComponent(String(event.categoryName || '')) +
       '&source=' + encodeURIComponent(exactTournament) +
       '&categorySource=' + encodeURIComponent(exactCategory);
-    const providerParik = baseMedia + '&prefer=parik';
-    const providerBo3 = baseMedia + '&prefer=bo3';
-    const providerCategory = baseMedia + '&prefer=category';
-    const retryAt=window.__arenaLogoRetry ? Number(window.__arenaLogoRetry.get(providerParik) || 0) : 0;
-    const providerPrimary = retryAt > Date.now() ? providerBo3 : providerParik;
-    const renderedPrimary = window.__arenaStableLogoSrc ? window.__arenaStableLogoSrc(providerPrimary) : providerPrimary;
-    const fallbacks = providerPrimary === providerParik
-      ? [providerBo3,providerCategory]
-      : [providerCategory];
+    const sources=[
+      baseMedia + '&prefer=parik',
+      baseMedia + '&prefer=bo3',
+      baseMedia + '&prefer=category'
+    ].filter(source => !window.__arenaFailedLogoSources?.has(source));
+    const providerPrimary=sources[0] || '';
+    const fallbacks=sources.slice(1);
 
     if (!providerPrimary) {
       return '<span class="game-badge game-badge-parik">' + fallbackGraphic + '</span>';
     }
 
+    const renderedPrimary = window.__arenaStableLogoSrc ? window.__arenaStableLogoSrc(providerPrimary) : providerPrimary;
     return '<span class="game-badge game-badge-parik">' +
       '<img class="synced-discipline-logo" src="' + escape(renderedPrimary) +
       '" data-arena-source="' + escape(providerPrimary) +
       '" data-entity-kind="tournament"' +
-      '" data-entity-key="' + escape(String(event.tournamentId || event.tournamentName || '')) +
+      '" data-entity-key="' + escape(rawEntityKey) +
       '" data-entity-name="' + escape(String(event.tournamentName || '')) +
       '" data-category="' + escape(String(event.categoryName || '')) +
       '" data-fallbacks="' + escape(JSON.stringify(fallbacks)) +
@@ -419,9 +417,24 @@ function patchSportsModule(source) {
   }
   const normalizer = `
 window.__arenaLogoCache = window.__arenaLogoCache || new Map();
-window.__arenaLogoRetry = window.__arenaLogoRetry || new Map();
+window.__arenaEntityLogoCache = window.__arenaEntityLogoCache || new Map();
+window.__arenaFailedLogoSources = window.__arenaFailedLogoSources || new Set();
 window.__arenaLogoFingerprints = window.__arenaLogoFingerprints || new Map();
 window.__arenaGenericFingerprints = window.__arenaGenericFingerprints || new Set();
+
+window.__arenaStableLogoSrc = window.__arenaStableLogoSrc || function(url) {
+  return window.__arenaLogoCache.get(String(url || '')) || String(url || '');
+};
+window.__arenaEntityKey = window.__arenaEntityKey || function(img) {
+  const kind=String(img?.dataset?.entityKind || '');
+  const key=String(img?.dataset?.entityKey || '');
+  return kind && key ? kind+':'+key : '';
+};
+window.__arenaRememberLogo = window.__arenaRememberLogo || function(img,src,source) {
+  if(!img || !src) return;
+  const key=window.__arenaEntityKey(img);
+  if(key) window.__arenaEntityLogoCache.set(key,{src:String(src),source:String(source || '')});
+};
 window.__arenaHashLogo = window.__arenaHashLogo || function(value) {
   let hash=2166136261;
   for(let i=0;i<value.length;i++) hash=Math.imul(hash ^ value.charCodeAt(i),16777619);
@@ -433,41 +446,27 @@ window.__arenaRegisterFingerprint = window.__arenaRegisterFingerprint || functio
   const key=String(img.dataset.entityKey || source || '');
   const category=String(img.dataset.category || '');
   if(!kind || !key) return true;
-
   const fingerprint=window.__arenaHashLogo(data);
   let row=window.__arenaLogoFingerprints.get(fingerprint);
   if(!row){
-    row={kind,keys:new Set(),categories:new Set(),sources:new Set(),images:new Set()};
+    row={kind,keys:new Set(),categories:new Set(),sources:new Set()};
     window.__arenaLogoFingerprints.set(fingerprint,row);
   }
   row.keys.add(key);
   if(category) row.categories.add(category);
   row.sources.add(String(source || ''));
-  row.images.add(img);
-
   const generic = kind === 'team'
     ? row.keys.size >= 2
     : kind === 'tournament'
       ? row.keys.size >= 3 && row.categories.size >= 2
       : false;
-
   if(!generic && !window.__arenaGenericFingerprints.has(fingerprint)) return true;
-
   window.__arenaGenericFingerprints.add(fingerprint);
   for(const badSource of row.sources){
+    window.__arenaFailedLogoSources.add(badSource);
     window.__arenaLogoCache.delete(badSource);
-    window.__arenaMarkLogoBad(badSource,12*3600*1000);
-  }
-  for(const badImage of row.images){
-    if(badImage?.isConnected) window.__arenaRejectLogo(badImage,12*3600*1000);
   }
   return false;
-};
-window.__arenaStableLogoSrc = window.__arenaStableLogoSrc || function(url) {
-  return window.__arenaLogoCache.get(String(url || '')) || String(url || '');
-};
-window.__arenaMarkLogoBad = window.__arenaMarkLogoBad || function(url,ms) {
-  if(url) window.__arenaLogoRetry.set(String(url),Date.now()+Number(ms || 600000));
 };
 window.__arenaNextLogo = window.__arenaNextLogo || function(img) {
   if(!img) return false;
@@ -477,51 +476,72 @@ window.__arenaNextLogo = window.__arenaNextLogo || function(img) {
   while(index < list.length){
     const next=list[index++];
     img.dataset.fallbackIndex=String(index);
-    const retryAt=Number(window.__arenaLogoRetry.get(next) || 0);
-    if(retryAt > Date.now()) continue;
+    if(window.__arenaFailedLogoSources.has(next)) continue;
     img.hidden=false;
     img.dataset.arenaSource=next;
     img.dataset.arenaNormalized='0';
     img.dataset.arenaNormalizing='0';
-    img.src=window.__arenaStableLogoSrc ? window.__arenaStableLogoSrc(next) : next;
+    img.src=window.__arenaStableLogoSrc(next);
     return true;
   }
   return false;
 };
-window.__arenaRejectLogo = window.__arenaRejectLogo || function(img,ms=600000) {
+window.__arenaRejectLogo = window.__arenaRejectLogo || function(img) {
   if(!img) return false;
-  window.__arenaMarkLogoBad(img.dataset.arenaSource || '',ms);
+  const source=String(img.dataset.arenaSource || '');
+  if(source){
+    window.__arenaFailedLogoSources.add(source);
+    window.__arenaLogoCache.delete(source);
+  }
   if(window.__arenaNextLogo(img)) return true;
   img.hidden=true;
   if(img.nextElementSibling) img.nextElementSibling.hidden=false;
   return false;
 };
 window.__arenaFailLogo = window.__arenaFailLogo || function(img) {
-  if(!img) return false;
-  const source=String(img.dataset.arenaSource || '');
-  return window.__arenaRejectLogo(img,source.includes('prefer=bo3') ? 5000 : 600000);
+  return window.__arenaRejectLogo(img);
 };
 window.__arenaApplyCachedLogo = window.__arenaApplyCachedLogo || function(img) {
-  if (!img) return;
-  const source = img.dataset.arenaSource || '';
-  if (!source) return;
-  const cached = window.__arenaLogoCache.get(source);
-  if (cached && img.src !== cached) {
-    img.dataset.arenaNormalized = '1';
-    img.src = cached;
+  if(!img) return;
+  const entity=window.__arenaEntityLogoCache.get(window.__arenaEntityKey(img));
+  if(entity?.src){
+    img.dataset.arenaNormalized='1';
+    img.hidden=false;
+    if(img.nextElementSibling) img.nextElementSibling.hidden=true;
+    if(img.src !== entity.src) img.src=entity.src;
+    return;
+  }
+  const source=String(img.dataset.arenaSource || '');
+  const cached=window.__arenaLogoCache.get(source);
+  if(cached){
+    img.dataset.arenaNormalized='1';
+    img.hidden=false;
+    if(img.nextElementSibling) img.nextElementSibling.hidden=true;
+    if(img.src !== cached) img.src=cached;
   }
 };
 if (!window.__arenaNormalizeLogo) {
   window.__arenaNormalizeLogo = function(img) {
     if (!img || img.dataset.arenaNormalizing === '1') return;
     const original = img.dataset.arenaSource || img.currentSrc || img.src || '';
-    if (!original) return;
-
+    if (!original || window.__arenaFailedLogoSources.has(original)) {
+      window.__arenaRejectLogo(img);
+      return;
+    }
+    const entity=window.__arenaEntityLogoCache.get(window.__arenaEntityKey(img));
+    if(entity?.src){
+      img.dataset.arenaNormalized='1';
+      img.hidden=false;
+      if(img.nextElementSibling) img.nextElementSibling.hidden=true;
+      if(img.src !== entity.src) img.src=entity.src;
+      return;
+    }
     const cached = window.__arenaLogoCache.get(original);
     if (cached) {
       img.dataset.arenaNormalized = '1';
       img.hidden=false;
       if(img.nextElementSibling) img.nextElementSibling.hidden=true;
+      window.__arenaRememberLogo(img,cached,original);
       if (img.src !== cached) img.src = cached;
       return;
     }
@@ -541,13 +561,11 @@ if (!window.__arenaNormalizeLogo) {
       ctx.clearRect(0,0,w,h);
       ctx.drawImage(img,0,0,w,h);
       const pixels = ctx.getImageData(0,0,w,h).data;
-
       const corners = [[0,0],[w-1,0],[0,h-1],[w-1,h-1]].map(([x,y]) => {
         const p=(y*w+x)*4;
         return [pixels[p],pixels[p+1],pixels[p+2],pixels[p+3]];
       });
       const bg = corners.reduce((a,p) => a.map((v,i)=>v+p[i]),[0,0,0,0]).map(v=>v/corners.length);
-
       let minX=w,minY=h,maxX=-1,maxY=-1;
       for(let y=0;y<h;y++){
         for(let x=0;x<w;x++){
@@ -570,8 +588,7 @@ if (!window.__arenaNormalizeLogo) {
       }
 
       const cropW0=maxX-minX+1, cropH0=maxY-minY+1;
-      let visible=0, strong=0, lightNeutral=0, darkNeutral=0;
-      let lumSum=0, chromaSum=0;
+      let visible=0,strong=0,lightNeutral=0,darkNeutral=0,lumSum=0,chromaSum=0;
       for(let y=minY;y<=maxY;y++){
         for(let x=minX;x<=maxX;x++){
           const p=(y*w+x)*4;
@@ -587,7 +604,6 @@ if (!window.__arenaNormalizeLogo) {
           if(lum<24 && chroma<22) darkNeutral++;
         }
       }
-
       const boxArea=Math.max(1,cropW0*cropH0);
       const strongRatio=strong/boxArea;
       const visibleRatio=visible/boxArea;
@@ -599,7 +615,6 @@ if (!window.__arenaNormalizeLogo) {
         ? (visible && lightNeutral/visible>0.82 && meanLum>226 && meanChroma<24)
         : (visible && darkNeutral/visible>0.82 && meanLum<30 && meanChroma<24);
       const lowInformation = visible < 10 || strong < 6 || visibleRatio < 0.003 || strongRatio < 0.0015;
-
       if(lowInformation || invisibleOnSurface) {
         window.__arenaRejectLogo(img);
         return;
@@ -608,7 +623,6 @@ if (!window.__arenaNormalizeLogo) {
       const expand=Math.max(1,Math.round(Math.max(w,h)*0.012));
       minX=Math.max(0,minX-expand); minY=Math.max(0,minY-expand);
       maxX=Math.min(w-1,maxX+expand); maxY=Math.min(h-1,maxY+expand);
-
       const cropW=maxX-minX+1, cropH=maxY-minY+1;
       const output=document.createElement('canvas');
       output.width=96; output.height=96;
@@ -620,8 +634,12 @@ if (!window.__arenaNormalizeLogo) {
       out.drawImage(sourceCanvas,minX,minY,cropW,cropH,(96-drawW)/2,(96-drawH)/2,drawW,drawH);
 
       const data = output.toDataURL('image/png');
-      if(!window.__arenaRegisterFingerprint(img,data,original)) return;
+      if(!window.__arenaRegisterFingerprint(img,data,original)) {
+        window.__arenaRejectLogo(img);
+        return;
+      }
       window.__arenaLogoCache.set(original,data);
+      window.__arenaRememberLogo(img,data,original);
       img.dataset.arenaNormalized='1';
       img.hidden=false;
       if(img.nextElementSibling) img.nextElementSibling.hidden=true;
@@ -1243,7 +1261,8 @@ const server=http.createServer(async (req,res)=>{
     if (url.pathname === '/api/media/team' && method === 'GET') {
       const id=safeString(url.searchParams.get('id'),32);
       const prefer=safeString(url.searchParams.get('prefer') || 'parik',20);
-      if(!/^\d{1,16}$/.test(id)) return json(res,400,{ok:false,error:'Invalid competitor id'});
+      const exactSource=safeParikMediaURL(url.searchParams.get('source'));
+      if(!/^\\d{1,16}$/.test(id)) return json(res,400,{ok:false,error:'Invalid competitor id'});
 
       if(prefer === 'bo3'){
         const cached=cachedCompetitorLogo(id);
@@ -1256,6 +1275,7 @@ const server=http.createServer(async (req,res)=>{
       }
 
       return streamImageCandidates(res,[
+        {url:exactSource},
         {url:'https://parik24.pro/taxonomyicons/competitors/'+id+'-164w'}
       ]);
     }
