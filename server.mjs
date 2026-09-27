@@ -157,16 +157,16 @@ function patchIndexHtml(source) {
     /<meta\s+name=["']viewport["']\s+content=["'][^"']*["']\s*\/?>/i,
     '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">'
   );
-  html=html.replace(/\?+v=\d+/g,'?v=74');
+  html=html.replace(/\?+v=\d+/g,'?v=75');
   if (!html.includes('apple-touch-icon')) {
     html=html.replace(
       '<link rel="manifest" href="/manifest.webmanifest">',
       '<link rel="manifest" href="/manifest.webmanifest">\n  <link rel="apple-touch-icon" href="/assets/icons/esports.png">\n  <meta name="apple-mobile-web-app-capable" content="yes">\n  <meta name="apple-mobile-web-app-status-bar-style" content="black">'
     );
   }
-  if (!html.includes('arena-editor-hotfix-v74')) {
+  if (!html.includes('arena-editor-hotfix-v75')) {
     html=html.replace('</head>', `
-<style id="arena-editor-hotfix-v74">
+<style id="arena-editor-hotfix-v75">
 dialog#dialog.edit-bet-dialog{
   position:fixed!important;
   top:auto!important;
@@ -344,18 +344,18 @@ dialog#dialog.edit-bet-dialog .edit-bet-hide{
 }
 </style>
 <script>
-window.__ARENA_BUILD__='74';
+window.__ARENA_BUILD__='75';
 </script>
 </head>`);
   }
   html=html
-    .replace(/href="\/(app|sports|bet-view|event-view|share-coupon|settings|theme)\.css\?v=74"/g,'href="/v74/$1.css"')
-    .replace('src="/lucide.min.js"','src="/v74/lucide.min.js"')
-    .replace('src="/app.js?v=74"','src="/v74/app.js"');
-  if(!html.includes('arena-client-diagnostics-v74')){
+    .replace(/href="\/(app|sports|bet-view|event-view|share-coupon|settings|theme)\.css\?v=75"/g,'href="/v75/$1.css"')
+    .replace('src="/lucide.min.js"','src="/v75/lucide.min.js"')
+    .replace('src="/app.js?v=75"','src="/v75/app.js"');
+  if(!html.includes('arena-client-diagnostics-v75')){
     html=html.replace('<title>Arena Line</title>',`<title>Arena Line</title>
-<script id="arena-client-diagnostics-v74">
-(()=>{const send=(kind,message,extra={})=>{try{fetch('/api/client-diagnostic',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({kind,message:String(message||'').slice(0,1800),build:'74',href:location.href,...extra}),keepalive:true,cache:'no-store'}).catch(()=>{})}catch{}};
+<script id="arena-client-diagnostics-v75">
+(()=>{const send=(kind,message,extra={})=>{try{fetch('/api/client-diagnostic',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({kind,message:String(message||'').slice(0,1800),build:'75',href:location.href,...extra}),keepalive:true,cache:'no-store'}).catch(()=>{})}catch{}};
 window.addEventListener('error',event=>send('CLIENT_ERROR',event.message||event.error?.message||'window error',{source:event.filename||'',line:event.lineno||0,column:event.colno||0}));
 window.addEventListener('unhandledrejection',event=>send('CLIENT_REJECTION',event.reason?.stack||event.reason?.message||event.reason||'unhandled rejection'));
 window.__arenaClientDiagnostic=send;
@@ -1381,8 +1381,8 @@ const server=http.createServer(async (req,res)=>{
       return textResponse(res,method,'text/html; charset=utf-8',patchIndexHtml(source),'no-store');
     }
 
-    if (url.pathname.startsWith('/v74/') && ['GET','HEAD'].includes(method)) {
-      const runtimePath='/' + url.pathname.slice('/v74/'.length);
+    if (url.pathname.startsWith('/v75/') && ['GET','HEAD'].includes(method)) {
+      const runtimePath='/' + url.pathname.slice('/v75/'.length);
       if (runtimePath === '/feed.mjs') return js(res,method,feedModule,'no-store');
       if (runtimePath === '/team-emblem.mjs') return js(res,method,emblemModule,'no-store');
       if (runtimePath === '/ui.mjs') return js(res,method,uiModule,'no-store');
@@ -1671,19 +1671,19 @@ server.listen(port,'0.0.0.0',()=>{
     };
     try{
       const html=await request('/');
-      const appText=await request('/v74/app.js');
-      const accountText=await request('/v74/account.mjs');
-      const sportsText=await request('/v74/sports.mjs');
-      const betText=await request('/v74/bet-view.mjs');
-      const shareText=await request('/v74/share-coupon.mjs');
-      const i18nText=await request('/v74/i18n.mjs');
-      const themeText=await request('/v74/theme.css');
-      await request('/v74/feed.mjs');
-      await request('/v74/event-view.mjs');
+      const appText=await request('/v75/app.js');
+      const accountText=await request('/v75/account.mjs');
+      const sportsText=await request('/v75/sports.mjs');
+      const betText=await request('/v75/bet-view.mjs');
+      const shareText=await request('/v75/share-coupon.mjs');
+      const i18nText=await request('/v75/i18n.mjs');
+      const themeText=await request('/v75/theme.css');
+      await request('/v75/feed.mjs');
+      await request('/v75/event-view.mjs');
       const failures=[];
       for(const row of checks) if(row.status!==200) failures.push(row.path+':'+row.status);
-      if(!html.includes('/v74/app.js')) failures.push('html:no-v65-app');
-      if(!html.includes('/v74/app.css')) failures.push('html:no-v65-css');
+      if(!html.includes('/v75/app.js')) failures.push('html:no-v65-app');
+      if(!html.includes('/v75/app.css')) failures.push('html:no-v65-css');
       if(!appText.includes('CLIENT_BOOT_OK')) failures.push('app:no-client-boot-probe');
       if(!appText.includes('new SportsApp')) failures.push('app:no-sports-init');
       if(!accountText.includes('settleBets')) failures.push('account:missing');
@@ -1705,6 +1705,9 @@ server.listen(port,'0.0.0.0',()=>{
       if(!html.includes('maximum-scale=1,user-scalable=no') || !html.includes('apple-mobile-web-app-status-bar-style" content="black"')) failures.push('html:mobile-viewport-or-statusbar-missing');
       if(!themeText.includes('.share-close:focus-visible') || !themeText.includes('.gamepad-graphic') || !themeText.includes('width:84%!important')) failures.push('theme:share-focus-or-emblem-normalization-missing');
       if(!shareText.includes('cropRatio') || !shareText.includes('font(12.5)')) failures.push('share:scale-or-gamepad-crop-missing');
+      const swText=await request('/sw.js');
+      if(!swText.includes("arena-line-sync-v75") || !swText.includes("esports-exact-20260927.png")) failures.push('sw:v75-refresh-missing');
+      if(!themeText.includes('body.share-coupon-open::before') || !themeText.includes('height:env(safe-area-inset-top)')) failures.push('theme:share-top-strip-missing');
       if(/\]\s*\n\s*\[/.test(i18nText)) failures.push('i18n:malformed-row-boundary');
       const controllerResponse=await fetch(base+'/assets/icons/esports-exact-20260927.png',{cache:'no-store'});
       const controllerBytes=(await controllerResponse.arrayBuffer()).byteLength;
@@ -1712,7 +1715,7 @@ server.listen(port,'0.0.0.0',()=>{
       const summary=checks.map(({path,status,type,bytes})=>({path,status,type,bytes}));
       summary.push({path:'/assets/icons/esports-exact-20260927.png',status:controllerResponse.status,type:controllerResponse.headers.get('content-type')||'',bytes:controllerBytes});
       if(failures.length) console.error('FRONTEND_SELFTEST_FAILED '+JSON.stringify({failures,summary}));
-      else console.log('FRONTEND_SELFTEST_OK '+JSON.stringify({build:'74',summary}));
+      else console.log('FRONTEND_SELFTEST_OK '+JSON.stringify({build:'75',summary}));
     }catch(error){
       console.error('FRONTEND_SELFTEST_ERROR '+String(error?.stack||error));
     }
