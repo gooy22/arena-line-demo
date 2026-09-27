@@ -540,6 +540,11 @@ const server=http.createServer(async (req,res)=>{
 
 server.listen(port,'0.0.0.0',()=>{
   console.log('Arena Line Parik sync v4 listening on '+port);
+  profileStorageStatus().then(status=>{
+    console.log('PROFILE_STORAGE '+JSON.stringify(status));
+  }).catch(error=>{
+    console.error('PROFILE_STORAGE_ERROR '+String(error?.message || error));
+  });
   probeResultsSource().then(status=>{
     resultsSource={...status,error:null};
     console.log('RESULTS_SOURCE_OK '+JSON.stringify(resultsSource));
