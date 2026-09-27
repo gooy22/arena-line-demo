@@ -180,7 +180,7 @@ function openEditBet(id) {
 
   openDialog('Редагувати ставку', `
     <form id="edit-bet-form" class="edit-bet-form">
-      <p class="dialog-copy">Зміни суми, коефіцієнта або результату одразу перераховують ставку, виплату та баланс профілю.</p>
+      <p class="dialog-copy">Зміни суми, коефіцієнта або результату одразу перераховують ставку, виплату та баланс профілю. Зміна номера зсуває всі інші номери вище й нижче без розривів.</p>
       <div class="edit-bet-card">
         <strong class="edit-bet-event">${esc(primary.eventName || selections.map(s => s.eventName).filter(Boolean).join(' / '))}</strong>
         <div class="edit-bet-market">${esc(primary.marketName || '')}${primary.label ? ' · ' + esc(primary.label) : ''}</div>
@@ -188,7 +188,7 @@ function openEditBet(id) {
         <div class="edit-bet-grid">
           <div>
             <label for="edit-bet-number">Номер ставки</label>
-            <input id="edit-bet-number" inputmode="numeric" type="number" min="1" max="${account.bets.length}" value="${Number(bet.number || 1)}" required>
+            <input id="edit-bet-number" inputmode="numeric" type="number" min="1" step="1" value="${Number(bet.number || 1)}" required>
           </div>
           <div>
             <label for="edit-bet-stake">Сума ставки, €</label>
