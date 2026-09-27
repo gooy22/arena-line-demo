@@ -51,8 +51,11 @@ export function teamEmblem(team) {
     .join('')
     .toUpperCase() || '—';
 
-  const primarySource = urls[0] || '';
-  const fallbackSource = urls[1] || '';
+  const logoCache = globalThis.window?.__arenaLogoCache;
+  const cachedSource = logoCache ? urls.find(url => logoCache.has(url)) : '';
+  const ordered = cachedSource ? [cachedSource, ...urls.filter(url => url !== cachedSource)] : urls;
+  const primarySource = ordered[0] || '';
+  const fallbackSource = ordered[1] || '';
   const primary = globalThis.window?.__arenaStableLogoSrc ? window.__arenaStableLogoSrc(primarySource) : primarySource;
   const fallback = globalThis.window?.__arenaStableLogoSrc ? window.__arenaStableLogoSrc(fallbackSource) : fallbackSource;
   const image = primary
