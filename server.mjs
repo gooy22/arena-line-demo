@@ -494,6 +494,50 @@ const sportsCssPatch = `
 }
 `;
 
+
+async function probeParikIconPaths() {
+  const tournamentId='8df12f483e8c46f38307abc078f1b1d1';
+  const categoryId='817c1aebc52740d3b77d18af36d8d42f';
+  const competitorId='125332';
+  const paths=[
+    '/taxonomyicons/tournaments/'+tournamentId+'-164w',
+    '/taxonomyicons/tournaments/'+tournamentId,
+    '/taxonomyicons/tournament/'+tournamentId+'-164w',
+    '/taxonomyicons/categories/'+categoryId+'-164w',
+    '/taxonomyicons/categories/'+categoryId,
+    '/taxonomyicons/category/'+categoryId+'-164w',
+    '/taxonomyicons/competitors/'+competitorId+'-164w',
+    '/taxonomyicons/competitors/'+competitorId
+  ];
+  const rows=[];
+  for(const origin of ['https://parik24.pro','https://24parik-bet.org']) {
+    for(const pathname of paths) {
+      try {
+        const response=await fetch(origin+pathname,{
+          redirect:'manual',
+          signal:AbortSignal.timeout(8000),
+          headers:{
+            'user-agent':'Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 Version/26.0 Mobile/15E148 Safari/604.1',
+            'accept':'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+            'referer':origin+'/'
+          }
+        });
+        const body=await response.arrayBuffer().catch(()=>new ArrayBuffer(0));
+        rows.push({
+          url:origin+pathname,
+          status:response.status,
+          type:response.headers.get('content-type')||'',
+          location:response.headers.get('location')||'',
+          bytes:body.byteLength
+        });
+      } catch(error) {
+        rows.push({url:origin+pathname,error:String(error?.cause?.code||error?.message||error)});
+      }
+    }
+  }
+  console.log('PARIK_ICON_PROBE '+JSON.stringify(rows));
+}
+
 async function embeddedAsset(pathname,method,headers) {
   const request = new Request('http://localhost' + pathname,{method,headers});
   return app.fetch(request,env,ctx);
