@@ -229,8 +229,8 @@ export async function completedHistory(teamName, limit = 20) {
       startTime:match.start_date,
       tournament:match.tournament?.name || match.event?.name || '',
       competitors:[
-        {id:String(a.id),name:a.name,score:hasScore?aScore:null,isWinner:hasScore && aScore>bScore},
-        {id:String(b.id),name:b.name,score:hasScore?bScore:null,isWinner:hasScore && bScore>aScore}
+        {name:a.name,score:hasScore?aScore:null,isWinner:hasScore && aScore>bScore},
+        {name:b.name,score:hasScore?bScore:null,isWinner:hasScore && bScore>aScore}
       ]
     });
     if (rows.length >= limit) break;
