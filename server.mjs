@@ -1,5 +1,7 @@
 import http from 'node:http';
 import { Readable } from 'node:stream';
+import tls from 'node:tls';
+import crypto from 'node:crypto';
 import app from './dist/server/index.js';
 
 const port = Number(process.env.PORT || 3000);
@@ -11,6 +13,93 @@ const ctx = {
     });
   }
 };
+
+
+function wsFrame(text) {
+  const payload = Buffer.from(text);
+  const mask = crypto.randomBytes(4);
+  let header;
+  if (payload.length < 126) {
+    header = Buffer.alloc(2);
+    header[0] = 0x81; header[1] = 0x80 | payload.length;
+  } else {
+    header = Buffer.alloc(4);
+    header[0] = 0x81; header[1] = 0x80 | 126; header.writeUInt16BE(payload.length,2);
+  }
+  const out = Buffer.alloc(header.length + 4 + payload.length);
+  header.copy(out,0); mask.copy(out,header.length);
+  for (let i=0;i<payload.length;i++) out[header.length+4+i] = payload[i] ^ mask[i%4];
+  return out;
+}
+function decodeWsFrames(buffer) {
+  const messages = [];
+  let offset = 0;
+  while (offset + 2 <= buffer.length) {
+    const b0=buffer[offset], b1=buffer[offset+1];
+    const opcode=b0&0x0f, masked=!!(b1&0x80);
+    let len=b1&0x7f, head=2;
+    if (len===126) { if(offset+4>buffer.length) break; len=buffer.readUInt16BE(offset+2); head=4; }
+    else if (len===127) break;
+    const maskLen=masked?4:0;
+    if(offset+head+maskLen+len>buffer.length) break;
+    const payload=Buffer.from(buffer.subarray(offset+head+maskLen, offset+head+maskLen+len));
+    if(masked){
+      const mask=buffer.subarray(offset+head,offset+head+4);
+      for(let i=0;i<payload.length;i++) payload[i]^=mask[i%4];
+    }
+    if(opcode===1) messages.push(payload.toString('utf8'));
+    offset += head+maskLen+len;
+  }
+  return {messages, rest:buffer.subarray(offset)};
+}
+async function probeDirectFeed(host, origin) {
+  const apiKey='507aa81f-4c27-4e37-9410-21dfb81e9efe';
+  const path='/direct-feed/feed?brand=PRJ4&X-Api-Key='+apiKey;
+  return await new Promise(resolve => {
+    const started=Date.now();
+    let settled=false, raw=Buffer.alloc(0), upgraded=false, body=Buffer.alloc(0), messages=[];
+    const done = value => { if(settled)return; settled=true; clearTimeout(timer); try{socket.destroy();}catch{} resolve({...value,host,ms:Date.now()-started}); };
+    const socket=tls.connect({host,port:443,servername:host,rejectUnauthorized:true},()=>{
+      const key=crypto.randomBytes(16).toString('base64');
+      socket.write([
+        'GET '+path+' HTTP/1.1','Host: '+host,'Upgrade: websocket','Connection: Upgrade',
+        'Sec-WebSocket-Key: '+key,'Sec-WebSocket-Version: 13','Origin: '+origin,
+        'User-Agent: Mozilla/5.0','Pragma: no-cache','Cache-Control: no-cache','',''
+      ].join('\r\n'));
+    });
+    const timer=setTimeout(()=>done({ok:false,timeout:true,upgraded,messages:messages.slice(0,5)}),9000);
+    socket.on('error',e=>done({ok:false,error:String(e.code||e.message||e)}));
+    socket.on('data',chunk=>{
+      if(!upgraded){
+        raw=Buffer.concat([raw,chunk]);
+        const marker=raw.indexOf('\r\n\r\n');
+        if(marker<0)return;
+        const head=raw.subarray(0,marker).toString('utf8');
+        const status=(head.match(/^HTTP\/1\.1\s+(\d+)/)||[])[1]||'';
+        body=raw.subarray(marker+4);
+        if(status!=='101') return done({ok:false,status:Number(status)||0,headers:head.split('\r\n').slice(0,12),body:body.toString('utf8').slice(0,500)});
+        upgraded=true;
+        socket.write(wsFrame(JSON.stringify({protocol:'json',version:1})+'\x1e'));
+        setTimeout(()=>{
+          if(settled||!upgraded)return;
+          socket.write(wsFrame(JSON.stringify({
+            type:4, invocationId:'1', target:'GetSports',
+            arguments:[{channel:'MOBILE_WEB',brand:'PRJ4',user:null,currency:'UAH',language:'uk'}]
+          })+'\x1e'));
+        },250);
+        if(body.length){
+          const parsed=decodeWsFrames(body); messages.push(...parsed.messages); body=parsed.rest;
+        }
+      } else {
+        body=Buffer.concat([body,chunk]);
+        const parsed=decodeWsFrames(body); messages.push(...parsed.messages); body=parsed.rest;
+        if(messages.some(x=>x.includes('isInitialBatch')||x.includes('"type":2')||x.includes('"error"')) || messages.length>=4) {
+          done({ok:true,status:101,messages:messages.slice(0,6).map(x=>x.slice(0,1800))});
+        }
+      }
+    });
+  });
+}
 
 async function probeParik() {
   const targets = [
@@ -161,5 +250,10 @@ server.listen(port, '0.0.0.0', () => {
       interesting:data.interesting.slice(0,120),
       scanned:data.scanned.map(x => ({url:x.url,status:x.status,length:x.length,hits:(x.hits||[]).slice(0,12)}))
     }));
+    return Promise.all([
+      probeDirectFeed('24parik-bet.org','https://24parik-bet.org'),
+      probeDirectFeed('24parik-bet.org','https://parik24.pro'),
+      probeDirectFeed('parik24.pro','https://parik24.pro')
+    ]).then(rows => console.log('PARIK_WS_PROBE ' + JSON.stringify(rows)));
   }).catch(error => console.error('PARIK_PROBE_ERROR', error?.stack || error));
 });
