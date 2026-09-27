@@ -2,7 +2,14 @@ import { icon, graphic } from './ui.mjs';
 import { getLocale, t } from './i18n.mjs';
 
 export const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
-export const amount = value => `${new Intl.NumberFormat(getLocale(), { minimumFractionDigits:2, maximumFractionDigits:2 }).format((value || 0) / 100).replace(',', '.')} €`;
+export const amount = value => {
+  const cents = Math.round(Number(value) || 0);
+  const sign = cents < 0 ? '-' : '';
+  const absolute = Math.abs(cents);
+  const major = String(Math.floor(absolute / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  const minor = String(absolute % 100).padStart(2, '0');
+  return `${sign}${major}.${minor} €`;
+};
 const date = value => new Date(value).toLocaleString(getLocale(), { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
 const games = { CSGO:'counter-strike', CS:'counter-strike', DOTA2:'dota', LOL:'lol', F:'football', T:'tennis', TT:'table-tennis', H:'hockey', B:'basketball', VB:'volleyball', PL:'snooker' };
 
