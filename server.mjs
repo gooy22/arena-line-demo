@@ -23,6 +23,7 @@ const betViewModule = await readFile(new URL('./overrides/bet-view.mjs', import.
 const themeCssModule = await readFile(new URL('./overrides/theme.css', import.meta.url), 'utf8');
 const serviceWorkerModule = await readFile(new URL('./overrides/sw.js', import.meta.url), 'utf8');
 const manifestModule = await readFile(new URL('./overrides/manifest.webmanifest', import.meta.url), 'utf8');
+const uiModule = await readFile(new URL('./overrides/ui.mjs', import.meta.url), 'utf8');
 
 const syncedEvents = new Map();
 let resultsSource = {ok:null,error:null,disciplines:[]};
@@ -145,15 +146,15 @@ function patchSportsModule(source) {
       'Counter-Strike':'counter-strike',
       'Dota 2':'dota',
       'League of Legends':'lol',
-      'Valorant':'esports',
-      'Free Fire':'esports',
-      'Mobile Legends':'esports',
-      'PUBG':'esports',
-      'Apex Legends':'esports',
-      'Overwatch':'esports',
-      'Rocket League':'esports',
-      'Rainbow Six':'esports',
-      'Call of Duty':'esports'
+      'Valorant':'valorant',
+      'Free Fire':'free-fire',
+      'Mobile Legends':'mobile-legends',
+      'PUBG':'pubg',
+      'Apex Legends':'apex',
+      'Overwatch':'overwatch',
+      'Rocket League':'rocket-league',
+      'Rainbow Six':'rainbow-six',
+      'Call of Duty':'call-of-duty'
     };
     const fallback = games[event.categoryName] || SPORTS.find(s => s[0] === event.sport)?.[1] || 'esports';
     const valorant = 'https://commons.wikimedia.org/wiki/Special:Redirect/file/Valorant_logo_-_pink_color_version.svg';
@@ -334,6 +335,7 @@ const server=http.createServer(async (req,res)=>{
 
     if (url.pathname === '/feed.mjs' && ['GET','HEAD'].includes(method)) return js(res,method,feedModule);
     if (url.pathname === '/team-emblem.mjs' && ['GET','HEAD'].includes(method)) return js(res,method,emblemModule);
+    if (url.pathname === '/ui.mjs' && ['GET','HEAD'].includes(method)) return js(res,method,uiModule);
     if (url.pathname === '/account.mjs' && ['GET','HEAD'].includes(method)) return js(res,method,accountModule);
     if (url.pathname === '/app.js' && ['GET','HEAD'].includes(method)) return js(res,method,appModule);
     if (url.pathname === '/bet-view.mjs' && ['GET','HEAD'].includes(method)) return js(res,method,betViewModule);
