@@ -5,6 +5,7 @@ import { t, getLocale } from './i18n.mjs';
 const date = value => new Date(value).toLocaleString(getLocale(), {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
 const games = { CSGO:'counter-strike', CS:'counter-strike', DOTA2:'dota', LOL:'lol', F:'football', T:'tennis', TT:'table-tennis', H:'hockey', B:'basketball', VB:'volleyball', PL:'snooker' };
 const imageCache = new Map();
+const isEsportsSelection = selection => selection?.sport === 'CS' || ['CSGO','DOTA2','LOL'].includes(selection?.subsport);
 
 function totalOdds(bet) {
   const value = Number(bet?.odds);
@@ -13,7 +14,7 @@ function totalOdds(bet) {
 }
 
 function sportImage(selection) {
-  const name = selection.sport==='CS' || ['CSGO','DOTA2','LOL'].includes(selection.subsport) ? 'esports' : games[selection.sport] || 'esports';
+  const name = isEsportsSelection(selection) ? 'esports' : games[selection.sport] || 'esports';
   if (!imageCache.has(name)) imageCache.set(name, new Promise(resolve => {
     const image = new Image();
     image.onload = () => resolve(image);
@@ -45,12 +46,14 @@ export function couponData(bet, showAmount) {
   };
 }
 
-function drawContained(context,image,x,y,box=24) {
+function drawContained(context,image,x,y,box=22,cropRatio=0) {
   const iw=Number(image?.naturalWidth || image?.width || 0), ih=Number(image?.naturalHeight || image?.height || 0);
   if(!iw || !ih) return;
-  const scale=Math.min(box/iw,box/ih);
-  const w=iw*scale,h=ih*scale;
-  context.drawImage(image,x+(box-w)/2,y+(box-h)/2,w,h);
+  const sx=iw*cropRatio, sy=ih*cropRatio;
+  const sw=iw-(sx*2), sh=ih-(sy*2);
+  const scale=Math.min(box/sw,box/sh);
+  const w=sw*scale,h=sh*scale;
+  context.drawImage(image,sx,sy,sw,sh,x+(box-w)/2,y+(box-h)/2,w,h);
 }
 
 export async function drawCoupon(canvas, bet, showAmount) {
@@ -73,34 +76,32 @@ export async function drawCoupon(canvas, bet, showAmount) {
     return lines;
   };
   const rows = model.rows.map(row => {
-    font(14); const title = wrap(row.title, row.status ? 223 : 240);
-    font(11); const detail = wrap(row.detail, row.status ? 223 : 240);
-    return {...row,title,detail,height:Math.max(58,18*title.length+14*detail.length+18)};
+    font(12.5); const title = wrap(row.title, row.status ? 229 : 246);
+    font(10); const detail = wrap(row.detail, row.status ? 229 : 246);
+    return {...row,title,detail,height:Math.max(52,16*title.length+13*detail.length+16)};
   });
-  const totalsHeight=model.showAmount ? 72 : 44;
-  const height = 44 + rows.reduce((total,row)=>total+row.height,0) + totalsHeight;
+  const totalsHeight=model.showAmount ? 64 : 40;
+  const height = 40 + rows.reduce((total,row)=>total+row.height,0) + totalsHeight;
   canvas.width = width*scale; canvas.height = height*scale;
   context.scale(scale,scale); context.fillStyle='#e2dfd9'; context.fillRect(0,0,width,height);
   const text = (value,x,y,color='#292621',size=14,align='left',weight=400) => {
     font(size,weight); context.textAlign=align; context.fillStyle=color; context.fillText(value,x,y);
   };
   const rule = y => { context.strokeStyle='#d0cdc7'; context.lineWidth=1; context.beginPath(); context.moveTo(0,y); context.lineTo(width,y); context.stroke(); };
-  text(model.date,16,31,'#7b756b',12); text(model.type,width-16,31,'#7b756b',12,'right'); rule(44);
-  let y=44;
+  text(model.date,16,27,'#7b756b',11); text(model.type,width-16,27,'#7b756b',11,'right'); rule(40);
+  let y=40;
   rows.forEach((row,index) => {
     if (images[index]) {
-      context.save();
-      context.globalCompositeOperation='multiply';
-      drawContained(context,images[index],16,y+(row.height-24)/2,24);
-      context.restore();
+      const esports=isEsportsSelection(row.selection);
+      drawContained(context,images[index],17,y+(row.height-22)/2,esports ? 19 : 21,esports ? 0.045 : 0);
     }
-    row.title.forEach((line,i)=>text(line,56,y+23+i*18));
-    row.detail.forEach((line,i)=>text(line,56,y+23+row.title.length*18+i*14,'#7b756b',11));
+    row.title.forEach((line,i)=>text(line,52,y+21+i*16,'#292621',12.5));
+    row.detail.forEach((line,i)=>text(line,52,y+21+row.title.length*16+i*13,'#7b756b',10));
     const color = row.status==='won' ? '#009e69' : row.status==='lost' ? '#e6253a' : '#292621';
-    text(row.odds,width-(row.status?36:16),y+row.height/2+5,color,16,'right');
+    text(row.odds,width-(row.status?34:16),y+row.height/2+4,color,14,'right');
     if (row.status) {
-      const x=width-20, cy=y+row.height/2;
-      context.beginPath(); context.arc(x,cy,7,0,Math.PI*2); context.fillStyle=row.status==='void'?'#969186':color; context.fill();
+      const x=width-19, cy=y+row.height/2;
+      context.beginPath(); context.arc(x,cy,6.5,0,Math.PI*2); context.fillStyle=row.status==='void'?'#969186':color; context.fill();
       context.strokeStyle='#fff'; context.lineWidth=1.5; context.lineCap='round'; context.beginPath();
       if (row.status==='won') {context.moveTo(x-3,cy);context.lineTo(x-1,cy+2);context.lineTo(x+3,cy-2);}
       else if(row.status==='lost') {context.moveTo(x-2,cy-2);context.lineTo(x+2,cy+2);context.moveTo(x+2,cy-2);context.lineTo(x-2,cy+2);}
@@ -109,10 +110,10 @@ export async function drawCoupon(canvas, bet, showAmount) {
     }
     y+=row.height; rule(y);
   });
-  text(model.stakeLabel,16,y+27); text(model.stake,width-16,y+27,'#292621',14,'right');
+  text(model.stakeLabel,16,y+24,'#292621',12.5); text(model.stake,width-16,y+24,'#292621',12.5,'right');
   if(model.showAmount){
     const paid = (model.status==='won' || model.status==='cashout') ? '#009e69' : '#292621';
-    text(model.payoutLabel,16,y+53,paid); text(model.payout,width-16,y+53,paid,14,'right');
+    text(model.payoutLabel,16,y+48,paid,12.5); text(model.payout,width-16,y+48,paid,12.5,'right');
   }
   context.globalCompositeOperation='destination-out';
   for(let x=0;x<=width+7;x+=width/13) for(const edge of [0,height]) {context.beginPath();context.arc(x,edge,7,0,Math.PI*2);context.fill();}
