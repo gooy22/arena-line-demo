@@ -30,7 +30,7 @@ dialog.theme-sheet{position:fixed;inset:auto 0 0;width:100%;max-width:480px;max-
 
 .theme-options input,.language-options input{padding:0;border:0;background:transparent;appearance:auto}.theme-options strong{color:var(--ink,#292621)}
 
-[data-theme=dark] .team-emblem-picture{background:#e9e7e1;border-radius:4px;padding:1px}[data-theme=dark] .event-team-emblem{background:#e9e7e1}
+[data-theme=dark] .team-emblem-picture{background:#101010!important;border-radius:50%;padding:0!important}[data-theme=dark] .event-team-emblem{background:#101010!important}
 
 .reference-graphic.gamepad-restored{mix-blend-mode:normal;background:transparent}
 
@@ -128,6 +128,33 @@ dialog.theme-sheet{position:fixed;inset:auto 0 0;width:100%;max-width:480px;max-
     opacity:1!important;
   }
   .tournament-symbol,.game-badge-dark,.team-emblem-picture{
+    background:#101010!important;
+  }
+}
+
+/* Arena tournament/PWA corrections */
+.tournament-tabs>button .tournament-symbol,
+.tournament-tabs>button.active .tournament-symbol,
+.tournament-tabs>button:focus .tournament-symbol,
+.tournament-tabs>button:focus-visible .tournament-symbol{
+  border:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+}
+@media(display-mode:standalone){
+  .sport-symbol{
+    background:#f3f1ee!important;
+    overflow:hidden;
+  }
+  .sport-symbol .reference-graphic,
+  .sport-symbol img{
+    mix-blend-mode:normal!important;
+    filter:none!important;
+    opacity:1!important;
+    background:transparent!important;
+  }
+  [data-theme=dark] .team-emblem-picture,
+  [data-theme=dark] .event-team-emblem{
     background:#101010!important;
   }
 }
