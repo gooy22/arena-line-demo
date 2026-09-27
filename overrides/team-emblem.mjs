@@ -54,7 +54,7 @@ export function teamEmblem(team) {
   const primary = urls[0];
   const fallback = urls[1] || '';
   const image = primary
-    ? `<img class="team-logo" src="${escape(primary)}" data-fallback-src="${escape(fallback)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="const f=this.dataset.fallbackSrc;if(f&&this.src!==f){this.src=f;this.dataset.fallbackSrc='';}else{this.hidden=true;this.nextElementSibling.hidden=false;}">`
+    ? `<img class="team-logo" src="${escape(primary)}" data-fallback-src="${escape(fallback)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onload="window.__arenaNormalizeLogo&&window.__arenaNormalizeLogo(this)" onerror="const f=this.dataset.fallbackSrc;if(f&&this.src!==f){this.src=f;this.dataset.fallbackSrc='';}else{this.hidden=true;this.nextElementSibling.hidden=false;}">`
     : '';
 
   return `<span class="team-emblem-picture">${image}<span class="team-emblem-fallback" ${primary ? 'hidden' : ''} title="${escape(team?.name)}">${escape(initials)}</span></span>`;
