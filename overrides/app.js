@@ -170,7 +170,10 @@ function openEditBet(id) {
     let winnerIndex = '';
     let state = 'open';
     if (selection.settlement?.status === 'void') state = 'void';
-    else if (score.length === 2 && Number(score[0]) !== Number(score[1])) {
+    else if (selection.settlement?.winnerIndex === 0 || selection.settlement?.winnerIndex === 1) {
+      winnerIndex = Number(selection.settlement.winnerIndex);
+      state = 'winner';
+    } else if (score.length === 2 && Number(score[0]) !== Number(score[1])) {
       winnerIndex = Number(score[0]) > Number(score[1]) ? 0 : 1;
       state = 'winner';
     } else if (selection.settlement?.status && chosenSide != null) {
