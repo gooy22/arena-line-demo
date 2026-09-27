@@ -150,16 +150,16 @@ function teamMetaByProviderId(id) {
 
 function patchIndexHtml(source) {
   let html=String(source || '');
-  html=html.replace(/\?+v=\d+/g,'?v=59');
+  html=html.replace(/\?+v=\d+/g,'?v=60');
   if (!html.includes('apple-touch-icon')) {
     html=html.replace(
       '<link rel="manifest" href="/manifest.webmanifest">',
       '<link rel="manifest" href="/manifest.webmanifest">\n  <link rel="apple-touch-icon" href="/assets/icons/esports.png">\n  <meta name="apple-mobile-web-app-capable" content="yes">\n  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">'
     );
   }
-  if (!html.includes('arena-editor-hotfix-v59')) {
+  if (!html.includes('arena-editor-hotfix-v60')) {
     html=html.replace('</head>', `
-<style id="arena-editor-hotfix-v59">
+<style id="arena-editor-hotfix-v60">
 dialog#dialog.edit-bet-dialog{
   position:fixed!important;
   top:auto!important;
