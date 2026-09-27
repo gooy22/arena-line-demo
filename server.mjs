@@ -134,6 +134,18 @@ function teamMetaByProviderId(id) {
   return null;
 }
 
+function patchIndexHtml(source) {
+  let html=String(source || '');
+  html=html.replace(/\?v=(?:21|32|43)/g,'?v=44');
+  if (!html.includes('apple-touch-icon')) {
+    html=html.replace(
+      '<link rel="manifest" href="/manifest.webmanifest">',
+      '<link rel="manifest" href="/manifest.webmanifest">\n  <link rel="apple-touch-icon" href="/assets/icons/esports.png">\n  <meta name="apple-mobile-web-app-capable" content="yes">\n  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">'
+    );
+  }
+  return html;
+}
+
 function patchSportsModule(source) {
   const oldBlock = `  gameBadge(event) {
     const games = { 'Counter-Strike': 'counter-strike', 'Dota 2': 'dota', 'League of Legends': 'lol' };
@@ -331,6 +343,13 @@ const server=http.createServer(async (req,res)=>{
         resultsSource,
         profileStorage
       });
+    }
+
+    if ((url.pathname === '/' || url.pathname === '/index.html') && ['GET','HEAD'].includes(method)) {
+      const response=await embeddedAsset(url.pathname === '/' ? '/' : '/index.html',method,req.headers);
+      if (!response.ok) { res.statusCode=response.status; return res.end(); }
+      const source=method === 'HEAD' ? '' : await response.text();
+      return textResponse(res,method,'text/html; charset=utf-8',patchIndexHtml(source));
     }
 
     if (url.pathname === '/feed.mjs' && ['GET','HEAD'].includes(method)) return js(res,method,feedModule);
