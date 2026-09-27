@@ -1524,3 +1524,19 @@ html.share-coupon-open.share-open-express-legacy .share-actions button>span{
     bottom:50px!important;
   }
 }
+
+
+/* v93: keep the share bottom light, but restore the iOS-style home indicator only. */
+body.share-coupon-open::after{
+  content:""!important;
+  position:fixed!important;
+  left:50%!important;
+  bottom:7px!important;
+  width:140px!important;
+  height:6px!important;
+  transform:translateX(-50%)!important;
+  border-radius:999px!important;
+  background:#171717!important;
+  z-index:2147483647!important;
+  pointer-events:none!important;
+}
