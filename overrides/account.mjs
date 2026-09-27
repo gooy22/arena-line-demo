@@ -279,10 +279,11 @@ export class Accounts {
 
     const totals = betTotals(nextStake, selections, bet.type, bet.systemSize);
     const status = String(changes.status || bet.status || 'open');
-    if (!['open','won','lost','cashout'].includes(status)) throw new Error('Некорректный статус');
+    if (!['open','won','lost','void','cashout'].includes(status)) throw new Error('Некорректный статус');
 
     let payout = 0;
     if (status === 'won') payout = totals.potential;
+    if (status === 'void') payout = totals.cost;
     if (status === 'cashout') {
       payout = Number(changes.cashoutPayout ?? bet.payout ?? 0);
       if (!Number.isSafeInteger(payout) || payout < 0) throw new Error('Некорректная сумма cash-out');
