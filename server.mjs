@@ -3,7 +3,7 @@ import { Readable } from 'node:stream';
 import { readFile } from 'node:fs/promises';
 import app from './dist/server/index.js';
 import { augmentSettlements, completedHistory, probeResultsSource } from './results_bridge.mjs';
-import { loginProfile, syncProfile, profileStorageStatus, changeProfilePassword } from './profile_store.mjs';
+import { readProfile, loginProfile, syncProfile, profileStorageStatus, changeProfilePassword } from './profile_store.mjs';
 
 const port = Number(process.env.PORT || 3000);
 const env = {};
@@ -368,6 +368,8 @@ const server=http.createServer(async (req,res)=>{
       const email=safeString(body.email,200).trim().toLowerCase();
       const hash=safeString(body.hash,80);
       if (!email || !/^[a-f0-9]{64}$/i.test(hash)) return json(res,400,{ok:false,error:'Invalid credentials'});
+      const stored=await readProfile(email);
+      if (!stored) return json(res,404,{ok:false,error:'Profile not found'});
       const profile=await loginProfile(email,hash);
       if (!profile) return json(res,401,{ok:false,error:'Invalid credentials'});
       return json(res,200,{ok:true,profile});
