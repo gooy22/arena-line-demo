@@ -853,7 +853,10 @@ const backgroundMedia = {
   disciplines:new Map(),
   tournaments:new Map(),
   competitors:new Map(),
-  warming:new Set()
+  warming:new Set(),
+  queued:new Set(),
+  queue:[],
+  active:0
 };
 
 function logoFromEntity(row) {
@@ -958,11 +961,36 @@ async function warmDisciplineMedia(category) {
   }
 }
 
-function scheduleMediaWarm(events) {
-  const categories=[...new Set((events || []).map(event=>String(event?.categoryName || event?.subsport || '')).filter(category=>disciplineIds[category]))];
-  for(const category of categories){
-    setTimeout(()=>warmDisciplineMedia(category).catch(()=>{}),0);
+function drainMediaWarmQueue() {
+  while(backgroundMedia.active < 2 && backgroundMedia.queue.length){
+    const category=backgroundMedia.queue.shift();
+    backgroundMedia.queued.delete(category);
+    backgroundMedia.active++;
+    Promise.resolve(warmDisciplineMedia(category))
+      .catch(()=>{})
+      .finally(()=>{
+        backgroundMedia.active=Math.max(0,backgroundMedia.active-1);
+        setTimeout(drainMediaWarmQueue,0);
+      });
   }
+}
+
+function scheduleMediaWarm(events) {
+  const categories=[...new Set((events || [])
+    .map(event=>String(event?.categoryName || event?.subsport || ''))
+    .filter(category=>disciplineIds[category]))];
+
+  for(const category of categories){
+    const cached=backgroundMedia.disciplines.get(category);
+    if(cached && Date.now()-cached.at < 12*3600_000){
+      applyDisciplineCatalog(category,cached);
+      continue;
+    }
+    if(backgroundMedia.warming.has(category) || backgroundMedia.queued.has(category)) continue;
+    backgroundMedia.queued.add(category);
+    backgroundMedia.queue.push(category);
+  }
+  drainMediaWarmQueue();
 }
 
 function cachedTournamentLogo(id) {
