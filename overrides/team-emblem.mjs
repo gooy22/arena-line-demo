@@ -18,18 +18,16 @@ export function emblemCandidates(team) {
   const id = String(team?.id ?? '').trim();
   const name = String(team?.name || '').trim();
   const category = String(team?.categoryName || '').trim();
-  const candidates = [];
+  if (!/^\d{1,12}$/.test(id)) return [];
 
-  if (/^\d{1,12}$/.test(id)) {
-    candidates.push('/api/media/team?id=' + encodeURIComponent(id) +
-      '&name=' + encodeURIComponent(name) +
-      '&category=' + encodeURIComponent(category));
-  } else {
-    const raw = String(team?.icon?.url || team?.iconUrl || '').trim();
-    if (/^https?:\/\//i.test(raw)) candidates.push(raw);
-  }
+  const base='/api/media/team?id=' + encodeURIComponent(id) +
+    '&name=' + encodeURIComponent(name) +
+    '&category=' + encodeURIComponent(category);
+  const urls=[base + '&prefer=parik', base + '&prefer=bo3'];
 
-  return [...new Set(candidates)];
+  const retry = globalThis.window?.__arenaLogoRetry;
+  const now=Date.now();
+  return urls.filter(url => !retry || Number(retry.get(url) || 0) <= now);
 }
 
 export function emblemURL(team) {
@@ -46,6 +44,7 @@ export function teamEmblem(team) {
     .join('')
     .toUpperCase() || '—';
 
+  globalThis.window && (window.__arenaLogoRetry = window.__arenaLogoRetry || new Map());
   const logoCache = globalThis.window?.__arenaLogoCache;
   const cachedSource = logoCache ? urls.find(url => logoCache.has(url)) : '';
   const ordered = cachedSource ? [cachedSource, ...urls.filter(url => url !== cachedSource)] : urls;
@@ -54,7 +53,7 @@ export function teamEmblem(team) {
   const primary = globalThis.window?.__arenaStableLogoSrc ? window.__arenaStableLogoSrc(primarySource) : primarySource;
   const fallback = globalThis.window?.__arenaStableLogoSrc ? window.__arenaStableLogoSrc(fallbackSource) : fallbackSource;
   const image = primary
-    ? `<img class="team-logo" src="${escape(primary)}" data-arena-source="${escape(primarySource)}" data-fallback-src="${escape(fallback)}" data-fallback-source="${escape(fallbackSource)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onload="window.__arenaNormalizeLogo&&window.__arenaNormalizeLogo(this)" onerror="const f=this.dataset.fallbackSrc;if(f&&this.src!==f){this.src=f;this.dataset.arenaSource=this.dataset.fallbackSource||f;this.dataset.fallbackSrc='';}else{this.hidden=true;this.nextElementSibling.hidden=false;}">`
+    ? `<img class="team-logo" src="${escape(primary)}" data-arena-source="${escape(primarySource)}" data-fallback-src="${escape(fallback)}" data-fallback-source="${escape(fallbackSource)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onload="window.__arenaNormalizeLogo&&window.__arenaNormalizeLogo(this)" onerror="const current=this.dataset.arenaSource||'';if(window.__arenaLogoRetry&&current){window.__arenaLogoRetry.set(current,Date.now()+(current.includes('prefer=bo3')?5000:600000));}const f=this.dataset.fallbackSrc;if(f&&this.src!==f){this.src=f;this.dataset.arenaSource=this.dataset.fallbackSource||f;this.dataset.fallbackSrc='';}else{this.hidden=true;this.nextElementSibling.hidden=false;}">`
     : '';
 
   return `<span class="team-emblem-picture">${image}<span class="team-emblem-fallback" ${primary ? 'hidden' : ''} title="${escape(team?.name)}">${escape(initials)}</span></span>`;
