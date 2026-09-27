@@ -400,14 +400,14 @@ const server = http.createServer(async (req, res) => {
       return res.end(JSON.stringify({ ok:true, source:'arena-line-site.zip-exact-worker-v32', live }));
     }
 
-    if (url.pathname === '/feed.mjs') {
+    if (false && url.pathname === '/feed.mjs') {
       res.statusCode = 200;
       res.setHeader('content-type', 'text/javascript; charset=utf-8');
       res.setHeader('cache-control', 'no-store, no-cache, must-revalidate');
       return res.end(liveFeedModule);
     }
 
-    if (url.pathname === '/api/live') {
+    if (false && url.pathname === '/api/live') {
       try {
         const sport = url.searchParams.get('sport') || '';
         const stage = url.searchParams.get('stage') || 'live';
@@ -480,7 +480,5 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(port, '0.0.0.0', () => {
-  console.log('Arena Line exact ZIP v32 listening on ' + port + ' with current Parik24 live bridge');
-  currentLiveEvents().catch(() => {});
-  currentEsportsEvents().catch(() => {});
+  console.log('Arena Line phone build v32 listening on ' + port + ' with original embedded feed/results runtime');
 });
