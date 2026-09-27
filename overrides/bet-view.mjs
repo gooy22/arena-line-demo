@@ -1,5 +1,5 @@
 import { icon, graphic } from './ui.mjs';
-import { getLocale, t } from './i18n.mjs';
+import { getLanguage, getLocale, t } from './i18n.mjs';
 
 export const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
 export const amount = value => {
@@ -12,6 +12,31 @@ export const amount = value => {
 };
 const date = value => new Date(value).toLocaleString(getLocale(), { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
 const games = { CSGO:'counter-strike', CS:'counter-strike', DOTA2:'dota', LOL:'lol', F:'football', T:'tennis', TT:'table-tennis', H:'hockey', B:'basketball', VB:'volleyball', PL:'snooker' };
+
+function outcomesLabel(count) {
+  const language = getLanguage();
+  if (language === 'en') return `${count} ${count === 1 ? 'selection' : 'selections'}`;
+  if (language === 'uk') {
+    const mod10 = count % 10, mod100 = count % 100;
+    const word = mod10 === 1 && mod100 !== 11 ? 'результат' : mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14) ? 'результати' : 'результатів';
+    return `${count} ${word}`;
+  }
+  const mod10 = count % 10, mod100 = count % 100;
+  const word = mod10 === 1 && mod100 !== 11 ? 'исход' : mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14) ? 'исхода' : 'исходов';
+  return `${count} ${word}`;
+}
+
+function compactOdds(bet) {
+  const value = Number(bet?.odds);
+  if (!Number.isFinite(value)) return '';
+  return value.toFixed(4).replace(/0+$/,'').replace(/\.$/,'');
+}
+
+function compactBetSummary(bet) {
+  const state = ['won','lost','void','cashout'].includes(bet.status) ? bet.status : 'open';
+  const iconName = state === 'won' ? 'check' : state === 'lost' ? 'x' : state === 'cashout' ? 'undo-2' : state === 'void' ? 'minus' : 'clock-3';
+  return `<div class="bet-selection-summary bet-multi-summary"><span class="bet-result result-${esc(state)}">${icon(iconName)}</span><span class="bet-selection-label"><strong>${esc(outcomesLabel(bet.selections?.length || 0))}</strong></span><span class="bet-coefficient">${esc(compactOdds(bet))}</span>${icon('chevron-right')}</div>`;
+}
 
 function selectionRow(selection, bet, index) {
   const result = selection.settlement;
@@ -43,7 +68,11 @@ export function betHistory(account, tab, editing = false) {
 
   const cards = entries.map(bet => {
     const paymentLabel = !settled ? t('Можлива виплата') : bet.status === 'cashout' ? t('Виведено') : t('Виплата');
-    return `<article class="bet-record" data-bet-id="${esc(bet.id)}"><div class="bet-record-date">№${esc(bet.number || (visible.length - visible.indexOf(bet)))} · ${esc(date(bet.date))}${bet.type !== 'single' ? `<span>${esc(t(bet.type === 'express' ? 'Експрес' : 'Система'))}</span>` : ''}</div>${bet.selections.map((selection,index) => selectionRow(selection,bet,index)).join('')}<dl class="bet-payment"><div><dt>${esc(t('Сума ставки'))}</dt><dd>${amount(bet.cost)}</dd></div><div class="${settled && bet.payout > 0 ? 'positive' : ''}"><dt>${esc(paymentLabel)}</dt><dd>${amount(settled ? bet.payout : bet.potential)}</dd></div></dl><div class="bet-record-actions">${editing ? `<button class="edit-bet" data-action="edit-bet" data-value="${esc(bet.id)}">${icon('pencil')}${esc(t('Редагувати'))}</button>` : ''}${!settled ? `<button data-action="repeat-bet" data-value="${esc(bet.id)}">${icon('rotate-cw')}${esc(t('Повторити'))}</button>` : ''}<button data-action="share-bet" data-value="${esc(bet.id)}" aria-label="${esc(t('Поділитися ставкою'))}">${icon('share')}${settled ? esc(t('Поділитися')) : ''}</button></div></article>`;
+    const multi = bet.type === 'express' || bet.type === 'system' || (bet.selections?.length || 0) > 1;
+    const body = multi
+      ? compactBetSummary(bet)
+      : bet.selections.map((selection,index) => selectionRow(selection,bet,index)).join('');
+    return `<article class="bet-record${multi ? ' bet-record-multi' : ''}" data-bet-id="${esc(bet.id)}"><div class="bet-record-date">№${esc(bet.number || (visible.length - visible.indexOf(bet)))} · ${esc(date(bet.date))}</div>${body}<dl class="bet-payment"><div><dt>${esc(t('Сума ставки'))}</dt><dd>${amount(bet.cost)}</dd></div><div class="${settled && bet.payout > 0 ? 'positive' : ''}"><dt>${esc(paymentLabel)}</dt><dd>${amount(settled ? bet.payout : bet.potential)}</dd></div></dl><div class="bet-record-actions">${editing ? `<button class="edit-bet" data-action="edit-bet" data-value="${esc(bet.id)}">${icon('pencil')}${esc(t('Редагувати'))}</button>` : ''}${!settled ? `<button data-action="repeat-bet" data-value="${esc(bet.id)}">${icon('rotate-cw')}${esc(t('Повторити'))}</button>` : ''}<button data-action="share-bet" data-value="${esc(bet.id)}" aria-label="${esc(t('Поділитися ставкою'))}">${icon('share')}${settled ? esc(t('Поділитися')) : ''}</button></div></article>`;
   }).join('');
 
   return `${tabs}<div class="bet-records">${cards || `<div class="empty">${icon('ticket')}<h2>${esc(t(settled ? 'Розрахованих ставок ще немає' : 'Нерозрахованих ставок немає'))}</h2></div>`}</div>`;
