@@ -48,7 +48,7 @@ function profileHeader() {
     : `<button class="brand" data-action="close-profile" aria-label="Главная">${wordmark}</button><div class="header-spacer"></div><button class="header-icon" data-action="profile-search" aria-label="Поиск">${icon('search')}</button><button class="header-icon" data-action="notifications" aria-label="Уведомления">${icon('bell')}</button><button class="deposit-button" data-action="deposit">Пополнить</button>`}</div>`;
 }
 function profileNav() {
-  const items = [['house', 'Головна', 'close-profile', ''], ['sports-score', 'Спорт', 'close-profile', ''], ['ticket', 'Мої ставки', 'profile-view', 'bets'], ['casino-wheel', 'Казино', 'profile-casino', ''], ['profile-solid', `${new Intl.NumberFormat('uk-UA', { maximumFractionDigits: 0 }).format(account.balance / 100)} €`, 'profile-view', 'profile'], ['menu', 'Меню', 'open-menu', 'menu']];
+  const items = [['house', 'Головна', 'close-profile', ''], ['sports-score', 'Спорт', 'close-profile', ''], ['ticket', 'Мої ставки', 'profile-view', 'bets'], ['casino-wheel', 'Казино', 'profile-casino', ''], ['profile-solid', `${new Intl.NumberFormat(getLocale(), { maximumFractionDigits: 0 }).format(account.balance / 100)} €`, 'profile-view', 'profile'], ['menu', 'Меню', 'open-menu', 'menu']];
   $('#profile-nav').innerHTML = `<div class="nav-inner">${items.map(([name, label, action, value]) => `<button class="nav-item ${(profileView === value || value === 'profile' && ['personal', 'security', 'wallet', 'payments'].includes(profileView)) ? 'active' : ''}" data-action="${action}" data-value="${value}">${icon(name)}<span>${esc(label)}</span></button>`).join('')}</div>`;
 }
 function balancePanel() {
