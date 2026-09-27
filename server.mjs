@@ -55,17 +55,30 @@ function json(res, status, value) {
   res.end(JSON.stringify(value));
 }
 
-function textResponse(res, method, type, source) {
+function textResponse(res, method, type, source, cacheControl='public, max-age=300, stale-while-revalidate=86400') {
   res.statusCode = 200;
   res.setHeader('content-type',type);
-  res.setHeader('cache-control','no-store, no-cache, must-revalidate');
+  res.setHeader('cache-control',cacheControl);
   res.setHeader('x-content-type-options','nosniff');
   if (method === 'HEAD') return res.end();
   res.end(source);
 }
 
-const js = (res,method,source) => textResponse(res,method,'text/javascript; charset=utf-8',source);
-const css = (res,method,source) => textResponse(res,method,'text/css; charset=utf-8',source);
+const js = (res,method,source,cacheControl) => textResponse(res,method,'text/javascript; charset=utf-8',source,cacheControl);
+const css = (res,method,source,cacheControl) => textResponse(res,method,'text/css; charset=utf-8',source,cacheControl);
+
+function runtimeCacheControl(pathname) {
+  if (pathname === '/' || pathname === '/index.html') return 'no-store';
+  if (pathname === '/sw.js') return 'no-cache, no-store, must-revalidate';
+  if (pathname.startsWith('/api/')) return 'no-store';
+  if (/\.(?:png|jpe?g|webp|gif|svg|ico|woff2?|ttf|otf)$/i.test(pathname)) {
+    return 'public, max-age=86400, stale-while-revalidate=604800';
+  }
+  if (/\.(?:js|mjs|css|webmanifest)$/i.test(pathname)) {
+    return 'public, max-age=300, stale-while-revalidate=86400';
+  }
+  return 'public, max-age=300, stale-while-revalidate=3600';
+}
 const safeString = (value,max=300) => String(value ?? '').slice(0,max);
 
 function bearer(req) {
@@ -136,16 +149,16 @@ function teamMetaByProviderId(id) {
 
 function patchIndexHtml(source) {
   let html=String(source || '');
-  html=html.replace(/\?v=\d+/g,'??v=51');
+  html=html.replace(/\?+v=\d+/g,'?v=52');
   if (!html.includes('apple-touch-icon')) {
     html=html.replace(
       '<link rel="manifest" href="/manifest.webmanifest">',
       '<link rel="manifest" href="/manifest.webmanifest">\n  <link rel="apple-touch-icon" href="/assets/icons/esports.png">\n  <meta name="apple-mobile-web-app-capable" content="yes">\n  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">'
     );
   }
-  if (!html.includes('arena-editor-hotfix-v51')) {
+  if (!html.includes('arena-editor-hotfix-v52')) {
     html=html.replace('</head>', `
-<style id="arena-editor-hotfix-v51">
+<style id="arena-editor-hotfix-v52">
 dialog#dialog.edit-bet-dialog{
   position:fixed!important;
   top:auto!important;
@@ -323,7 +336,7 @@ dialog#dialog.edit-bet-dialog .edit-bet-hide{
 }
 </style>
 <script>
-window.__ARENA_BUILD__='51';
+window.__ARENA_BUILD__='52';
 if('serviceWorker' in navigator){
   navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.update())).catch(()=>{});
 }
@@ -372,6 +385,7 @@ function patchSportsModule(source) {
       '&source=' + encodeURIComponent(exactTournament) +
       '&categorySource=' + encodeURIComponent(exactCategory);
     const providerPrimary = sameOrigin;
+    const renderedPrimary = window.__arenaStableLogoSrc ? window.__arenaStableLogoSrc(providerPrimary) : providerPrimary;
     const fallbacks = [];
 
     if (!providerPrimary) {
@@ -379,7 +393,8 @@ function patchSportsModule(source) {
     }
 
     return '<span class="game-badge game-badge-parik">' +
-      '<img class="synced-discipline-logo" src="' + escape(providerPrimary) +
+      '<img class="synced-discipline-logo" src="' + escape(renderedPrimary) +
+      '" data-arena-source="' + escape(providerPrimary) +
       '" data-fallbacks="' + escape(JSON.stringify(fallbacks)) +
       '" data-fallback-index="0" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onload="window.__arenaNormalizeLogo&&window.__arenaNormalizeLogo(this)"' +
       ' onerror="let a=[];try{a=JSON.parse(this.dataset.fallbacks||&quot;[]&quot;)}catch{};const i=Number(this.dataset.fallbackIndex||0);if(i<a.length){this.dataset.fallbackIndex=String(i+1);this.src=a[i];}else{this.hidden=true;this.nextElementSibling.hidden=false;}">' +
@@ -391,27 +406,50 @@ function patchSportsModule(source) {
     return source;
   }
   const normalizer = `
+window.__arenaLogoCache = window.__arenaLogoCache || new Map();
+window.__arenaStableLogoSrc = window.__arenaStableLogoSrc || function(url) {
+  return window.__arenaLogoCache.get(String(url || '')) || String(url || '');
+};
+window.__arenaApplyCachedLogo = window.__arenaApplyCachedLogo || function(img) {
+  if (!img) return;
+  const source = img.dataset.arenaSource || '';
+  if (!source) return;
+  const cached = window.__arenaLogoCache.get(source);
+  if (cached && img.src !== cached) {
+    img.dataset.arenaNormalized = '1';
+    img.src = cached;
+  }
+};
 if (!window.__arenaNormalizeLogo) {
   window.__arenaNormalizeLogo = function(img) {
-    if (!img || img.dataset.arenaNormalized === '1' || img.dataset.arenaNormalizing === '1') return;
+    if (!img || img.dataset.arenaNormalizing === '1') return;
+    const original = img.dataset.arenaSource || img.currentSrc || img.src || '';
+    if (!original) return;
+
+    const cached = window.__arenaLogoCache.get(original);
+    if (cached) {
+      img.dataset.arenaNormalized = '1';
+      if (img.src !== cached) img.src = cached;
+      return;
+    }
+    if (img.dataset.arenaNormalized === '1') return;
     if (!img.naturalWidth || !img.naturalHeight) return;
+
     img.dataset.arenaNormalizing = '1';
     try {
       const maxSide = 256;
       const ratio = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
       const w = Math.max(1, Math.round(img.naturalWidth * ratio));
       const h = Math.max(1, Math.round(img.naturalHeight * ratio));
-      const source = document.createElement('canvas');
-      source.width = w;
-      source.height = h;
-      const ctx = source.getContext('2d', { willReadFrequently:true });
+      const sourceCanvas = document.createElement('canvas');
+      sourceCanvas.width = w;
+      sourceCanvas.height = h;
+      const ctx = sourceCanvas.getContext('2d', { willReadFrequently:true });
       ctx.clearRect(0,0,w,h);
       ctx.drawImage(img,0,0,w,h);
       const pixels = ctx.getImageData(0,0,w,h).data;
 
-      const corners = [
-        [0,0],[w-1,0],[0,h-1],[w-1,h-1]
-      ].map(([x,y]) => {
+      const corners = [[0,0],[w-1,0],[0,h-1],[w-1,h-1]].map(([x,y]) => {
         const p=(y*w+x)*4;
         return [pixels[p],pixels[p+1],pixels[p+2],pixels[p+3]];
       });
@@ -444,16 +482,30 @@ if (!window.__arenaNormalizeLogo) {
       const inner=72;
       const scale=Math.min(inner/cropW,inner/cropH);
       const drawW=Math.max(1,cropW*scale), drawH=Math.max(1,cropH*scale);
-      out.drawImage(source,minX,minY,cropW,cropH,(96-drawW)/2,(96-drawH)/2,drawW,drawH);
+      out.drawImage(sourceCanvas,minX,minY,cropW,cropH,(96-drawW)/2,(96-drawH)/2,drawW,drawH);
 
+      const data = output.toDataURL('image/png');
+      window.__arenaLogoCache.set(original,data);
       img.dataset.arenaNormalized='1';
-      img.src=output.toDataURL('image/png');
+      if (img.src !== data) img.src=data;
     } catch (error) {
       img.dataset.arenaNormalizeError='1';
     } finally {
       img.dataset.arenaNormalizing='0';
     }
   };
+}
+if (!window.__arenaLogoObserver) {
+  window.__arenaLogoObserver = new MutationObserver(records => {
+    for (const record of records) {
+      for (const node of record.addedNodes || []) {
+        if (!(node instanceof Element)) continue;
+        const images = node.matches?.('img[data-arena-source]') ? [node] : [...node.querySelectorAll?.('img[data-arena-source]') || []];
+        for (const img of images) window.__arenaApplyCachedLogo(img);
+      }
+    }
+  });
+  window.__arenaLogoObserver.observe(document.documentElement,{childList:true,subtree:true});
 }
 `;
   return (source.includes('__arenaNormalizeLogo') ? '' : normalizer) + source.replace(oldBlock,newBlock);
@@ -828,7 +880,7 @@ const server=http.createServer(async (req,res)=>{
       const response=await embeddedAsset(url.pathname === '/' ? '/' : '/index.html',method,req.headers);
       if (!response.ok) { res.statusCode=response.status; return res.end(); }
       const source=method === 'HEAD' ? '' : await response.text();
-      return textResponse(res,method,'text/html; charset=utf-8',patchIndexHtml(source));
+      return textResponse(res,method,'text/html; charset=utf-8',patchIndexHtml(source),'no-store');
     }
 
     if (url.pathname === '/feed.mjs' && ['GET','HEAD'].includes(method)) return js(res,method,feedModule);
@@ -840,7 +892,7 @@ const server=http.createServer(async (req,res)=>{
     if (url.pathname === '/theme.css' && ['GET','HEAD'].includes(method)) return css(res,method,themeCssModule);
     if (url.pathname === '/sw.js' && ['GET','HEAD'].includes(method)) {
       res.setHeader('service-worker-allowed','/');
-      return js(res,method,serviceWorkerModule);
+      return js(res,method,serviceWorkerModule,'no-cache, no-store, must-revalidate');
     }
     if (url.pathname === '/manifest.webmanifest' && ['GET','HEAD'].includes(method)) {
       return textResponse(res,method,'application/manifest+json; charset=utf-8',manifestModule);
@@ -1033,7 +1085,7 @@ const server=http.createServer(async (req,res)=>{
     const response=await app.fetch(request,env,ctx);
     res.statusCode=response.status;
     response.headers.forEach((value,key)=>res.setHeader(key,value));
-    res.setHeader('cache-control','no-store');
+    res.setHeader('cache-control',runtimeCacheControl(url.pathname));
     if (method === 'HEAD' || response.status === 204 || !response.body) return res.end();
     Readable.fromWeb(response.body).pipe(res);
   } catch(error) {
