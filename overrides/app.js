@@ -436,6 +436,7 @@ window.addEventListener('storage', () => { syncFeedControls(); if (!$('#profile-
 applyTheme();
 sports = new SportsApp({ openMenu, accounts, getAccount, openAuth, openProfile, openBets, onBalanceChange: syncFeedControls, showToast });
 syncFeedControls();
+window.__arenaClientDiagnostic?.('CLIENT_BOOT_OK','Arena app initialized',{language:getLanguage(),hasSports:Boolean(sports)});
 accounts.syncCurrentFromServer().then(() => {
   syncFeedControls();
   if (!$('#profile-layer').hidden) renderProfile();
@@ -461,10 +462,16 @@ window.addEventListener('arena-language-change',()=>{if($('#site-menu')?.open)re
 if (location.hash === '#profile') account ? openProfile() : openAuth(false, true);
 if (location.hash.startsWith('#event/')) sports.openEvent(decodeURIComponent(location.hash.slice(7)));
 if ('serviceWorker' in navigator) {
-  const alreadyControlled = Boolean(navigator.serviceWorker.controller);
-  let refreshing = false;
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (alreadyControlled && !refreshing) { refreshing = true; location.reload(); }
+  // Runtime assets are versioned by path. Remove legacy workers/caches only after the app
+  // is already running so cache maintenance can never block the interface again.
+  queueMicrotask(() => {
+    navigator.serviceWorker.getRegistrations()
+      .then(registrations => Promise.all(registrations.map(registration => registration.unregister())))
+      .catch(() => {});
+    if ('caches' in window) {
+      caches.keys()
+        .then(keys => Promise.all(keys.filter(key => key.startsWith('arena-line-')).map(key => caches.delete(key))))
+        .catch(() => {});
+    }
   });
-  navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(registration => registration.update()).catch(() => {});
 }
