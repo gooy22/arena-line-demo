@@ -136,12 +136,199 @@ function teamMetaByProviderId(id) {
 
 function patchIndexHtml(source) {
   let html=String(source || '');
-  html=html.replace(/\?v=(?:21|32|43)/g,'?v=44');
+  html=html.replace(/\?v=\d+/g,'?v=45');
   if (!html.includes('apple-touch-icon')) {
     html=html.replace(
       '<link rel="manifest" href="/manifest.webmanifest">',
       '<link rel="manifest" href="/manifest.webmanifest">\n  <link rel="apple-touch-icon" href="/assets/icons/esports.png">\n  <meta name="apple-mobile-web-app-capable" content="yes">\n  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">'
     );
+  }
+  if (!html.includes('arena-editor-hotfix-v45')) {
+    html=html.replace('</head>', `
+<style id="arena-editor-hotfix-v45">
+dialog#dialog.edit-bet-dialog{
+  position:fixed!important;
+  top:auto!important;
+  right:auto!important;
+  bottom:calc(10px + env(safe-area-inset-bottom))!important;
+  left:50%!important;
+  transform:translateX(-50%)!important;
+  width:min(94vw,460px)!important;
+  height:auto!important;
+  max-height:82dvh!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  outline:0!important;
+  border-radius:18px!important;
+  overflow:hidden!important;
+  background:#171716!important;
+  color:#f5f4f1!important;
+  box-shadow:0 14px 44px rgba(0,0,0,.55)!important;
+  color-scheme:dark!important;
+}
+dialog#dialog.edit-bet-dialog::backdrop{background:rgba(0,0,0,.62)!important}
+dialog#dialog.edit-bet-dialog #dialog-content{
+  display:block!important;
+  width:100%!important;
+  max-height:82dvh!important;
+  overflow-y:auto!important;
+  overscroll-behavior:contain!important;
+  -webkit-overflow-scrolling:touch!important;
+  background:#171716!important;
+  color:#f5f4f1!important;
+  border:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+}
+dialog#dialog.edit-bet-dialog .dialog-head{
+  position:sticky!important;
+  top:0!important;
+  z-index:5!important;
+  min-height:52px!important;
+  padding:12px 14px 7px!important;
+  margin:0!important;
+  background:#171716!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+dialog#dialog.edit-bet-dialog .dialog-head h2{
+  margin:0!important;
+  font-size:20px!important;
+  line-height:28px!important;
+}
+dialog#dialog.edit-bet-dialog .edit-bet-form{
+  padding:0 14px 14px!important;
+  background:#171716!important;
+  border:0!important;
+}
+dialog#dialog.edit-bet-dialog .dialog-copy{
+  margin:2px 0 12px!important;
+  color:#aaa69d!important;
+  font-size:12px!important;
+  line-height:17px!important;
+}
+dialog#dialog.edit-bet-dialog .edit-bet-card{
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  outline:0!important;
+  background:#171716!important;
+  box-shadow:none!important;
+}
+dialog#dialog.edit-bet-dialog .edit-bet-event{
+  margin:0 0 2px!important;
+  font-size:15px!important;
+  line-height:20px!important;
+}
+dialog#dialog.edit-bet-dialog .edit-bet-market{
+  margin:0 0 10px!important;
+  font-size:12px!important;
+  line-height:17px!important;
+  color:#aaa69d!important;
+}
+dialog#dialog.edit-bet-dialog .edit-bet-label,
+dialog#dialog.edit-bet-dialog label{
+  margin:9px 0 5px!important;
+  color:#aaa69d!important;
+  font-size:11px!important;
+  line-height:15px!important;
+}
+dialog#dialog.edit-bet-dialog .edit-bet-grid,
+dialog#dialog.edit-bet-dialog .edit-score-grid{
+  gap:8px!important;
+}
+dialog#dialog.edit-bet-dialog .edit-winner-buttons{
+  gap:8px!important;
+}
+dialog#dialog.edit-bet-dialog .edit-winner-buttons>button{
+  min-height:46px!important;
+  padding:7px 9px!important;
+  border:0!important;
+  outline:0!important;
+  border-radius:11px!important;
+  background:#2d2a27!important;
+  color:#f5f4f1!important;
+  box-shadow:none!important;
+}
+dialog#dialog.edit-bet-dialog .edit-winner-buttons>button.selected{
+  background:#eef719!important;
+  color:#24221f!important;
+}
+dialog#dialog.edit-bet-dialog input,
+dialog#dialog.edit-bet-dialog select,
+dialog#dialog.edit-bet-dialog textarea{
+  width:100%!important;
+  min-height:42px!important;
+  height:42px!important;
+  padding:8px 10px!important;
+  border:0!important;
+  outline:0!important;
+  border-radius:10px!important;
+  background:#2d2a27!important;
+  color:#f5f4f1!important;
+  box-shadow:none!important;
+  -webkit-appearance:none!important;
+  appearance:none!important;
+}
+dialog#dialog.edit-bet-dialog select{
+  -webkit-appearance:auto!important;
+  appearance:auto!important;
+}
+dialog#dialog.edit-bet-dialog input:focus,
+dialog#dialog.edit-bet-dialog select:focus,
+dialog#dialog.edit-bet-dialog textarea:focus{
+  border:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+}
+dialog#dialog.edit-bet-dialog .edit-payout-preview{
+  margin:13px 0 8px!important;
+  color:#f5f4f1!important;
+  font-size:15px!important;
+  line-height:21px!important;
+}
+dialog#dialog.edit-bet-dialog .edit-bet-save{
+  min-height:46px!important;
+  margin-top:10px!important;
+  border:0!important;
+  border-radius:12px!important;
+}
+dialog#dialog.edit-bet-dialog .edit-bet-hide{
+  min-height:34px!important;
+  margin-top:5px!important;
+  border:0!important;
+  background:transparent!important;
+}
+@media (display-mode:standalone){
+  html,body{min-height:100dvh!important;background:#171716!important}
+  body{padding-top:0!important}
+  dialog#dialog.edit-bet-dialog{max-height:78dvh!important}
+  dialog#dialog.edit-bet-dialog #dialog-content{max-height:78dvh!important}
+}
+.tournament-tabs>button,
+.tournament-tabs>button:focus,
+.tournament-tabs>button:focus-visible,
+.tournament-tabs>button .tournament-symbol,
+.tournament-tabs>button.active .tournament-symbol,
+.tournament-tabs>button:focus .tournament-symbol,
+.tournament-tabs>button:focus-visible .tournament-symbol{
+  outline:0!important;
+  box-shadow:none!important;
+}
+.tournament-tabs>button .tournament-symbol,
+.tournament-tabs>button.active .tournament-symbol{
+  border:0!important;
+}
+</style>
+<script>
+window.__ARENA_BUILD__='45';
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.update())).catch(()=>{});
+}
+</script>
+</head>`);
   }
   return html;
 }
