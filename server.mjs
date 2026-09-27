@@ -152,16 +152,16 @@ function teamMetaByProviderId(id) {
 
 function patchIndexHtml(source) {
   let html=String(source || '');
-  html=html.replace(/\?+v=\d+/g,'?v=65');
+  html=html.replace(/\?+v=\d+/g,'?v=66');
   if (!html.includes('apple-touch-icon')) {
     html=html.replace(
       '<link rel="manifest" href="/manifest.webmanifest">',
       '<link rel="manifest" href="/manifest.webmanifest">\n  <link rel="apple-touch-icon" href="/assets/icons/esports.png">\n  <meta name="apple-mobile-web-app-capable" content="yes">\n  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">'
     );
   }
-  if (!html.includes('arena-editor-hotfix-v65')) {
+  if (!html.includes('arena-editor-hotfix-v66')) {
     html=html.replace('</head>', `
-<style id="arena-editor-hotfix-v65">
+<style id="arena-editor-hotfix-v66">
 dialog#dialog.edit-bet-dialog{
   position:fixed!important;
   top:auto!important;
@@ -339,18 +339,18 @@ dialog#dialog.edit-bet-dialog .edit-bet-hide{
 }
 </style>
 <script>
-window.__ARENA_BUILD__='65';
+window.__ARENA_BUILD__='66';
 </script>
 </head>`);
   }
   html=html
-    .replace(/href="\/(app|sports|bet-view|event-view|share-coupon|settings|theme)\.css\?v=65"/g,'href="/v65/$1.css"')
-    .replace('src="/lucide.min.js"','src="/v65/lucide.min.js"')
-    .replace('src="/app.js?v=65"','src="/v65/app.js"');
-  if(!html.includes('arena-client-diagnostics-v65')){
+    .replace(/href="\/(app|sports|bet-view|event-view|share-coupon|settings|theme)\.css\?v=66"/g,'href="/v66/$1.css"')
+    .replace('src="/lucide.min.js"','src="/v66/lucide.min.js"')
+    .replace('src="/app.js?v=66"','src="/v66/app.js"');
+  if(!html.includes('arena-client-diagnostics-v66')){
     html=html.replace('<title>Arena Line</title>',`<title>Arena Line</title>
-<script id="arena-client-diagnostics-v65">
-(()=>{const send=(kind,message,extra={})=>{try{fetch('/api/client-diagnostic',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({kind,message:String(message||'').slice(0,1800),build:'65',href:location.href,...extra}),keepalive:true,cache:'no-store'}).catch(()=>{})}catch{}};
+<script id="arena-client-diagnostics-v66">
+(()=>{const send=(kind,message,extra={})=>{try{fetch('/api/client-diagnostic',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({kind,message:String(message||'').slice(0,1800),build:'66',href:location.href,...extra}),keepalive:true,cache:'no-store'}).catch(()=>{})}catch{}};
 window.addEventListener('error',event=>send('CLIENT_ERROR',event.message||event.error?.message||'window error',{source:event.filename||'',line:event.lineno||0,column:event.colno||0}));
 window.addEventListener('unhandledrejection',event=>send('CLIENT_REJECTION',event.reason?.stack||event.reason?.message||event.reason||'unhandled rejection'));
 window.__arenaClientDiagnostic=send;
@@ -1376,8 +1376,8 @@ const server=http.createServer(async (req,res)=>{
       return textResponse(res,method,'text/html; charset=utf-8',patchIndexHtml(source),'no-store');
     }
 
-    if (url.pathname.startsWith('/v65/') && ['GET','HEAD'].includes(method)) {
-      const runtimePath='/' + url.pathname.slice('/v65/'.length);
+    if (url.pathname.startsWith('/v66/') && ['GET','HEAD'].includes(method)) {
+      const runtimePath='/' + url.pathname.slice('/v66/'.length);
       if (runtimePath === '/feed.mjs') return js(res,method,feedModule,'no-store');
       if (runtimePath === '/team-emblem.mjs') return js(res,method,emblemModule,'no-store');
       if (runtimePath === '/ui.mjs') return js(res,method,uiModule,'no-store');
@@ -1665,23 +1665,24 @@ server.listen(port,'0.0.0.0',()=>{
     };
     try{
       const html=await request('/');
-      const appText=await request('/v65/app.js');
-      const accountText=await request('/v65/account.mjs');
-      const sportsText=await request('/v65/sports.mjs');
-      const betText=await request('/v65/bet-view.mjs');
-      const i18nText=await request('/v65/i18n.mjs');
-      await request('/v65/feed.mjs');
-      await request('/v65/event-view.mjs');
+      const appText=await request('/v66/app.js');
+      const accountText=await request('/v66/account.mjs');
+      const sportsText=await request('/v66/sports.mjs');
+      const betText=await request('/v66/bet-view.mjs');
+      const i18nText=await request('/v66/i18n.mjs');
+      await request('/v66/feed.mjs');
+      await request('/v66/event-view.mjs');
       const failures=[];
       for(const row of checks) if(row.status!==200) failures.push(row.path+':'+row.status);
-      if(!html.includes('/v65/app.js')) failures.push('html:no-v65-app');
-      if(!html.includes('/v65/app.css')) failures.push('html:no-v65-css');
+      if(!html.includes('/v66/app.js')) failures.push('html:no-v65-app');
+      if(!html.includes('/v66/app.css')) failures.push('html:no-v65-css');
       if(!appText.includes('CLIENT_BOOT_OK')) failures.push('app:no-client-boot-probe');
       if(!appText.includes('new SportsApp')) failures.push('app:no-sports-init');
       if(!accountText.includes('settleBets')) failures.push('account:missing');
       if(!sportsText.includes('class SportsApp')) failures.push('sports:missing');
       if(betText.includes('bet-status-pill') || betText.includes("'Виграна'")) failures.push('bet:legacy-status-pill');
       if(!betText.includes('duplicateManualPeriod')) failures.push('bet:no-score-dedupe');
+      if(!betText.includes("replace(/\\B(?=(\\d{3})+(?!\\d))/g, ' ')") || !betText.includes("${major}.${minor} €")) failures.push('bet:bad-money-format');
       if(!i18nText.includes('Редагувати') || !i18nText.includes('Edit')) failures.push('i18n:incomplete');
       if(/\]\s*\n\s*\[/.test(i18nText)) failures.push('i18n:malformed-row-boundary');
       const controllerResponse=await fetch(base+'/assets/icons/esports-exact-20260927.png',{cache:'no-store'});
@@ -1690,7 +1691,7 @@ server.listen(port,'0.0.0.0',()=>{
       const summary=checks.map(({path,status,type,bytes})=>({path,status,type,bytes}));
       summary.push({path:'/assets/icons/esports-exact-20260927.png',status:controllerResponse.status,type:controllerResponse.headers.get('content-type')||'',bytes:controllerBytes});
       if(failures.length) console.error('FRONTEND_SELFTEST_FAILED '+JSON.stringify({failures,summary}));
-      else console.log('FRONTEND_SELFTEST_OK '+JSON.stringify({build:'65',summary}));
+      else console.log('FRONTEND_SELFTEST_OK '+JSON.stringify({build:'66',summary}));
     }catch(error){
       console.error('FRONTEND_SELFTEST_ERROR '+String(error?.stack||error));
     }
