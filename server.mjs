@@ -764,6 +764,15 @@ const server=http.createServer(async (req,res)=>{
     const method=req.method || 'GET';
     const url=new URL(req.url || '/','http://localhost');
 
+    if (url.pathname === '/api/media/team' && method === 'GET') {
+      const id=safeString(url.searchParams.get('id'),32);
+      if(!/^\d{1,16}$/.test(id)) return json(res,400,{ok:false,error:'Invalid competitor id'});
+      return sendNormalizedLogo(res,[
+        {url:'https://parik24.pro/taxonomyicons/competitors/'+id+'-164w'},
+        {url:'https://24parik-bet.org/taxonomyicons/competitors/'+id+'-164w'}
+      ],'',{box:96,content:82});
+    }
+
     if (url.pathname === '/api/media/tournament' && method === 'GET') {
       const name=safeString(url.searchParams.get('name'),180);
       const category=safeString(url.searchParams.get('category'),80);
