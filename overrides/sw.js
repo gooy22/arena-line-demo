@@ -1,4 +1,4 @@
-const CACHE = 'arena-line-sync-v62';
+const CACHE = 'arena-line-sync-v63';
 
 const PRECACHE = [
   '/',
@@ -41,6 +41,19 @@ async function cacheFirst(request,{ignoreSearch=false,cacheMissing=false}={}) {
     cache.put(request,response.clone()).catch(()=>{});
   }
   return response;
+}
+
+async function networkFirst(request) {
+  const cache = await caches.open(CACHE);
+  try {
+    const response = await fetch(request, { cache:'no-store' });
+    if (response && response.ok) {
+      cache.put(request,response.clone()).catch(()=>{});
+    }
+    return response;
+  } catch {
+    return (await cache.match(request,{ignoreSearch:false})) || (await cache.match(request,{ignoreSearch:true})) || Response.error();
+  }
 }
 
 async function navigation(request) {
@@ -101,5 +114,10 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  event.respondWith(cacheFirst(request,{ignoreSearch:true}));
+  if (/\.(?:js|mjs|css|webmanifest)$/i.test(url.pathname)) {
+    event.respondWith(networkFirst(request));
+    return;
+  }
+
+  event.respondWith(cacheFirst(request,{ignoreSearch:false}));
 });
