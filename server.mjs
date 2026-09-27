@@ -136,16 +136,16 @@ function teamMetaByProviderId(id) {
 
 function patchIndexHtml(source) {
   let html=String(source || '');
-  html=html.replace(/\?v=\d+/g,'?v=47');
+  html=html.replace(/\?v=\d+/g,'?v=48');
   if (!html.includes('apple-touch-icon')) {
     html=html.replace(
       '<link rel="manifest" href="/manifest.webmanifest">',
       '<link rel="manifest" href="/manifest.webmanifest">\n  <link rel="apple-touch-icon" href="/assets/icons/esports.png">\n  <meta name="apple-mobile-web-app-capable" content="yes">\n  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">'
     );
   }
-  if (!html.includes('arena-editor-hotfix-v47')) {
+  if (!html.includes('arena-editor-hotfix-v48')) {
     html=html.replace('</head>', `
-<style id="arena-editor-hotfix-v47">
+<style id="arena-editor-hotfix-v48">
 dialog#dialog.edit-bet-dialog{
   position:fixed!important;
   top:auto!important;
@@ -323,7 +323,7 @@ dialog#dialog.edit-bet-dialog .edit-bet-hide{
 }
 </style>
 <script>
-window.__ARENA_BUILD__='47';
+window.__ARENA_BUILD__='48';
 if('serviceWorker' in navigator){
   navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.update())).catch(()=>{});
 }
@@ -390,7 +390,7 @@ function patchSportsModule(source) {
 const sportsCssPatch = `
 /* Arena sync visual patch */
 .tournament-symbol{
-  background:#101010!important;
+  background:var(--surface,#fff)!important;
   border-color:transparent;
   overflow:hidden;
 }
@@ -401,7 +401,7 @@ const sportsCssPatch = `
 }
 .game-badge-dark,
 .tournament-symbol .game-badge{
-  background:#101010!important;
+  background:transparent!important;
   border-radius:50%;
   overflow:hidden;
 }
@@ -452,14 +452,14 @@ const sportsCssPatch = `
   height:100%;
   border-radius:50%;
   overflow:hidden;
-  background:#101010!important;
+  background:transparent!important;
 }
 .team-logo{
   display:block;
   width:100%;
   height:100%;
   object-fit:contain;
-  background:#101010!important;
+  background:transparent!important;
   border-radius:50%;
 }
 .team-emblem-fallback{
@@ -468,8 +468,8 @@ const sportsCssPatch = `
   width:100%;
   height:100%;
   border-radius:50%;
-  background:#101010!important;
-  color:#f3f3f3;
+  background:var(--surface,#fff)!important;
+  color:var(--ink,#292621);
   font-size:10px;
   font-weight:700;
 }
