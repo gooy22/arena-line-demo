@@ -1540,3 +1540,93 @@ body.share-coupon-open::after{
   z-index:2147483647!important;
   pointer-events:none!important;
 }
+
+
+/* v94: screenshot-matched share scale, with no dark top/bottom bars. */
+html.share-coupon-open,
+body.share-coupon-open{
+  background:#f5f4f0!important;
+}
+body.share-coupon-open::before,
+body.share-coupon-open::after{
+  content:none!important;
+  display:none!important;
+}
+html.share-coupon-open dialog.share-coupon,
+body.share-coupon-open dialog.share-coupon{
+  position:fixed!important;
+  inset:0!important;
+  width:100vw!important;
+  max-width:100vw!important;
+  height:100dvh!important;
+  min-height:100dvh!important;
+  max-height:none!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:#f5f4f0!important;
+  box-shadow:none!important;
+  overflow:hidden!important;
+}
+html.share-coupon-open dialog.share-coupon::backdrop{
+  background:#f5f4f0!important;
+}
+html.share-coupon-open .share-layout{
+  width:100%!important;
+  max-width:393px!important;
+  height:100%!important;
+  min-height:100%!important;
+  margin:0 auto!important;
+  display:flex!important;
+  flex-direction:column!important;
+  box-sizing:border-box!important;
+  padding:calc(env(safe-area-inset-top) + 64px) 16px max(12px,env(safe-area-inset-bottom))!important;
+  background:#f5f4f0!important;
+}
+html.share-coupon-open .share-close{
+  top:calc(env(safe-area-inset-top) + 16px)!important;
+  right:16px!important;
+  width:28px!important;
+  height:28px!important;
+}
+html.share-coupon-open .share-ticket{
+  width:100%!important;
+  margin:0!important;
+  padding:0!important;
+}
+html.share-coupon-open .share-ticket canvas{
+  width:100%!important;
+  height:auto!important;
+  margin:0!important;
+}
+html.share-coupon-open .share-amount{
+  width:auto!important;
+  margin:20px 16px 16px!important;
+  gap:12px!important;
+  font-size:16px!important;
+  line-height:24px!important;
+}
+html.share-coupon-open .share-actions{
+  gap:32px!important;
+  margin-top:4px!important;
+  transform:none!important;
+}
+@media (display-mode:standalone){
+  html.share-coupon-open,
+  body.share-coupon-open{
+    background:#f5f4f0!important;
+  }
+  :root{
+    --sports-footer:44px!important;
+  }
+  .sports-nav{
+    height:44px!important;
+    min-height:44px!important;
+    padding:0 4px!important;
+  }
+  .sports-nav>button{
+    height:44px!important;
+    min-height:44px!important;
+  }
+}
