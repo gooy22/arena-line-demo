@@ -401,8 +401,8 @@ function patchSportsModule(source) {
       '" data-arena-source="' + escape(providerPrimary) +
       '" data-fallbacks="' + escape(JSON.stringify(fallbacks)) +
       '" data-fallback-index="0" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onload="window.__arenaNormalizeLogo&&window.__arenaNormalizeLogo(this)"' +
-      ' onerror="if(!(window.__arenaNextLogo&&window.__arenaNextLogo(this))){this.hidden=true;this.nextElementSibling.hidden=false;}">' +
-      '<span class="discipline-fallback" hidden>' + fallbackGraphic + '</span></span>';
+      ' onerror="window.__arenaFailLogo?window.__arenaFailLogo(this):(this.hidden=true)">' +
+      '<span class="discipline-fallback">' + fallbackGraphic + '</span></span>';
   }`;
 
   if (!source.includes(oldBlock)) {
@@ -411,28 +411,44 @@ function patchSportsModule(source) {
   }
   const normalizer = `
 window.__arenaLogoCache = window.__arenaLogoCache || new Map();
+window.__arenaLogoRetry = window.__arenaLogoRetry || new Map();
 window.__arenaStableLogoSrc = window.__arenaStableLogoSrc || function(url) {
   return window.__arenaLogoCache.get(String(url || '')) || String(url || '');
 };
-window.__arenaRejectLogo = window.__arenaRejectLogo || function(img) {
-  if(window.__arenaNextLogo && window.__arenaNextLogo(img)) return true;
-  img.hidden=true;
-  if(img.nextElementSibling) img.nextElementSibling.hidden=false;
-  return false;
+window.__arenaMarkLogoBad = window.__arenaMarkLogoBad || function(url,ms) {
+  if(url) window.__arenaLogoRetry.set(String(url),Date.now()+Number(ms || 600000));
 };
 window.__arenaNextLogo = window.__arenaNextLogo || function(img) {
   if(!img) return false;
   let list=[];
   try{ list=JSON.parse(img.dataset.fallbacks || '[]'); }catch{}
-  const index=Number(img.dataset.fallbackIndex || 0);
-  if(index >= list.length) return false;
-  const next=list[index];
-  img.dataset.fallbackIndex=String(index+1);
-  img.dataset.arenaSource=next;
-  img.dataset.arenaNormalized='0';
-  img.dataset.arenaNormalizing='0';
-  img.src=window.__arenaStableLogoSrc ? window.__arenaStableLogoSrc(next) : next;
-  return true;
+  let index=Number(img.dataset.fallbackIndex || 0);
+  while(index < list.length){
+    const next=list[index++];
+    img.dataset.fallbackIndex=String(index);
+    const retryAt=Number(window.__arenaLogoRetry.get(next) || 0);
+    if(retryAt > Date.now()) continue;
+    img.hidden=false;
+    img.dataset.arenaSource=next;
+    img.dataset.arenaNormalized='0';
+    img.dataset.arenaNormalizing='0';
+    img.src=window.__arenaStableLogoSrc ? window.__arenaStableLogoSrc(next) : next;
+    return true;
+  }
+  return false;
+};
+window.__arenaRejectLogo = window.__arenaRejectLogo || function(img,ms=600000) {
+  if(!img) return false;
+  window.__arenaMarkLogoBad(img.dataset.arenaSource || '',ms);
+  if(window.__arenaNextLogo(img)) return true;
+  img.hidden=true;
+  if(img.nextElementSibling) img.nextElementSibling.hidden=false;
+  return false;
+};
+window.__arenaFailLogo = window.__arenaFailLogo || function(img) {
+  if(!img) return false;
+  const source=String(img.dataset.arenaSource || '');
+  return window.__arenaRejectLogo(img,source.includes('prefer=bo3') ? 5000 : 600000);
 };
 window.__arenaApplyCachedLogo = window.__arenaApplyCachedLogo || function(img) {
   if (!img) return;
@@ -453,6 +469,8 @@ if (!window.__arenaNormalizeLogo) {
     const cached = window.__arenaLogoCache.get(original);
     if (cached) {
       img.dataset.arenaNormalized = '1';
+      img.hidden=false;
+      if(img.nextElementSibling) img.nextElementSibling.hidden=true;
       if (img.src !== cached) img.src = cached;
       return;
     }
@@ -553,6 +571,8 @@ if (!window.__arenaNormalizeLogo) {
       const data = output.toDataURL('image/png');
       window.__arenaLogoCache.set(original,data);
       img.dataset.arenaNormalized='1';
+      img.hidden=false;
+      if(img.nextElementSibling) img.nextElementSibling.hidden=true;
       if (img.src !== data) img.src=data;
     } catch (error) {
       img.dataset.arenaNormalizeError='1';
@@ -592,11 +612,17 @@ const sportsCssPatch = `
 .game-badge-dark,
 .game-badge-parik,
 .tournament-symbol .game-badge{
+  position:relative;
+  display:grid;
+  place-items:center;
   background:transparent!important;
   border-radius:50%;
   overflow:hidden;
 }
 .synced-discipline-logo{
+  position:absolute;
+  inset:0;
+  z-index:2;
   display:block;
   width:100%;
   height:100%;
@@ -614,6 +640,9 @@ const sportsCssPatch = `
   object-fit:contain;
 }
 .discipline-fallback{
+  position:absolute;
+  inset:0;
+  z-index:1;
   display:grid;
   width:100%;
   height:100%;
@@ -640,6 +669,7 @@ const sportsCssPatch = `
 .discipline-pubg{color:#f2a900;font-size:17px}
 .discipline-r6{color:#f5f5f5;font-size:12px}
 .team-emblem-picture{
+  position:relative!important;
   display:grid!important;
   place-items:center;
   width:100%;
@@ -649,6 +679,9 @@ const sportsCssPatch = `
   background:transparent!important;
 }
 .team-logo{
+  position:absolute!important;
+  inset:0!important;
+  z-index:2!important;
   display:block;
   width:100%;
   height:100%;
@@ -657,6 +690,9 @@ const sportsCssPatch = `
   border-radius:50%;
 }
 .team-emblem-fallback{
+  position:absolute!important;
+  inset:0!important;
+  z-index:1!important;
   display:grid;
   place-items:center;
   width:100%;
@@ -862,12 +898,39 @@ function bestCatalogLogo(name, rows, fields) {
   return bestScore>=700 ? best : '';
 }
 
+function applyDisciplineCatalog(category,catalog) {
+  if(!catalog) return;
+  const {tournaments=[],teams=[],players=[]}=catalog;
+  for(const event of syncedEvents.values()){
+    const eventCategory=String(event.categoryName || event.subsport || '');
+    if(eventCategory !== category) continue;
+
+    if(event.tournamentId){
+      const logo=bestCatalogLogo(event.tournamentName,tournaments,['name','slug']);
+      backgroundMedia.tournaments.set(String(event.tournamentId),logo || '');
+    }
+
+    for(const team of event.competitors || []){
+      const id=String(team.id || '');
+      if(!id) continue;
+      const preferred=category === 'Dota 2'
+        ? [...players,...teams]
+        : [...teams,...players];
+      const logo=bestCatalogLogo(team.name,preferred,['nickname','name','slug']);
+      backgroundMedia.competitors.set(id,logo || '');
+    }
+  }
+}
+
 async function warmDisciplineMedia(category) {
   category=String(category || '');
   const discipline=disciplineIds[category];
   if(!discipline) return;
   const existing=backgroundMedia.disciplines.get(category);
-  if(existing && Date.now()-existing.at < 12*3600_000) return;
+  if(existing && Date.now()-existing.at < 12*3600_000) {
+    applyDisciplineCatalog(category,existing);
+    return;
+  }
   if(backgroundMedia.warming.has(category)) return;
 
   backgroundMedia.warming.add(category);
@@ -881,23 +944,7 @@ async function warmDisciplineMedia(category) {
       at:Date.now(),tournaments,teams,players
     });
 
-    for(const event of syncedEvents.values()){
-      const eventCategory=String(event.categoryName || event.subsport || '');
-      if(eventCategory !== category) continue;
-      if(event.tournamentId && !backgroundMedia.tournaments.has(String(event.tournamentId))){
-        const logo=bestCatalogLogo(event.tournamentName,tournaments,['name','slug']);
-        backgroundMedia.tournaments.set(String(event.tournamentId),logo || '');
-      }
-      for(const team of event.competitors || []){
-        const id=String(team.id || '');
-        if(!id || backgroundMedia.competitors.has(id)) continue;
-        const preferred=category === 'Dota 2'
-          ? [...players,...teams]
-          : [...teams,...players];
-        const logo=bestCatalogLogo(team.name,preferred,['nickname','name','slug']);
-        backgroundMedia.competitors.set(id,logo || '');
-      }
-    }
+    applyDisciplineCatalog(category,{tournaments,teams,players});
     console.log('MEDIA_WARM '+JSON.stringify({
       category,
       tournaments:tournaments.length,
