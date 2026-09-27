@@ -113,6 +113,7 @@ const phrases = [
  ["Навігація профілю","Навигация профиля","Profile navigation"],
  ["Доступних результатів","Доступных исходов","Available outcomes"],
  ["Виведено","Выведено","Cashed out"],
+ ["Редагувати","Редактировать","Edit"],
 ];
 let language='uk';
 try {language=localStorage.getItem('arena-language-v1')||'uk';}catch{}
