@@ -127,8 +127,13 @@ dialog.theme-sheet{position:fixed;inset:auto 0 0;width:100%;max-width:480px;max-
     filter:none!important;
     opacity:1!important;
   }
-  .tournament-symbol,.game-badge-dark,.team-emblem-picture{
-    background:#101010!important;
+  .tournament-symbol{
+    background:var(--surface,#fff)!important;
+  }
+  .game-badge-dark,
+  .team-emblem-picture,
+  .team-logo{
+    background:transparent!important;
   }
 }
 
@@ -155,7 +160,7 @@ dialog.theme-sheet{position:fixed;inset:auto 0 0;width:100%;max-width:480px;max-
   }
   [data-theme=dark] .team-emblem-picture,
   [data-theme=dark] .event-team-emblem{
-    background:#101010!important;
+    background:transparent!important;
   }
 }
 
@@ -230,3 +235,19 @@ dialog#dialog.edit-bet-dialog,
 :root[data-theme=dark] .bet-status-pill.status-lost{background:#472522;color:#ff9a93}
 :root[data-theme=dark] .bet-status-pill.status-cashout{background:#203642;color:#8fc8e8}
 :root[data-theme=dark] .bet-status-pill.status-void{background:#34312d;color:#c5c0b6}
+
+/* v48: match original Parik tournament/avatar surfaces in standalone mode */
+:root:not([data-theme=dark]) .tournament-symbol,
+:root[data-theme=light] .tournament-symbol{
+  background:#fff!important;
+}
+:root:not([data-theme=dark]) .tournament-symbol .game-badge,
+:root[data-theme=light] .tournament-symbol .game-badge{
+  background:transparent!important;
+}
+:root:not([data-theme=dark]) .team-emblem-picture,
+:root:not([data-theme=dark]) .team-logo,
+:root[data-theme=light] .team-emblem-picture,
+:root[data-theme=light] .team-logo{
+  background:transparent!important;
+}
