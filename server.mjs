@@ -1,7 +1,6 @@
 import http from 'node:http';
 import { Readable } from 'node:stream';
 import { readFile } from 'node:fs/promises';
-import sharp from 'sharp';
 import app from './dist/server/index.js';
 import { augmentSettlements, completedHistory, probeResultsSource } from './results_bridge.mjs';
 import { readProfile, loginProfile, syncProfile, profileStorageStatus, changeProfilePassword } from './profile_store.mjs';
@@ -137,16 +136,16 @@ function teamMetaByProviderId(id) {
 
 function patchIndexHtml(source) {
   let html=String(source || '');
-  html=html.replace(/\?v=\d+/g,'?v=50');
+  html=html.replace(/\?v=\d+/g,'??v=51');
   if (!html.includes('apple-touch-icon')) {
     html=html.replace(
       '<link rel="manifest" href="/manifest.webmanifest">',
       '<link rel="manifest" href="/manifest.webmanifest">\n  <link rel="apple-touch-icon" href="/assets/icons/esports.png">\n  <meta name="apple-mobile-web-app-capable" content="yes">\n  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">'
     );
   }
-  if (!html.includes('arena-editor-hotfix-v50')) {
+  if (!html.includes('arena-editor-hotfix-v51')) {
     html=html.replace('</head>', `
-<style id="arena-editor-hotfix-v50">
+<style id="arena-editor-hotfix-v51">
 dialog#dialog.edit-bet-dialog{
   position:fixed!important;
   top:auto!important;
@@ -324,7 +323,7 @@ dialog#dialog.edit-bet-dialog .edit-bet-hide{
 }
 </style>
 <script>
-window.__ARENA_BUILD__='50';
+window.__ARENA_BUILD__='51';
 if('serviceWorker' in navigator){
   navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.update())).catch(()=>{});
 }
@@ -382,7 +381,7 @@ function patchSportsModule(source) {
     return '<span class="game-badge game-badge-parik">' +
       '<img class="synced-discipline-logo" src="' + escape(providerPrimary) +
       '" data-fallbacks="' + escape(JSON.stringify(fallbacks)) +
-      '" data-fallback-index="0" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"' +
+      '" data-fallback-index="0" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onload="window.__arenaNormalizeLogo&&window.__arenaNormalizeLogo(this)"' +
       ' onerror="let a=[];try{a=JSON.parse(this.dataset.fallbacks||&quot;[]&quot;)}catch{};const i=Number(this.dataset.fallbackIndex||0);if(i<a.length){this.dataset.fallbackIndex=String(i+1);this.src=a[i];}else{this.hidden=true;this.nextElementSibling.hidden=false;}">' +
       '<span class="discipline-fallback" hidden>' + fallbackGraphic + '</span></span>';
   }`;
@@ -391,7 +390,73 @@ function patchSportsModule(source) {
     console.warn('SPORTS_PATCH_MISS gameBadge block was not found');
     return source;
   }
-  return source.replace(oldBlock,newBlock);
+  const normalizer = `
+if (!window.__arenaNormalizeLogo) {
+  window.__arenaNormalizeLogo = function(img) {
+    if (!img || img.dataset.arenaNormalized === '1' || img.dataset.arenaNormalizing === '1') return;
+    if (!img.naturalWidth || !img.naturalHeight) return;
+    img.dataset.arenaNormalizing = '1';
+    try {
+      const maxSide = 256;
+      const ratio = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+      const w = Math.max(1, Math.round(img.naturalWidth * ratio));
+      const h = Math.max(1, Math.round(img.naturalHeight * ratio));
+      const source = document.createElement('canvas');
+      source.width = w;
+      source.height = h;
+      const ctx = source.getContext('2d', { willReadFrequently:true });
+      ctx.clearRect(0,0,w,h);
+      ctx.drawImage(img,0,0,w,h);
+      const pixels = ctx.getImageData(0,0,w,h).data;
+
+      const corners = [
+        [0,0],[w-1,0],[0,h-1],[w-1,h-1]
+      ].map(([x,y]) => {
+        const p=(y*w+x)*4;
+        return [pixels[p],pixels[p+1],pixels[p+2],pixels[p+3]];
+      });
+      const bg = corners.reduce((a,p) => a.map((v,i)=>v+p[i]),[0,0,0,0]).map(v=>v/corners.length);
+
+      let minX=w,minY=h,maxX=-1,maxY=-1;
+      for(let y=0;y<h;y++){
+        for(let x=0;x<w;x++){
+          const p=(y*w+x)*4;
+          const r=pixels[p],g=pixels[p+1],b=pixels[p+2],a=pixels[p+3];
+          if(a < 20) continue;
+          const bgDistance=Math.abs(r-bg[0])+Math.abs(g-bg[1])+Math.abs(b-bg[2])+Math.abs(a-bg[3])*0.35;
+          const opaqueBackground=bg[3] > 220 && a > 220 && bgDistance < 42;
+          if(opaqueBackground) continue;
+          minX=Math.min(minX,x); minY=Math.min(minY,y);
+          maxX=Math.max(maxX,x); maxY=Math.max(maxY,y);
+        }
+      }
+      if(maxX < minX || maxY < minY) return;
+
+      const expand=Math.max(1,Math.round(Math.max(w,h)*0.012));
+      minX=Math.max(0,minX-expand); minY=Math.max(0,minY-expand);
+      maxX=Math.min(w-1,maxX+expand); maxY=Math.min(h-1,maxY+expand);
+
+      const cropW=maxX-minX+1, cropH=maxY-minY+1;
+      const output=document.createElement('canvas');
+      output.width=96; output.height=96;
+      const out=output.getContext('2d');
+      out.clearRect(0,0,96,96);
+      const inner=72;
+      const scale=Math.min(inner/cropW,inner/cropH);
+      const drawW=Math.max(1,cropW*scale), drawH=Math.max(1,cropH*scale);
+      out.drawImage(source,minX,minY,cropW,cropH,(96-drawW)/2,(96-drawH)/2,drawW,drawH);
+
+      img.dataset.arenaNormalized='1';
+      img.src=output.toDataURL('image/png');
+    } catch (error) {
+      img.dataset.arenaNormalizeError='1';
+    } finally {
+      img.dataset.arenaNormalizing='0';
+    }
+  };
+}
+`;
+  return (source.includes('__arenaNormalizeLogo') ? '' : normalizer) + source.replace(oldBlock,newBlock);
 }
 
 const sportsCssPatch = `
@@ -618,7 +683,6 @@ async function bo3TournamentLogo(name,category) {
   mediaCache.set(key,{at:Date.now(),url});
   return url;
 }
-const normalizedImageCache = new Map();
 const PARIK_MEDIA_HOSTS = new Set(['parik24.pro','www.parik24.pro','24parik-bet.org','www.24parik-bet.org']);
 
 function safeParikMediaURL(value) {
@@ -630,86 +694,38 @@ function safeParikMediaURL(value) {
   } catch { return ''; }
 }
 
-async function normalizedLogo(url,{trusted=false,box=96,content=72}={}) {
-  if(!url) return null;
-  if(!trusted && !safeParikMediaURL(url)) return null;
-
-  const cacheKey=box+':'+content+':'+url;
-  const cached=normalizedImageCache.get(cacheKey);
-  if(cached && Date.now()-cached.at < 6*3600_000) return cached.buffer;
-
-  const response=await fetch(url,{
-    signal:AbortSignal.timeout(12000),
-    headers:{
-      accept:'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-      'user-agent':'Mozilla/5.0 ArenaLine/1.0'
-    }
-  });
-  if(!response.ok) throw new Error('image HTTP '+response.status);
-  const type=String(response.headers.get('content-type') || '');
-  if(!type.startsWith('image/')) throw new Error('not an image');
-
-  const input=Buffer.from(await response.arrayBuffer());
-  if(!input.length || input.length > 5_000_000) throw new Error('invalid image bytes');
-
-  let pipeline=sharp(input,{density:240,animated:false,limitInputPixels:16_000_000});
-  try {
-    pipeline=pipeline.trim({threshold:12});
-    await pipeline.metadata();
-  } catch {
-    pipeline=sharp(input,{density:240,animated:false,limitInputPixels:16_000_000});
-  }
-
-  const side=Math.max(24,Math.min(box,content));
-  const outer=Math.max(side,box);
-  const pad=Math.max(0,Math.floor((outer-side)/2));
-
-  const buffer=await pipeline
-    .ensureAlpha()
-    .resize({
-      width:side,
-      height:side,
-      fit:'contain',
-      position:'centre',
-      withoutEnlargement:false,
-      background:{r:0,g:0,b:0,alpha:0}
-    })
-    .extend({
-      top:pad,
-      bottom:outer-side-pad,
-      left:pad,
-      right:outer-side-pad,
-      background:{r:0,g:0,b:0,alpha:0}
-    })
-    .png({compressionLevel:9,adaptiveFiltering:true})
-    .toBuffer();
-
-  if(normalizedImageCache.size > 800) normalizedImageCache.delete(normalizedImageCache.keys().next().value);
-  normalizedImageCache.set(cacheKey,{at:Date.now(),buffer});
-  return buffer;
-}
-
-async function sendNormalizedLogo(res,candidates,fallback,{box=96,content=72}={}) {
+async function streamImageCandidates(res,candidates,fallback='') {
   for(const candidate of candidates){
     if(!candidate?.url) continue;
+    if(!candidate.trusted && !safeParikMediaURL(candidate.url)) continue;
     try{
-      const buffer=await normalizedLogo(candidate.url,{trusted:!!candidate.trusted,box,content});
-      if(!buffer) continue;
+      const response=await fetch(candidate.url,{
+        signal:AbortSignal.timeout(12000),
+        headers:{
+          accept:'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+          'user-agent':'Mozilla/5.0 ArenaLine/1.0'
+        }
+      });
+      const type=String(response.headers.get('content-type') || '');
+      if(!response.ok || !type.startsWith('image/')) continue;
       res.statusCode=200;
-      res.setHeader('content-type','image/png');
+      res.setHeader('content-type',type);
       res.setHeader('cache-control','public, max-age=21600, stale-while-revalidate=86400');
       res.setHeader('x-content-type-options','nosniff');
-      res.setHeader('x-arena-logo-normalized','1');
-      return res.end(buffer);
+      res.setHeader('x-arena-media-proxy','1');
+      return Readable.fromWeb(response.body).pipe(res);
     }catch{}
   }
-
-  res.statusCode=302;
-  res.setHeader('location',fallback);
-  res.setHeader('cache-control','public, max-age=300');
+  if(fallback){
+    res.statusCode=302;
+    res.setHeader('location',fallback);
+    res.setHeader('cache-control','public, max-age=300');
+    return res.end();
+  }
+  res.statusCode=404;
+  res.setHeader('cache-control','public, max-age=120');
   return res.end();
 }
-
 
 async function embeddedAsset(pathname,method,headers) {
   const request = new Request('http://localhost' + pathname,{method,headers});
@@ -767,10 +783,10 @@ const server=http.createServer(async (req,res)=>{
     if (url.pathname === '/api/media/team' && method === 'GET') {
       const id=safeString(url.searchParams.get('id'),32);
       if(!/^\d{1,16}$/.test(id)) return json(res,400,{ok:false,error:'Invalid competitor id'});
-      return sendNormalizedLogo(res,[
+      return streamImageCandidates(res,[
         {url:'https://parik24.pro/taxonomyicons/competitors/'+id+'-164w'},
         {url:'https://24parik-bet.org/taxonomyicons/competitors/'+id+'-164w'}
-      ],'',{box:96,content:82});
+      ]);
     }
 
     if (url.pathname === '/api/media/tournament' && method === 'GET') {
@@ -780,11 +796,11 @@ const server=http.createServer(async (req,res)=>{
       const exactCategory=safeParikMediaURL(url.searchParams.get('categorySource'));
       const fallback=localDisciplineIcon(category);
       const bo3=await bo3TournamentLogo(name,category).catch(()=> '');
-      return sendNormalizedLogo(res,[
+      return streamImageCandidates(res,[
         {url:exactTournament},
         {url:exactCategory},
         {url:bo3,trusted:true}
-      ],fallback,{box:96,content:72});
+      ],fallback);
     }
 
     if (url.pathname === '/health') {
