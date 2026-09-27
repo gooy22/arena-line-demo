@@ -35,7 +35,21 @@ function compactOdds(bet) {
 function compactBetSummary(bet) {
   const state = ['won','lost','void','cashout'].includes(bet.status) ? bet.status : 'open';
   const iconName = state === 'won' ? 'check' : state === 'lost' ? 'x' : state === 'cashout' ? 'undo-2' : state === 'void' ? 'minus' : 'clock-3';
-  return `<div class="bet-selection-summary bet-multi-summary"><span class="bet-result result-${esc(state)}">${icon(iconName)}</span><span class="bet-selection-label"><strong>${esc(outcomesLabel(bet.selections?.length || 0))}</strong></span><span class="bet-coefficient">${esc(compactOdds(bet))}</span>${icon('chevron-right')}</div>`;
+  return `<button class="bet-selection-summary bet-multi-summary" data-action="toggle-multi-bet" data-value="${esc(bet.id)}" aria-expanded="false"><span class="bet-result result-${esc(state)}">${icon(iconName)}</span><span class="bet-selection-label"><strong>${esc(outcomesLabel(bet.selections?.length || 0))}</strong></span><span class="bet-coefficient">${esc(compactOdds(bet))}</span>${icon('chevron-right','bet-multi-chevron')}</button>`;
+}
+
+function expandedMultiSelection(selection, bet, index) {
+  const result = selection.settlement;
+  const state = bet.status === 'cashout' ? 'cashout' : result?.status;
+  const resultIcon = state === 'won' ? 'check' : state === 'lost' ? 'x' : state === 'cashout' ? 'undo-2' : state === 'void' ? 'minus' : '';
+  const sportName = selection.sport === 'CS' || !games[selection.sport] || ['CSGO','DOTA2','LOL'].includes(selection.subsport) ? 'esports' : games[selection.sport];
+  const eventDate = date(selection.startTime ? selection.startTime * 1000 : bet.date);
+  const detail = `${eventDate} ${selection.eventName || ''}`;
+  return `<button class="bet-multi-event" data-action="bet-event" data-value="${esc(bet.id)}:${index}">
+    <span class="bet-multi-sport">${graphic(sportName)}</span>
+    <span class="bet-multi-copy"><strong>${esc(t(selection.marketName))} ${esc(t(selection.label))}</strong><small>${esc(detail)}</small></span>
+    <span class="bet-multi-right"><b class="${state ? `state-${esc(state)}` : ''}">${Number(selection.odds.toFixed(2))}</b>${state ? `<span class="bet-result result-${esc(state)}">${icon(resultIcon)}</span>` : ''}</span>
+  </button>`;
 }
 
 function selectionRow(selection, bet, index) {
@@ -70,7 +84,7 @@ export function betHistory(account, tab, editing = false) {
     const paymentLabel = !settled ? t('Можлива виплата') : bet.status === 'cashout' ? t('Виведено') : t('Виплата');
     const multi = bet.type === 'express' || bet.type === 'system' || (bet.selections?.length || 0) > 1;
     const body = multi
-      ? compactBetSummary(bet)
+      ? `${compactBetSummary(bet)}<div class="bet-multi-details" hidden>${bet.selections.map((selection,index) => expandedMultiSelection(selection,bet,index)).join('')}</div>`
       : bet.selections.map((selection,index) => selectionRow(selection,bet,index)).join('');
     return `<article class="bet-record${multi ? ' bet-record-multi' : ''}" data-bet-id="${esc(bet.id)}"><div class="bet-record-date">№${esc(bet.number || (visible.length - visible.indexOf(bet)))} · ${esc(date(bet.date))}</div>${body}<dl class="bet-payment"><div><dt>${esc(t('Сума ставки'))}</dt><dd>${amount(bet.cost)}</dd></div><div class="${settled && bet.payout > 0 ? 'positive' : ''}"><dt>${esc(paymentLabel)}</dt><dd>${amount(settled ? bet.payout : bet.potential)}</dd></div></dl><div class="bet-record-actions">${editing ? `<button class="edit-bet" data-action="edit-bet" data-value="${esc(bet.id)}">${icon('pencil')}${esc(t('Редагувати'))}</button>` : ''}${!settled ? `<button data-action="repeat-bet" data-value="${esc(bet.id)}">${icon('rotate-cw')}${esc(t('Повторити'))}</button>` : ''}<button data-action="share-bet" data-value="${esc(bet.id)}" aria-label="${esc(t('Поділитися ставкою'))}">${icon('share')}${settled ? esc(t('Поділитися')) : ''}</button></div></article>`;
   }).join('');
