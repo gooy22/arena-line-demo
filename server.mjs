@@ -120,13 +120,13 @@ function eventForSettlement(event) {
   };
 }
 
-function teamNameByProviderId(id) {
+function teamMetaByProviderId(id) {
   const target=String(id || '');
   for (const event of syncedEvents.values()) {
     const team=(event.competitors || []).find(candidate => String(candidate.id || '') === target);
-    if (team?.name) return team.name;
+    if (team?.name) return {name:team.name,categoryName:event.categoryName || event.subsport || ''};
   }
-  return '';
+  return null;
 }
 
 function patchSportsModule(source) {
@@ -448,14 +448,14 @@ const server = http.createServer(async (req, res) => {
       if (method !== 'GET') return json(res,405,{error:'Method not allowed'});
       const competitor=url.searchParams.get('competitor') || '';
       if (!/^\d{1,16}$/.test(competitor)) return json(res,400,{error:'Invalid competitor'});
-      const teamName=teamNameByProviderId(competitor);
-      if (!teamName) return json(res,200,[]);
+      const team=teamMetaByProviderId(competitor);
+      if (!team) return json(res,200,[]);
       try {
-        const rows=await completedHistory(teamName,20);
-        console.log('COMPLETED_HISTORY ' + JSON.stringify({team:teamName,rows:rows.length}));
+        const rows=await completedHistory(team.name,20,team.categoryName);
+        console.log('COMPLETED_HISTORY ' + JSON.stringify({team:team.name,category:team.categoryName,rows:rows.length}));
         return json(res,200,rows);
       } catch (error) {
-        console.error('COMPLETED_HISTORY_ERROR',teamName,error?.message || error);
+        console.error('COMPLETED_HISTORY_ERROR',team.name,error?.message || error);
         return json(res,200,[]);
       }
     }
