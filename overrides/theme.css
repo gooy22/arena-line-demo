@@ -906,3 +906,29 @@ html.share-coupon-open .share-close:active{
   padding:0 12px!important;
   font-size:14px!important;
 }
+
+
+/* v77: clean transparent esports controller — no square, no clipping hacks. */
+.gamepad-graphic{
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:100%!important;
+  max-height:100%!important;
+  padding:0!important;
+  margin:auto!important;
+  border:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+  background:transparent!important;
+  object-fit:contain!important;
+  object-position:center!important;
+  clip-path:none!important;
+  transform:none!important;
+  mix-blend-mode:normal!important;
+}
+.sport-symbol .gamepad-graphic{width:28px!important;height:25px!important;max-width:28px!important;max-height:25px!important}
+.game-badge .gamepad-graphic{width:20px!important;height:18px!important;max-width:20px!important;max-height:18px!important}
+.bet-sport .gamepad-graphic{width:22px!important;height:20px!important;max-width:22px!important;max-height:20px!important}
+.bet-detail-selections .bet-sport .gamepad-graphic{width:21px!important;height:19px!important;max-width:21px!important;max-height:19px!important}
+.tournament-symbol .gamepad-graphic{width:38px!important;height:34px!important;max-width:38px!important;max-height:34px!important}
