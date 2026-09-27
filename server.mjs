@@ -150,16 +150,16 @@ function teamMetaByProviderId(id) {
 
 function patchIndexHtml(source) {
   let html=String(source || '');
-  html=html.replace(/\?+v=\d+/g,'?v=55');
+  html=html.replace(/\?+v=\d+/g,'?v=56');
   if (!html.includes('apple-touch-icon')) {
     html=html.replace(
       '<link rel="manifest" href="/manifest.webmanifest">',
       '<link rel="manifest" href="/manifest.webmanifest">\n  <link rel="apple-touch-icon" href="/assets/icons/esports.png">\n  <meta name="apple-mobile-web-app-capable" content="yes">\n  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">'
     );
   }
-  if (!html.includes('arena-editor-hotfix-v55')) {
+  if (!html.includes('arena-editor-hotfix-v56')) {
     html=html.replace('</head>', `
-<style id="arena-editor-hotfix-v55">
+<style id="arena-editor-hotfix-v56">
 dialog#dialog.edit-bet-dialog{
   position:fixed!important;
   top:auto!important;
@@ -337,7 +337,7 @@ dialog#dialog.edit-bet-dialog .edit-bet-hide{
 }
 </style>
 <script>
-window.__ARENA_BUILD__='55';
+window.__ARENA_BUILD__='56';
 if('serviceWorker' in navigator){
   navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.update())).catch(()=>{});
 }
@@ -386,11 +386,15 @@ function patchSportsModule(source) {
       '&category=' + encodeURIComponent(String(event.categoryName || '')) +
       '&source=' + encodeURIComponent(exactTournament) +
       '&categorySource=' + encodeURIComponent(exactCategory);
-    const providerPrimary = baseMedia + '&prefer=parik';
+    const providerParik = baseMedia + '&prefer=parik';
     const providerBo3 = baseMedia + '&prefer=bo3';
     const providerCategory = baseMedia + '&prefer=category';
+    const retryAt=window.__arenaLogoRetry ? Number(window.__arenaLogoRetry.get(providerParik) || 0) : 0;
+    const providerPrimary = retryAt > Date.now() ? providerBo3 : providerParik;
     const renderedPrimary = window.__arenaStableLogoSrc ? window.__arenaStableLogoSrc(providerPrimary) : providerPrimary;
-    const fallbacks = [providerBo3,providerCategory];
+    const fallbacks = providerPrimary === providerParik
+      ? [providerBo3,providerCategory]
+      : [providerCategory];
 
     if (!providerPrimary) {
       return '<span class="game-badge game-badge-parik">' + fallbackGraphic + '</span>';
@@ -399,6 +403,10 @@ function patchSportsModule(source) {
     return '<span class="game-badge game-badge-parik">' +
       '<img class="synced-discipline-logo" src="' + escape(renderedPrimary) +
       '" data-arena-source="' + escape(providerPrimary) +
+      '" data-entity-kind="tournament"' +
+      '" data-entity-key="' + escape(String(event.tournamentId || event.tournamentName || '')) +
+      '" data-entity-name="' + escape(String(event.tournamentName || '')) +
+      '" data-category="' + escape(String(event.categoryName || '')) +
       '" data-fallbacks="' + escape(JSON.stringify(fallbacks)) +
       '" data-fallback-index="0" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onload="window.__arenaNormalizeLogo&&window.__arenaNormalizeLogo(this)"' +
       ' onerror="window.__arenaFailLogo?window.__arenaFailLogo(this):(this.hidden=true)">' +
@@ -412,6 +420,49 @@ function patchSportsModule(source) {
   const normalizer = `
 window.__arenaLogoCache = window.__arenaLogoCache || new Map();
 window.__arenaLogoRetry = window.__arenaLogoRetry || new Map();
+window.__arenaLogoFingerprints = window.__arenaLogoFingerprints || new Map();
+window.__arenaGenericFingerprints = window.__arenaGenericFingerprints || new Set();
+window.__arenaHashLogo = window.__arenaHashLogo || function(value) {
+  let hash=2166136261;
+  for(let i=0;i<value.length;i++) hash=Math.imul(hash ^ value.charCodeAt(i),16777619);
+  return (hash>>>0).toString(16)+':'+value.length;
+};
+window.__arenaRegisterFingerprint = window.__arenaRegisterFingerprint || function(img,data,source) {
+  if(!img || !String(source || '').includes('prefer=parik')) return true;
+  const kind=String(img.dataset.entityKind || '');
+  const key=String(img.dataset.entityKey || source || '');
+  const category=String(img.dataset.category || '');
+  if(!kind || !key) return true;
+
+  const fingerprint=window.__arenaHashLogo(data);
+  let row=window.__arenaLogoFingerprints.get(fingerprint);
+  if(!row){
+    row={kind,keys:new Set(),categories:new Set(),sources:new Set(),images:new Set()};
+    window.__arenaLogoFingerprints.set(fingerprint,row);
+  }
+  row.keys.add(key);
+  if(category) row.categories.add(category);
+  row.sources.add(String(source || ''));
+  row.images.add(img);
+
+  const generic = kind === 'team'
+    ? row.keys.size >= 2
+    : kind === 'tournament'
+      ? row.keys.size >= 3 && row.categories.size >= 2
+      : false;
+
+  if(!generic && !window.__arenaGenericFingerprints.has(fingerprint)) return true;
+
+  window.__arenaGenericFingerprints.add(fingerprint);
+  for(const badSource of row.sources){
+    window.__arenaLogoCache.delete(badSource);
+    window.__arenaMarkLogoBad(badSource,12*3600*1000);
+  }
+  for(const badImage of row.images){
+    if(badImage?.isConnected) window.__arenaRejectLogo(badImage,12*3600*1000);
+  }
+  return false;
+};
 window.__arenaStableLogoSrc = window.__arenaStableLogoSrc || function(url) {
   return window.__arenaLogoCache.get(String(url || '')) || String(url || '');
 };
@@ -569,6 +620,7 @@ if (!window.__arenaNormalizeLogo) {
       out.drawImage(sourceCanvas,minX,minY,cropW,cropH,(96-drawW)/2,(96-drawH)/2,drawW,drawH);
 
       const data = output.toDataURL('image/png');
+      if(!window.__arenaRegisterFingerprint(img,data,original)) return;
       window.__arenaLogoCache.set(original,data);
       img.dataset.arenaNormalized='1';
       img.hidden=false;
@@ -670,10 +722,13 @@ const sportsCssPatch = `
 .discipline-r6{color:#f5f5f5;font-size:12px}
 .team-emblem-picture{
   position:relative!important;
-  display:grid!important;
+  display:inline-grid!important;
   place-items:center;
-  width:100%;
-  height:100%;
+  width:28px!important;
+  height:28px!important;
+  min-width:28px!important;
+  min-height:28px!important;
+  flex:0 0 28px!important;
   border-radius:50%;
   overflow:hidden;
   background:transparent!important;
@@ -698,14 +753,19 @@ const sportsCssPatch = `
   width:100%;
   height:100%;
   border-radius:50%;
-  background:var(--surface,#fff)!important;
-  color:var(--ink,#292621);
-  font-size:10px;
-  font-weight:700;
+  background:#ebeae6!important;
+  color:#3c3934!important;
+  font-size:9px;
+  line-height:1;
+  font-weight:800;
+  letter-spacing:-.2px;
 }
 .event-team-emblem .team-emblem-picture{
-  width:72px;
-  height:72px;
+  width:72px!important;
+  height:72px!important;
+  min-width:72px!important;
+  min-height:72px!important;
+  flex-basis:72px!important;
 }
 `;
 
@@ -792,7 +852,7 @@ const localDisciplineIcon = category => {
 const mediaName = value => String(value || '')
   .normalize('NFKC')
   .toLowerCase()
-  .replace(/\b(players? duel|duel players?|kills?|maps?|bo\d|closed qualifier|open qualifier)\b.*$/giu,'')
+  .replace(/\b(players? duel|duel players?|kills?|maps?|bo\d|closed qualifier|open qualifier|дуель гравців|вбивства|дуэль игроков|убийства|киллы)\b.*$/giu,'')
   .replace(/[^\p{L}\p{N}]+/gu,' ')
   .trim();
 const mediaWords = value => new Set(mediaName(value).split(/\s+/).filter(Boolean));
@@ -856,7 +916,10 @@ const backgroundMedia = {
   warming:new Set(),
   queued:new Set(),
   queue:[],
-  active:0
+  active:0,
+  exactQueue:[],
+  exactQueued:new Set(),
+  exactActive:0
 };
 
 function logoFromEntity(row) {
@@ -901,6 +964,74 @@ function bestCatalogLogo(name, rows, fields) {
   return bestScore>=700 ? best : '';
 }
 
+
+async function exactBo3Rows(kind,name,category) {
+  const discipline=disciplineIds[category] || null;
+  const table=kind;
+  const nameField=kind === 'players' ? 'nickname' : 'name';
+  for(const op of ['eq','ilike']){
+    const qs=new URLSearchParams({'page[limit]':'30'});
+    qs.set(`filter[${table}.${nameField}][${op}]`,name);
+    if(discipline) qs.set(`filter[${table}.discipline_id][eq]`,String(discipline));
+    try{
+      const response=await fetch(`https://api.bo3.gg/api/v1/${kind}?${qs}`,{
+        signal:AbortSignal.timeout(4500),
+        headers:{accept:'application/json'}
+      });
+      if(!response.ok) continue;
+      const data=await response.json();
+      const rows=Array.isArray(data?.results) ? data.results : [];
+      if(rows.length) return rows;
+    }catch{}
+  }
+  return [];
+}
+
+async function resolveExactMediaTask(task) {
+  const {kind,id,name,category}=task;
+  if(!id || !name) return;
+
+  if(kind === 'tournament'){
+    const rows=await exactBo3Rows('tournaments',mediaName(name),category);
+    const logo=bestCatalogLogo(name,rows,['name','slug']);
+    if(logo) backgroundMedia.tournaments.set(String(id),logo);
+    console.log('MEDIA_EXACT '+JSON.stringify({kind,id,name,category,found:!!logo}));
+    return;
+  }
+
+  const kinds=category === 'Dota 2' ? ['players','teams'] : ['teams','players'];
+  let logo='';
+  for(const candidateKind of kinds){
+    const rows=await exactBo3Rows(candidateKind,name,category);
+    logo=bestCatalogLogo(name,rows,['nickname','name','slug']);
+    if(logo) break;
+  }
+  if(logo) backgroundMedia.competitors.set(String(id),logo);
+  console.log('MEDIA_EXACT '+JSON.stringify({kind,id,name,category,found:!!logo}));
+}
+
+function queueExactMedia(task) {
+  const key=task.kind+':'+String(task.id || '');
+  if(!task.id || !task.name || backgroundMedia.exactQueued.has(key)) return;
+  backgroundMedia.exactQueued.add(key);
+  backgroundMedia.exactQueue.push({...task,key});
+  drainExactMediaQueue();
+}
+
+function drainExactMediaQueue() {
+  while(backgroundMedia.exactActive < 3 && backgroundMedia.exactQueue.length){
+    const task=backgroundMedia.exactQueue.shift();
+    backgroundMedia.exactActive++;
+    Promise.resolve(resolveExactMediaTask(task))
+      .catch(()=>{})
+      .finally(()=>{
+        backgroundMedia.exactActive=Math.max(0,backgroundMedia.exactActive-1);
+        backgroundMedia.exactQueued.delete(task.key);
+        setTimeout(drainExactMediaQueue,0);
+      });
+  }
+}
+
 function applyDisciplineCatalog(category,catalog) {
   if(!catalog) return;
   const {tournaments=[],teams=[],players=[]}=catalog;
@@ -909,8 +1040,15 @@ function applyDisciplineCatalog(category,catalog) {
     if(eventCategory !== category) continue;
 
     if(event.tournamentId){
+      const tournamentId=String(event.tournamentId);
       const logo=bestCatalogLogo(event.tournamentName,tournaments,['name','slug']);
-      backgroundMedia.tournaments.set(String(event.tournamentId),logo || '');
+      backgroundMedia.tournaments.set(tournamentId,logo || '');
+      if(!logo) queueExactMedia({
+        kind:'tournament',
+        id:tournamentId,
+        name:mediaName(event.tournamentName),
+        category
+      });
     }
 
     for(const team of event.competitors || []){
@@ -921,6 +1059,12 @@ function applyDisciplineCatalog(category,catalog) {
         : [...teams,...players];
       const logo=bestCatalogLogo(team.name,preferred,['nickname','name','slug']);
       backgroundMedia.competitors.set(id,logo || '');
+      if(!logo) queueExactMedia({
+        kind:'competitor',
+        id,
+        name:String(team.name || ''),
+        category
+      });
     }
   }
 }
