@@ -698,7 +698,6 @@ export class LiveFeed {
   setView(sport,stage) {
     const previousSport=this.sport;
     if (sport === this.sport && stage === this.stage) {
-      if (this.ready) this.subscribeEvents(true);
       return;
     }
 
