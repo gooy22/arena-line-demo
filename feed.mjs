@@ -149,7 +149,8 @@ function compactEvent(row) {
 }
 
 
-const ESPORTS_RE = /(?:кібер|кибер|esport|cyber|counter[- ]?strike|cs2|cs:go|dota|valorant|league\s*of\s*legends|\blol\b|starcraft|overwatch|rainbow\s*six|rocket\s*league|efootball|esportsbattle)/i;
+const ESPORTS_RE = /(?:counter[- ]?strike|\bcs2\b|cs:go|dota|valorant|league\s*of\s*legends|\blol\b|free\s*fire|starcraft|overwatch|rainbow\s*six|rocket\s*league|mobile\s*legends|pubg|apex|call\s*of\s*duty)/i;
+const ESPORTS_SPORT_RE = /(?:esport|cybersport|cyber sport|кіберспорт|киберспорт)/i;
 
 function flatStrings(value, depth = 0, out = []) {
   if (depth > 3 || value == null) return out;
@@ -193,6 +194,7 @@ function sportCode(row) {
 
 function inferDiscipline(event) {
   const text = [event?.categoryName,event?.subsport,event?.tournamentName,event?.name].filter(Boolean).join(' ');
+  if (/esportsbattle|efootball|кіберфутбол|киберфутбол|cyber\s*(?:football|hockey|basketball)|virtual\s*(?:football|hockey|basketball)/i.test(text)) return 'Virtual';
   if (/dota/i.test(text)) return 'Dota 2';
   if (/valorant/i.test(text)) return 'Valorant';
   if (/league\s*of\s*legends|\blol\b/i.test(text)) return 'League of Legends';
@@ -201,7 +203,11 @@ function inferDiscipline(event) {
   if (/overwatch/i.test(text)) return 'Overwatch';
   if (/rainbow\s*six/i.test(text)) return 'Rainbow Six';
   if (/rocket\s*league/i.test(text)) return 'Rocket League';
-  if (/efootball|esportsbattle|кіберфутбол|киберфутбол/i.test(text)) return 'Кіберфутбол';
+  if (/free\s*fire/i.test(text)) return 'Free Fire';
+  if (/mobile\s*legends/i.test(text)) return 'Mobile Legends';
+  if (/pubg/i.test(text)) return 'PUBG';
+  if (/apex/i.test(text)) return 'Apex Legends';
+  if (/call\s*of\s*duty/i.test(text)) return 'Call of Duty';
   return event?.categoryName || event?.subsport || 'Кіберспорт';
 }
 
@@ -215,14 +221,18 @@ function normalizeEsportsRow(row) {
       providerSport:event.sport,
       sport:'CS',
       categoryName:inferDiscipline(event),
-      subsport:inferDiscipline(event)
+      subsport:inferDiscipline(event),
+      categoryIconUrl:String(event?.categoryIcon?.url || event?.subsportIcon?.url || event?.category?.icon?.url || event?.icon?.url || ''),
+      tournamentIconUrl:String(event?.tournamentIcon?.url || event?.tournament?.icon?.url || '')
     }
   };
 }
 
 function looksEsportsEvent(event) {
   if (!event) return false;
-  if (ESPORTS_RE.test([event.categoryName,event.subsport,event.tournamentName,event.name].filter(Boolean).join(' '))) return true;
+  const text=[event.categoryName,event.subsport,event.tournamentName,event.name].filter(Boolean).join(' ');
+  if (/esportsbattle|efootball|кіберфутбол|киберфутбол|cyber\s*(?:football|hockey|basketball)|virtual\s*(?:football|hockey|basketball)/i.test(text)) return false;
+  if (ESPORTS_RE.test(text)) return true;
   return String(event.sport || '').toUpperCase() === 'CS';
 }
 
@@ -495,12 +505,15 @@ export class LiveFeed {
       this.sportsReady = !!subscription.initial;
       if (subscription.initial) {
         clearTimeout(this.catalogTimer);
-        const catalog = [...this.sports.values()].slice(0,40).map(row => ({
+        const catalog = [...this.sports.values()].slice(0,60).map(row => ({
           code:sportCode(row),
-          text:sportRowText(row).slice(0,220)
+          name:String(row?.value?.name || ''),
+          slug:String(row?.value?.slug || ''),
+          live:Number(row?.value?.liveEventsCount || 0),
+          prematch:Number(row?.value?.prematchEventsCount || 0)
         }));
         this.report('sport-catalog', {
-          message:JSON.stringify(catalog).slice(0,2800)
+          message:JSON.stringify(catalog).slice(0,3000)
         });
         this.subscribeEvents(true);
       }
@@ -549,26 +562,25 @@ export class LiveFeed {
     if (this.sport !== 'CS') return [this.sport];
 
     const catalog = [...this.sports.values()]
-      .map(row => ({code:sportCode(row),text:sportRowText(row)}))
+      .map(row => ({
+        code:sportCode(row),
+        name:String(row?.value?.name || ''),
+        slug:String(row?.value?.slug || ''),
+        text:sportRowText(row),
+        live:Number(row?.value?.liveEventsCount || 0),
+        prematch:Number(row?.value?.prematchEventsCount || 0)
+      }))
       .filter(row => row.code);
 
     let buckets = catalog
-      .filter(row => ESPORTS_RE.test(row.text))
+      .filter(row => ESPORTS_SPORT_RE.test([row.name,row.slug,row.text].join(' ')))
       .map(row => row.code);
 
+    // Current Parik taxonomy historically uses CS for the whole real-esports branch.
+    if (!buckets.length && catalog.some(row => row.code === 'CS')) buckets = ['CS'];
+
     buckets = [...new Set(buckets)];
-
-    if (!buckets.length && catalog.length) {
-      // Provider taxonomy changed but did not expose friendly names.
-      // Query the full current catalogue and keep only actual esports events.
-      buckets = [...new Set(catalog.map(row => row.code))].slice(0,32);
-    }
-
-    if (!buckets.length) {
-      buckets = ['CS','ESPORTS','CYBERSPORT','CYBER','DOTA2','VALORANT'];
-    }
-
-    return buckets;
+    return buckets.length ? buckets : ['CS'];
   }
 
   subscribeEvents(force = false) {
