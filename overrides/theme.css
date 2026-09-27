@@ -530,3 +530,56 @@ dialog#dialog.edit-bet-dialog,
   .bet-detail-selections .bet-selection{padding-left:12px;padding-right:12px}
   .bet-detail-footer{padding-left:14px;padding-right:14px}
 }
+
+
+/* v73: share coupon must cover the full iPhone/PWA canvas, including bottom safe area. */
+html.share-coupon-open,
+body.share-coupon-open{
+  background:#f5f4f0!important;
+}
+body.share-coupon-open{
+  overflow:hidden!important;
+}
+html.share-coupon-open dialog.share-coupon,
+body.share-coupon-open dialog.share-coupon{
+  position:fixed!important;
+  inset:0!important;
+  width:100vw!important;
+  max-width:100vw!important;
+  height:100vh!important;
+  min-height:100vh!important;
+  height:100dvh!important;
+  min-height:100dvh!important;
+  max-height:none!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:#f5f4f0!important;
+  box-shadow:0 100vh 0 100vh #f5f4f0!important;
+  overflow:hidden!important;
+}
+html.share-coupon-open dialog.share-coupon::backdrop{
+  background:#f5f4f0!important;
+}
+html.share-coupon-open .share-layout{
+  width:100%!important;
+  max-width:430px!important;
+  height:100%!important;
+  min-height:100%!important;
+  box-sizing:border-box!important;
+  background:#f5f4f0!important;
+}
+html.share-coupon-open .share-spacer,
+html.share-coupon-open .share-ticket,
+html.share-coupon-open .share-amount,
+html.share-coupon-open .share-actions{
+  background:transparent!important;
+}
+@media (display-mode:standalone){
+  html.share-coupon-open,
+  body.share-coupon-open{
+    min-height:100dvh!important;
+    background:#f5f4f0!important;
+  }
+}
