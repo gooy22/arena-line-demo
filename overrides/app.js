@@ -138,8 +138,9 @@ function closeProfile() {
   syncFeedControls();
   sports?.resizeSlip();
 }
-function openDialog(title, content) {
+function openDialog(title, content, dialogClass = '') {
   dialog.classList.remove('language-sheet','theme-sheet','edit-bet-dialog');
+  if (dialogClass) dialog.classList.add(dialogClass);
   $('#dialog-content').innerHTML = `<div class="dialog-head"><h2 id="dialog-title">${title}</h2><button class="icon-button" type="button" data-action="close-dialog" aria-label="Закрыть" title="Закрыть">${icon('x')}</button></div>${content}`;
   if (!dialog.open) dialog.showModal();
   refreshIcons();
@@ -217,9 +218,7 @@ function openEditBet(id) {
       <button class="submit edit-bet-save" type="submit">Save</button>
       <button class="edit-bet-hide" type="button" data-action="delete-bet" data-value="${esc(bet.id)}">Приховати ставку з історії</button>
     </form>
-  `);
-  dialog.classList.add('edit-bet-dialog');
-
+  `, 'edit-bet-dialog');
   const form = $('#edit-bet-form');
   const statusInput = $('#edit-bet-status');
   const cashoutWrap = $('#edit-cashout-wrap');
