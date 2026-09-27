@@ -1,0 +1,23 @@
+{
+  "name": "Arena Line Live",
+  "short_name": "ArenaLine",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#171716",
+  "theme_color": "#171716",
+  "icons": [
+    {
+      "src": "/assets/icons/esports-transparent.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/icons/esports-transparent.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
