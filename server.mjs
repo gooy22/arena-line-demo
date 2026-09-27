@@ -136,16 +136,16 @@ function teamMetaByProviderId(id) {
 
 function patchIndexHtml(source) {
   let html=String(source || '');
-  html=html.replace(/\?v=\d+/g,'?v=45');
+  html=html.replace(/\?v=\d+/g,'?v=46');
   if (!html.includes('apple-touch-icon')) {
     html=html.replace(
       '<link rel="manifest" href="/manifest.webmanifest">',
       '<link rel="manifest" href="/manifest.webmanifest">\n  <link rel="apple-touch-icon" href="/assets/icons/esports.png">\n  <meta name="apple-mobile-web-app-capable" content="yes">\n  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">'
     );
   }
-  if (!html.includes('arena-editor-hotfix-v45')) {
+  if (!html.includes('arena-editor-hotfix-v46')) {
     html=html.replace('</head>', `
-<style id="arena-editor-hotfix-v45">
+<style id="arena-editor-hotfix-v46">
 dialog#dialog.edit-bet-dialog{
   position:fixed!important;
   top:auto!important;
@@ -323,7 +323,7 @@ dialog#dialog.edit-bet-dialog .edit-bet-hide{
 }
 </style>
 <script>
-window.__ARENA_BUILD__='45';
+window.__ARENA_BUILD__='46';
 if('serviceWorker' in navigator){
   navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.update())).catch(()=>{});
 }
@@ -372,11 +372,17 @@ function patchSportsModule(source) {
       : '<span class="discipline-monogram">🎮</span>';
 
     const tournamentId = String(event.tournamentId || '');
-    const providerPrimary = event.categoryIconUrl || event.tournamentIconUrl ||
-      (/^\\d{1,16}$/.test(tournamentId) ? \`https://parik24.pro/taxonomyicons/tournaments/\${tournamentId}-164w\` : '');
-    const providerFallback = /^\\d{1,16}$/.test(tournamentId)
-      ? \`https://24parik-bet.org/taxonomyicons/tournaments/\${tournamentId}-164w\`
-      : '';
+    const categoryId = String(event.categoryId || '');
+    const taxonomyId = /^(?:\\d{1,16}|[a-f0-9]{32})$/i;
+    const providerPrimary = event.tournamentIconUrl ||
+      (taxonomyId.test(tournamentId) ? `https://parik24.pro/taxonomyicons/tournaments/\${tournamentId}-164w` : '') ||
+      event.categoryIconUrl ||
+      (taxonomyId.test(categoryId) ? `https://parik24.pro/taxonomyicons/categories/\${categoryId}-164w` : '');
+    const providerFallback = taxonomyId.test(tournamentId)
+      ? `https://24parik-bet.org/taxonomyicons/tournaments/\${tournamentId}-164w`
+      : taxonomyId.test(categoryId)
+        ? `https://24parik-bet.org/taxonomyicons/categories/\${categoryId}-164w`
+        : '';
 
     if (!providerPrimary) {
       return \`<span class="game-badge game-badge-dark">\${fallbackGraphic}</span>\`;
@@ -418,10 +424,10 @@ const sportsCssPatch = `
   display:block;
   width:100%;
   height:100%;
-  padding:7px;
+  padding:6px;
   box-sizing:border-box;
   object-fit:contain;
-  background:#101010;
+  background:transparent;
 }
 .valorant-restored{
   width:30px!important;
