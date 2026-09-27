@@ -136,16 +136,16 @@ function teamMetaByProviderId(id) {
 
 function patchIndexHtml(source) {
   let html=String(source || '');
-  html=html.replace(/\?v=\d+/g,'?v=48');
+  html=html.replace(/\?v=\d+/g,'?v=49');
   if (!html.includes('apple-touch-icon')) {
     html=html.replace(
       '<link rel="manifest" href="/manifest.webmanifest">',
       '<link rel="manifest" href="/manifest.webmanifest">\n  <link rel="apple-touch-icon" href="/assets/icons/esports.png">\n  <meta name="apple-mobile-web-app-capable" content="yes">\n  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">'
     );
   }
-  if (!html.includes('arena-editor-hotfix-v48')) {
+  if (!html.includes('arena-editor-hotfix-v49')) {
     html=html.replace('</head>', `
-<style id="arena-editor-hotfix-v48">
+<style id="arena-editor-hotfix-v49">
 dialog#dialog.edit-bet-dialog{
   position:fixed!important;
   top:auto!important;
@@ -323,7 +323,7 @@ dialog#dialog.edit-bet-dialog .edit-bet-hide{
 }
 </style>
 <script>
-window.__ARENA_BUILD__='48';
+window.__ARENA_BUILD__='49';
 if('serviceWorker' in navigator){
   navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.update())).catch(()=>{});
 }
@@ -364,20 +364,25 @@ function patchSportsModule(source) {
     const fallbackImage=fallbackImages[event.categoryName] || '/assets/icons/esports.png';
     const fallbackGraphic='<img class="synced-discipline-logo local-fallback-logo" src="' + fallbackImage + '" alt="">';
 
-    const providerPrimary = '/api/media/tournament?name=' +
+    const exactTournament = String(event.tournamentIconUrl || '');
+    const exactCategory = String(event.categoryIconUrl || '');
+    const sameOrigin = '/api/media/tournament?name=' +
       encodeURIComponent(String(event.tournamentName || '')) +
       '&category=' + encodeURIComponent(String(event.categoryName || ''));
-    const providerFallback = '';
+    const providerPrimary = exactTournament || exactCategory || sameOrigin;
+    const fallbacks = [exactCategory,sameOrigin].filter((value,index,array) =>
+      value && value !== providerPrimary && array.indexOf(value) === index
+    );
 
     if (!providerPrimary) {
-      return \`<span class="game-badge game-badge-dark">\${fallbackGraphic}</span>\`;
+      return `<span class="game-badge game-badge-parik">${fallbackGraphic}</span>`;
     }
 
-    return \`<span class="game-badge game-badge-dark">
-      <img class="synced-discipline-logo" src="\${escape(providerPrimary)}" data-provider-fallback="\${escape(providerFallback)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"
-        onerror="const f=this.dataset.providerFallback;if(f&&this.src!==f){this.src=f;this.dataset.providerFallback='';}else{this.hidden=true;this.nextElementSibling.hidden=false;}">
-      <span class="discipline-fallback" hidden>\${fallbackGraphic}</span>
-    </span>\`;
+    return `<span class="game-badge game-badge-parik">
+      <img class="synced-discipline-logo" src="${escape(providerPrimary)}" data-fallbacks="${escape(JSON.stringify(fallbacks))}" data-fallback-index="0" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"
+        onerror="let a=[];try{a=JSON.parse(this.dataset.fallbacks||'[]')}catch{};const i=Number(this.dataset.fallbackIndex||0);if(i<a.length){this.dataset.fallbackIndex=String(i+1);this.src=a[i];}else{this.hidden=true;this.nextElementSibling.hidden=false;}">
+      <span class="discipline-fallback" hidden>${fallbackGraphic}</span>
+    </span>`;
   }`;
 
   if (!source.includes(oldBlock)) {
@@ -400,6 +405,7 @@ const sportsCssPatch = `
   box-shadow:none!important;
 }
 .game-badge-dark,
+.game-badge-parik,
 .tournament-symbol .game-badge{
   background:transparent!important;
   border-radius:50%;
@@ -409,7 +415,8 @@ const sportsCssPatch = `
   display:block;
   width:100%;
   height:100%;
-  padding:6px;
+  padding:0!important;
+  margin:0!important;
   box-sizing:border-box;
   object-fit:contain;
   background:transparent;
