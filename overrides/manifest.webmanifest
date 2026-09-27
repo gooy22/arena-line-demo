@@ -8,13 +8,13 @@
   "theme_color": "#171716",
   "icons": [
     {
-      "src": "/assets/icons/esports-transparent.png",
+      "src": "/assets/icons/esports.png",
       "sizes": "any",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/assets/icons/esports-transparent.png",
+      "src": "/assets/icons/esports.png",
       "sizes": "any",
       "type": "image/png",
       "purpose": "maskable"
