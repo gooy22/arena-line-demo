@@ -26,7 +26,7 @@ const serviceWorkerModule = await readFile(new URL('./overrides/sw.js', import.m
 const manifestModule = await readFile(new URL('./overrides/manifest.webmanifest', import.meta.url), 'utf8');
 const uiModule = await readFile(new URL('./overrides/ui.mjs', import.meta.url), 'utf8');
 const i18nModule = await readFile(new URL('./overrides/i18n.mjs', import.meta.url), 'utf8');
-const exactEsportsController = await readFile(new URL('./assets/icons/esports-controller-clean-v78.png', import.meta.url));
+const exactEsportsController = await readFile(new URL('./assets/icons/esports-controller-clean-v79.png', import.meta.url));
 
 const syncedEvents = new Map();
 let resultsSource = {ok:null,error:null,disciplines:[]};
@@ -157,16 +157,16 @@ function patchIndexHtml(source) {
     /<meta\s+name=["']viewport["']\s+content=["'][^"']*["']\s*\/?>/i,
     '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">'
   );
-  html=html.replace(/\?+v=\d+/g,'?v=78');
+  html=html.replace(/\?+v=\d+/g,'?v=79');
   if (!html.includes('apple-touch-icon')) {
     html=html.replace(
       '<link rel="manifest" href="/manifest.webmanifest">',
-      '<link rel="manifest" href="/manifest.webmanifest">\n  <link rel="apple-touch-icon" href="/assets/icons/esports.png">\n  <meta name="apple-mobile-web-app-capable" content="yes">\n  <meta name="apple-mobile-web-app-status-bar-style" content="black">'
+      '<link rel="manifest" href="/manifest.webmanifest">\n  <link rel="apple-touch-icon" href="/assets/icons/esports-controller-clean-v79.png">\n  <meta name="apple-mobile-web-app-capable" content="yes">\n  <meta name="apple-mobile-web-app-status-bar-style" content="black">'
     );
   }
-  if (!html.includes('arena-editor-hotfix-v78')) {
+  if (!html.includes('arena-editor-hotfix-v79')) {
     html=html.replace('</head>', `
-<style id="arena-editor-hotfix-v78">
+<style id="arena-editor-hotfix-v79">
 dialog#dialog.edit-bet-dialog{
   position:fixed!important;
   top:auto!important;
@@ -344,18 +344,18 @@ dialog#dialog.edit-bet-dialog .edit-bet-hide{
 }
 </style>
 <script>
-window.__ARENA_BUILD__='78';
+window.__ARENA_BUILD__='79';
 </script>
 </head>`);
   }
   html=html
-    .replace(/href="\/(app|sports|bet-view|event-view|share-coupon|settings|theme)\.css\?v=78"/g,'href="/v78/$1.css"')
-    .replace('src="/lucide.min.js"','src="/v78/lucide.min.js"')
-    .replace('src="/app.js?v=78"','src="/v78/app.js"');
-  if(!html.includes('arena-client-diagnostics-v78')){
+    .replace(/href="\/(app|sports|bet-view|event-view|share-coupon|settings|theme)\.css\?v=79"/g,'href="/v79/$1.css"')
+    .replace('src="/lucide.min.js"','src="/v79/lucide.min.js"')
+    .replace('src="/app.js?v=79"','src="/v79/app.js"');
+  if(!html.includes('arena-client-diagnostics-v79')){
     html=html.replace('<title>Arena Line</title>',`<title>Arena Line</title>
-<script id="arena-client-diagnostics-v78">
-(()=>{const send=(kind,message,extra={})=>{try{fetch('/api/client-diagnostic',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({kind,message:String(message||'').slice(0,1800),build:'78',href:location.href,...extra}),keepalive:true,cache:'no-store'}).catch(()=>{})}catch{}};
+<script id="arena-client-diagnostics-v79">
+(()=>{const send=(kind,message,extra={})=>{try{fetch('/api/client-diagnostic',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({kind,message:String(message||'').slice(0,1800),build:'79',href:location.href,...extra}),keepalive:true,cache:'no-store'}).catch(()=>{})}catch{}};
 window.addEventListener('error',event=>send('CLIENT_ERROR',event.message||event.error?.message||'window error',{source:event.filename||'',line:event.lineno||0,column:event.colno||0}));
 window.addEventListener('unhandledrejection',event=>send('CLIENT_REJECTION',event.reason?.stack||event.reason?.message||event.reason||'unhandled rejection'));
 window.__arenaClientDiagnostic=send;
@@ -378,7 +378,7 @@ function patchSportsModule(source) {
       'Counter-Strike':'/assets/icons/counter-strike.png',
       'League of Legends':'/assets/icons/lol.png'
     };
-    const fallbackImage=fallbackImages[event.categoryName] || '/assets/icons/esports.png';
+    const fallbackImage=fallbackImages[event.categoryName] || '/assets/icons/esports-controller-clean-v79.png';
     const fallbackGraphic='<img class="synced-discipline-logo local-fallback-logo" src="' + fallbackImage + '" alt="">';
 
     const rawEntityKey=String(event.tournamentId || event.tournamentName || event.categoryName || '');
@@ -886,7 +886,7 @@ const localDisciplineIcon = category => {
     'Dota 2':'/assets/icons/dota.png',
     'League of Legends':'/assets/icons/lol.png'
   };
-  return map[category] || '/assets/icons/esports.png';
+  return map[category] || '/assets/icons/esports-controller-clean-v79.png';
 };
 const mediaName = value => String(value || '')
   .normalize('NFKC')
@@ -1344,7 +1344,7 @@ const server=http.createServer(async (req,res)=>{
       return streamImageCandidates(res,[{url:exactTournament},{url:exactCategory}],fallback);
     }
 
-    if (url.pathname === '/assets/icons/esports-controller-clean-v78.png' && ['GET','HEAD'].includes(method)) {
+    if (url.pathname === '/assets/icons/esports-controller-clean-v79.png' && ['GET','HEAD'].includes(method)) {
       res.statusCode=200;
       res.setHeader('content-type','image/png');
       res.setHeader('cache-control','public, max-age=31536000, immutable');
@@ -1381,8 +1381,8 @@ const server=http.createServer(async (req,res)=>{
       return textResponse(res,method,'text/html; charset=utf-8',patchIndexHtml(source),'no-store');
     }
 
-    if (url.pathname.startsWith('/v78/') && ['GET','HEAD'].includes(method)) {
-      const runtimePath='/' + url.pathname.slice('/v78/'.length);
+    if (url.pathname.startsWith('/v79/') && ['GET','HEAD'].includes(method)) {
+      const runtimePath='/' + url.pathname.slice('/v79/'.length);
       if (runtimePath === '/feed.mjs') return js(res,method,feedModule,'no-store');
       if (runtimePath === '/team-emblem.mjs') return js(res,method,emblemModule,'no-store');
       if (runtimePath === '/ui.mjs') return js(res,method,uiModule,'no-store');
@@ -1671,19 +1671,19 @@ server.listen(port,'0.0.0.0',()=>{
     };
     try{
       const html=await request('/');
-      const appText=await request('/v78/app.js');
-      const accountText=await request('/v78/account.mjs');
-      const sportsText=await request('/v78/sports.mjs');
-      const betText=await request('/v78/bet-view.mjs');
-      const shareText=await request('/v78/share-coupon.mjs');
-      const i18nText=await request('/v78/i18n.mjs');
-      const themeText=await request('/v78/theme.css');
-      await request('/v78/feed.mjs');
-      await request('/v78/event-view.mjs');
+      const appText=await request('/v79/app.js');
+      const accountText=await request('/v79/account.mjs');
+      const sportsText=await request('/v79/sports.mjs');
+      const betText=await request('/v79/bet-view.mjs');
+      const shareText=await request('/v79/share-coupon.mjs');
+      const i18nText=await request('/v79/i18n.mjs');
+      const themeText=await request('/v79/theme.css');
+      await request('/v79/feed.mjs');
+      await request('/v79/event-view.mjs');
       const failures=[];
       for(const row of checks) if(row.status!==200) failures.push(row.path+':'+row.status);
-      if(!html.includes('/v78/app.js')) failures.push('html:no-v65-app');
-      if(!html.includes('/v78/app.css')) failures.push('html:no-v65-css');
+      if(!html.includes('/v79/app.js')) failures.push('html:no-v65-app');
+      if(!html.includes('/v79/app.css')) failures.push('html:no-v65-css');
       if(!appText.includes('CLIENT_BOOT_OK')) failures.push('app:no-client-boot-probe');
       if(!appText.includes('new SportsApp')) failures.push('app:no-sports-init');
       if(!accountText.includes('settleBets')) failures.push('account:missing');
@@ -1696,7 +1696,7 @@ server.listen(port,'0.0.0.0',()=>{
       if(!betText.includes("const multi = bet.type === 'express' || bet.type === 'system'")) failures.push('bet:multi-detection-missing');
       if(!betText.includes('data-action="open-bet-detail"') || !betText.includes('export function betDetail')) failures.push('bet:detail-page-missing');
       if(!appText.includes("action === 'open-bet-detail'") || !appText.includes("profileView = 'bet-detail'")) failures.push('app:detail-navigation-missing');
-      if(!shareText.includes("esports-controller-clean-v78.png") || !shareText.includes("stakeLabel:showAmount ? t('Сума ставки') : t('Коефіцієнт')")) failures.push('share:original-behavior-missing');
+      if(!shareText.includes("esports-controller-clean-v79.png") || !shareText.includes("stakeLabel:showAmount ? t('Сума ставки') : t('Коефіцієнт')")) failures.push('share:original-behavior-missing');
       if(!shareText.includes("share-coupon-open") || !themeText.includes("html.share-coupon-open") || !themeText.includes("background:#171716!important")) failures.push('share:pwa-background-cover-missing');
       if(!betText.includes("replace(/\\B(?=(\\d{3})+(?!\\d))/g, ' ')") || !betText.includes("${major}.${minor} €")) failures.push('bet:bad-money-format');
       if(!i18nText.includes('Редагувати') || !i18nText.includes('Edit')) failures.push('i18n:incomplete');
@@ -1706,18 +1706,18 @@ server.listen(port,'0.0.0.0',()=>{
       if(!themeText.includes('.share-close:focus-visible') || !themeText.includes('.gamepad-graphic') || !themeText.includes('width:84%!important')) failures.push('theme:share-focus-or-emblem-normalization-missing');
       if(!shareText.includes('cropRatio') || !shareText.includes('font(12.5)')) failures.push('share:scale-or-gamepad-crop-missing');
       const swText=await request('/sw.js');
-      if(!swText.includes("arena-line-sync-v78") || !swText.includes("esports-controller-clean-v78.png")) failures.push('sw:v78-refresh-missing');
+      if(!swText.includes("arena-line-sync-v79") || !swText.includes("esports-controller-clean-v79.png")) failures.push('sw:v79-refresh-missing');
       if(!themeText.includes('body.share-coupon-open::before') || !themeText.includes('height:env(safe-area-inset-top)')) failures.push('theme:share-top-strip-missing');
       if(!themeText.includes('v76: compact accumulator detail rows') || !themeText.includes('min-height:56px!important')) failures.push('theme:compact-accumulator-missing');
       if(!themeText.includes('v77: clean transparent esports controller') || !themeText.includes('clip-path:none!important')) failures.push('theme:clean-controller-missing');
       if(/\]\s*\n\s*\[/.test(i18nText)) failures.push('i18n:malformed-row-boundary');
-      const controllerResponse=await fetch(base+'/assets/icons/esports-controller-clean-v78.png',{cache:'no-store'});
+      const controllerResponse=await fetch(base+'/assets/icons/esports-controller-clean-v79.png',{cache:'no-store'});
       const controllerBytes=(await controllerResponse.arrayBuffer()).byteLength;
       if(controllerResponse.status!==200 || !String(controllerResponse.headers.get('content-type')||'').startsWith('image/png') || controllerBytes!==1810) failures.push('controller:bad-asset-'+controllerResponse.status+'-'+controllerBytes);
       const summary=checks.map(({path,status,type,bytes})=>({path,status,type,bytes}));
-      summary.push({path:'/assets/icons/esports-controller-clean-v78.png',status:controllerResponse.status,type:controllerResponse.headers.get('content-type')||'',bytes:controllerBytes});
+      summary.push({path:'/assets/icons/esports-controller-clean-v79.png',status:controllerResponse.status,type:controllerResponse.headers.get('content-type')||'',bytes:controllerBytes});
       if(failures.length) console.error('FRONTEND_SELFTEST_FAILED '+JSON.stringify({failures,summary}));
-      else console.log('FRONTEND_SELFTEST_OK '+JSON.stringify({build:'78',summary}));
+      else console.log('FRONTEND_SELFTEST_OK '+JSON.stringify({build:'79',summary}));
     }catch(error){
       console.error('FRONTEND_SELFTEST_ERROR '+String(error?.stack||error));
     }
