@@ -832,6 +832,7 @@ const server=http.createServer(async (req,res)=>{
 
 server.listen(port,'0.0.0.0',()=>{
   console.log('Arena Line Parik sync v4 listening on '+port);
+  probeParikIconPaths().catch(error=>console.error('PARIK_ICON_PROBE_ERROR '+String(error?.message||error)));
   profileStorageStatus().then(status=>{
     console.log('PROFILE_STORAGE '+JSON.stringify(status));
   }).catch(error=>{
