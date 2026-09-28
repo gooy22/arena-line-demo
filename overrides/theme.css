@@ -2533,3 +2533,16 @@ body.bet-detail-open .bet-detail-footer{
     grid-template-columns:1fr!important;
   }
 }
+
+
+/* v113: live line picker inside bet editor. */
+.edit-line-picker{display:grid!important;gap:6px!important;margin:4px 0 8px!important}
+.edit-line-picker>label{display:block!important;margin:7px 0 0!important;color:#aaa69d!important;font-size:11px!important;line-height:15px!important}
+.edit-line-market-select,.edit-line-outcome-select{width:100%!important;min-height:44px!important;padding:0 38px 0 11px!important;border:1px solid #3a3732!important;border-radius:10px!important;outline:0!important;background:#2a2825!important;color:#f4f1ec!important;font:500 13px/18px Roboto,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;appearance:auto!important}
+.edit-line-market-select:focus,.edit-line-outcome-select:focus{border-color:#817c72!important;box-shadow:0 0 0 1px #817c72!important}
+.edit-line-market-select:disabled,.edit-line-outcome-select:disabled{opacity:.62!important}
+.edit-line-status{min-height:17px!important;margin:1px 1px 4px!important;color:#777168!important;font-size:10px!important;line-height:15px!important}
+.edit-manual-fallback{margin-top:8px!important;border-top:1px solid #34312d!important}
+.edit-manual-fallback>summary{padding:10px 0 2px!important;color:#8f897f!important;font-size:11px!important;line-height:16px!important;cursor:pointer!important}
+.edit-manual-fallback>label{display:block!important;margin:8px 0 6px!important;color:#aaa69d!important;font-size:11px!important}
+.edit-manual-fallback input{width:100%!important}
