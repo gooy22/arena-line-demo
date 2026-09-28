@@ -43,11 +43,11 @@ export function teamEmblem(team) {
   const cachedSource = logoCache ? urls.find(url => logoCache.has(url)) : '';
   const ordered = cachedSource ? [cachedSource, ...urls.filter(url => url !== cachedSource)] : urls;
   const primarySource = entity?.source || ordered[0] || '';
-  const fallbackSource = ordered.find(url => url !== primarySource) || '';
+  const fallbacks = ordered.filter(url => url && url !== primarySource);
   const primary = entity?.src ||
     (globalThis.window?.__arenaStableLogoSrc ? window.__arenaStableLogoSrc(primarySource) : primarySource);
-  const fallbacks = fallbackSource ? [fallbackSource] : [];
-  const logoState = entity?.src ? 'ready' : primary ? 'loading' : 'failed';
+  const sourceIsCached = !!(cachedSource && logoCache?.has(cachedSource));
+  const logoState = entity?.src || sourceIsCached ? 'ready' : primary ? 'loading' : 'failed';
   const image = primary
     ? `<img class="team-logo" src="${escape(primary)}" data-arena-source="${escape(primarySource)}" data-entity-kind="team" data-entity-key="${escape(rawEntityKey)}" data-entity-name="${escape(String(team?.name || ''))}" data-category="${escape(String(team?.categoryName || ''))}" data-fallbacks="${escape(JSON.stringify(fallbacks))}" data-fallback-index="0" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onload="window.__arenaNormalizeLogo&&window.__arenaNormalizeLogo(this)" onerror="window.__arenaFailLogo?window.__arenaFailLogo(this):(this.hidden=true)">`
     : '';
