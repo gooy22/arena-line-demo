@@ -327,9 +327,9 @@ export class Accounts {
     if (!ordered.length) return;
 
     const numbers = ordered.map(bet => Number(bet.number));
-    const finite = numbers.filter(Number.isSafeInteger);
-    const released = Number(releasedNumber);
-    const firstCandidates = [...finite, ...(Number.isSafeInteger(released) ? [released] : [])];
+    const finite = numbers.filter(number => Number.isSafeInteger(number) && number >= 1);
+    const released = releasedNumber == null || releasedNumber === '' ? null : Number(releasedNumber);
+    const firstCandidates = [...finite, ...(Number.isSafeInteger(released) && released >= 1 ? [released] : [])];
     const first = firstCandidates.length ? Math.min(...firstCandidates) : 1;
 
     const valid = numbers.every(number => Number.isSafeInteger(number)) &&
@@ -342,12 +342,12 @@ export class Accounts {
   nextBetNumber(account) {
     this.ensureBetNumbers(account);
     const visible = (account?.bets || []).filter(bet => !bet.hidden);
-    const numbers = visible.map(bet => Number(bet.number)).filter(Number.isSafeInteger);
+    const numbers = visible.map(bet => Number(bet.number)).filter(number => Number.isSafeInteger(number) && number >= 1);
     if (numbers.length) return Math.max(...numbers) + 1;
     const released = (account?.bets || [])
       .filter(bet => bet.hidden)
       .map(bet => Number(bet.hiddenNumber))
-      .filter(Number.isSafeInteger);
+      .filter(number => Number.isSafeInteger(number) && number >= 1);
     return released.length ? Math.max(...released) : 1;
   }
   editBet(id, changes = {}) {
