@@ -114,6 +114,12 @@ function renderProfile() {
     promotions:()=>empty('gift','Активних бонусів немає'),hero:()=>empty('star','HERO','Для цього профілю поки немає нагород.'),bonuses:()=>empty('gift','Активних бонусів немає'),tournaments:()=>empty('trophy','Турніри','У профілі немає активних бонусних турнірів.')
   };
   const isBetDetail = profileView === 'bet-detail';
+  document.documentElement.classList.toggle('bet-detail-open',isBetDetail);
+  document.body.classList.toggle('bet-detail-open',isBetDetail);
+  const themeMeta=document.querySelector('meta[name="theme-color"]');
+  if(themeMeta && !document.body.classList.contains('share-coupon-open')){
+    themeMeta.setAttribute('content',isBetDetail ? '#ffffff' : '#171716');
+  }
   $('#profile-nav').hidden = isBetDetail;
   $('#profile-content').classList.toggle('history-view', profileView === 'bets');
   $('#profile-content').classList.toggle('bet-detail-view', isBetDetail);
@@ -139,7 +145,10 @@ function openBets() {
 }
 function closeProfile() {
   $('#profile-layer').hidden = true;
-  document.body.classList.remove('profile-open');
+  document.documentElement.classList.remove('bet-detail-open');
+  document.body.classList.remove('profile-open','bet-detail-open');
+  const themeMeta=document.querySelector('meta[name="theme-color"]');
+  if(themeMeta && !document.body.classList.contains('share-coupon-open')) themeMeta.setAttribute('content','#171716');
   if (location.hash) history.replaceState(null, '', location.pathname + location.search);
   syncFeedControls();
   sports?.resizeSlip();
