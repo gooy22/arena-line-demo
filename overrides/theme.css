@@ -2573,3 +2573,15 @@ body.bet-detail-open .bet-detail-footer{
 .edit-bet-duplicate:active{
   background:#34312d!important;
 }
+
+
+/* v115: editable bet time and manual odds. */
+.edit-bet-date{
+  width:100%!important;
+  min-height:44px!important;
+  margin-bottom:8px!important;
+  color-scheme:dark!important;
+}
+.edit-manual-fallback .edit-odds{
+  margin-bottom:4px!important;
+}
