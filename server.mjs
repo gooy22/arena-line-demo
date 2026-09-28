@@ -484,9 +484,9 @@ window.__arenaRegisterFingerprint = window.__arenaRegisterFingerprint || functio
   if(category) row.categories.add(category);
   row.sources.add(String(source || ''));
   const generic = kind === 'team'
-    ? row.keys.size >= 2
+    ? row.keys.size >= 5 && row.categories.size >= 2
     : kind === 'tournament'
-      ? row.keys.size >= 3 && row.categories.size >= 2
+      ? row.keys.size >= 4 && row.categories.size >= 2
       : false;
   if(!generic && !window.__arenaGenericFingerprints.has(fingerprint)) return true;
   window.__arenaGenericFingerprints.add(fingerprint);
@@ -1030,7 +1030,8 @@ async function exactBo3Rows(kind,name,category) {
   const nameField=kind === 'players' ? 'nickname' : 'name';
   for(const op of ['eq','ilike']){
     const qs=new URLSearchParams({'page[limit]':'30'});
-    qs.set(`filter[${table}.${nameField}][${op}]`,name);
+    const queryValue=op === 'ilike' ? '%' + String(name || '').trim() + '%' : String(name || '').trim();
+    qs.set(`filter[${table}.${nameField}][${op}]`,queryValue);
     if(discipline) qs.set(`filter[${table}.discipline_id][eq]`,String(discipline));
     try{
       const response=await fetch(`https://api.bo3.gg/api/v1/${kind}?${qs}`,{
