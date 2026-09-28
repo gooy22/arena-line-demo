@@ -368,6 +368,7 @@ function openEditBet(id) {
       <div class="edit-payout-preview">Можлива виплата: <strong id="edit-payout-value">${money(status === 'won' || status === 'cashout' ? Number(bet.payout || bet.potential || 0) : Number(bet.potential || 0))} €</strong></div>
       <div id="form-error" class="error" role="alert"></div>
       <button class="submit edit-bet-save" type="submit">Зберегти зміни</button>
+      <button class="edit-bet-duplicate" type="button" data-action="duplicate-bet" data-value="${esc(bet.id)}">${icon('copy')}<span>Дублювати ставку</span></button>
       <button class="edit-bet-hide" type="button" data-action="delete-bet" data-value="${esc(bet.id)}">Приховати ставку з історії</button>
     </form>
   `, 'edit-bet-dialog');
@@ -713,6 +714,21 @@ document.addEventListener('click', async event => {
   else if (action === 'edit-bet') {
     if (localStorage.getItem('arena-edit-bets') !== 'on') return;
     openEditBet(value);
+  }
+  else if (action === 'duplicate-bet') {
+    if (localStorage.getItem('arena-edit-bets') !== 'on') return;
+    try {
+      accounts.duplicateBet(value);
+      account = accounts.current();
+      if (dialog.open) dialog.close();
+      renderProfile();
+      syncFeedControls();
+      showToast('Ставку продубльовано');
+    } catch (problem) {
+      const error = $('#form-error');
+      if (error && dialog.open) error.textContent = problem.message || 'Не вдалося продублювати ставку';
+      else showToast(problem.message || 'Не вдалося продублювати ставку');
+    }
   }
   else if (action === 'delete-bet') {
     if (localStorage.getItem('arena-edit-bets') !== 'on') return;
