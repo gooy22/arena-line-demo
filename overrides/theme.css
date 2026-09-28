@@ -1863,3 +1863,28 @@ html.share-coupon-open .share-close{
     max-width:112px!important;
   }
 }
+
+
+/* v102: express detail owns the bottom safe area; no black strip below the footer. */
+html.bet-detail-open,
+body.bet-detail-open{
+  background:#fff!important;
+}
+body.bet-detail-open #profile-layer{
+  background:#fff!important;
+}
+body.bet-detail-open .profile-content.bet-detail-view,
+body.bet-detail-open .bet-detail-page,
+body.bet-detail-open .bet-detail-footer{
+  background:#fff!important;
+}
+@media (display-mode:standalone){
+  html.bet-detail-open,
+  body.bet-detail-open{
+    min-height:100dvh!important;
+    background:#fff!important;
+  }
+  body.bet-detail-open #profile-layer{
+    background:#fff!important;
+  }
+}
