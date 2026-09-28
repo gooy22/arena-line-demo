@@ -1888,3 +1888,162 @@ body.bet-detail-open .bet-detail-footer{
     background:#fff!important;
   }
 }
+
+
+/* v103: completed match screen from settled bet data. */
+.completed-event-page{
+  min-height:100%;
+  padding:44px 0 24px!important;
+  background:#f5f4f1!important;
+}
+.completed-match-card{
+  margin:0 8px!important;
+  overflow:hidden!important;
+  border-radius:18px!important;
+  background:#fff!important;
+}
+.completed-match-tabs{
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  gap:0!important;
+  margin:0!important;
+  padding:3px!important;
+  border-radius:28px!important;
+  background:#e7e5df!important;
+}
+.completed-match-tabs>button{
+  min-height:40px!important;
+  border-radius:24px!important;
+  font-size:15px!important;
+  font-weight:600!important;
+  color:#716c64!important;
+}
+.completed-match-tabs>button.active{
+  background:#fff!important;
+  color:#292621!important;
+}
+.completed-match-scoreboard{
+  position:relative!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 104px minmax(0,1fr)!important;
+  align-items:start!important;
+  gap:8px!important;
+  padding:18px 16px 14px!important;
+}
+.completed-team{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  gap:8px!important;
+  min-width:0!important;
+  text-align:center!important;
+}
+.completed-team.team-0{grid-column:1!important}
+.completed-team.team-1{grid-column:3!important}
+.completed-team-emblem{
+  display:grid!important;
+  place-items:center!important;
+  width:72px!important;
+  height:72px!important;
+  border:1px solid #e6e3de!important;
+  border-radius:50%!important;
+  background:#fff!important;
+  overflow:hidden!important;
+}
+.completed-team-emblem .team-emblem-picture{
+  width:58px!important;
+  height:58px!important;
+  min-width:58px!important;
+  min-height:58px!important;
+  flex-basis:58px!important;
+}
+.completed-team>strong{
+  max-width:120px!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  font-size:15px!important;
+  line-height:20px!important;
+  font-weight:400!important;
+}
+.completed-center{
+  grid-column:2!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  padding-top:23px!important;
+  text-align:center!important;
+}
+.completed-center>span{
+  font-size:11px!important;
+  line-height:15px!important;
+  font-weight:600!important;
+  letter-spacing:.5px!important;
+  color:#777168!important;
+}
+.completed-center>b{
+  margin-top:1px!important;
+  font-size:29px!important;
+  line-height:34px!important;
+  font-weight:700!important;
+  color:#171716!important;
+  font-variant-numeric:tabular-nums!important;
+  white-space:nowrap!important;
+}
+.completed-score-table{
+  padding:10px 12px 12px!important;
+  border-radius:14px!important;
+  background:#f5f4f1!important;
+}
+.completed-score-head,
+.completed-score-row{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  align-items:center!important;
+}
+.completed-score-head{
+  min-height:24px!important;
+  color:#7b756b!important;
+  font-size:11px!important;
+}
+.completed-score-row{
+  min-height:34px!important;
+  font-size:15px!important;
+  line-height:20px!important;
+}
+.completed-score-head>div,
+.completed-score-row>div{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:15px!important;
+}
+.completed-score-head span,
+.completed-score-head b,
+.completed-score-row small,
+.completed-score-row b{
+  width:16px!important;
+  flex:0 0 16px!important;
+  text-align:right!important;
+  font-variant-numeric:tabular-nums!important;
+}
+.completed-score-head b,
+.completed-score-row b{
+  color:#e32a2a!important;
+  font-weight:500!important;
+}
+.completed-score-row small{
+  color:#777168!important;
+  font-size:13px!important;
+}
+.completed-score-row>span{
+  min-width:0!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+.completed-event-page .event-history-block{
+  margin:12px 8px 0!important;
+}
