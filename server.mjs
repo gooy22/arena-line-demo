@@ -1727,6 +1727,8 @@ server.listen(port,'0.0.0.0',()=>{
       const shareText=await request('/v105/share-coupon.mjs');
       const i18nText=await request('/v105/i18n.mjs');
       const uiText=await request('/v105/ui.mjs');
+      const teamText=await request('/v105/team-emblem.mjs');
+      const serverText=await readFile(new URL('./server.mjs', import.meta.url), 'utf8');
       const themeText=await request('/v105/theme.css');
       await request('/v105/feed.mjs');
       await request('/v105/event-view.mjs');
