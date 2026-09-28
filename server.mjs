@@ -1864,7 +1864,7 @@ server.listen(port,'0.0.0.0',()=>{
       if(!themeText.includes('v114: duplicate bet action') || !themeText.includes('.edit-bet-duplicate')) failures.push('editor:no-duplicate-style');
       if(!appText.includes('id="edit-bet-date"') || !appText.includes("date:$('#edit-bet-date').value")) failures.push('editor:no-editable-bet-time');
       if(!appText.includes('Коефіцієнт вручну') || !appText.includes('class="edit-odds"')) failures.push('editor:no-manual-odds');
-      if(!accountText.includes('nextBetNumber(account)') || !accountText.includes('hiddenNumber') || !accountText.includes('delete bet.number') || !accountText.includes("account.bets.filter(other => !other.hidden)")) failures.push('account:hidden-number-still-reserved');
+      if(!accountText.includes('  nextBetNumber(account) {') || !accountText.includes('ensureBetNumbers(account, releasedNumber = null)') || !accountText.includes('hiddenNumber') || !accountText.includes('delete bet.number') || !accountText.includes("account.bets.filter(other => !other.hidden)")) failures.push('account:hidden-number-still-reserved');
       if(!accountText.includes("date:nextDate.toISOString()") || !accountText.includes("Некорректное время ставки")) failures.push('account:no-editable-bet-time');
       if(!themeText.includes('v115: editable bet time and manual odds')) failures.push('editor:no-time-odds-style');
       if(!appText.includes('new SportsApp')) failures.push('app:no-sports-init');
