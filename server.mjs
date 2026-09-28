@@ -1855,8 +1855,10 @@ server.listen(port,'0.0.0.0',()=>{
       if(!html.includes('/v112/app.css')) failures.push('html:no-v65-css');
       if(!appText.includes('CLIENT_BOOT_OK')) failures.push('app:no-client-boot-probe');
       if(!appText.includes('edit-selection-card') || !appText.includes('edit-score-presets')) failures.push('editor:no-selection-accordion');
-      if(!appText.includes('marketName:form.querySelector') || !appText.includes('label:form.querySelector')) failures.push('editor:no-market-outcome-submit');
-      if(!accountText.includes("state === 'score'") || !accountText.includes('manualOutcomeEdit')) failures.push('editor:no-exact-score-engine');
+      if(!appText.includes("marketName:persistedSelectionText(index,'marketName')") || !appText.includes("label:persistedSelectionText(index,'label')")) failures.push('editor:no-market-outcome-submit');
+      if(!appText.includes('edit-line-market-select') || !appText.includes('lineSelectionsFor') || !appText.includes('lineSelectionPayload')) failures.push('editor:no-live-line-picker');
+      if(!accountText.includes("state === 'score'") || !accountText.includes('manualOutcomeEdit') || !accountText.includes('const lineSelection = edit.lineSelection') || !accountText.includes('selection.marketType')) failures.push('editor:no-line-selection-engine');
+      if(!themeText.includes('v113: live line picker inside bet editor') || !themeText.includes('.edit-line-market-select')) failures.push('editor:no-line-picker-style');
       if(!appText.includes('new SportsApp')) failures.push('app:no-sports-init');
       if(!accountText.includes('settleBets')) failures.push('account:missing');
       if(!accountText.includes('const delta = requestedNumber - oldNumber') || !accountText.includes('other.number = shifted[index]')) failures.push('account:no-global-bet-renumber');
