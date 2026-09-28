@@ -1859,6 +1859,9 @@ server.listen(port,'0.0.0.0',()=>{
       if(!appText.includes('edit-line-market-select') || !appText.includes('lineSelectionsFor') || !appText.includes('lineSelectionPayload')) failures.push('editor:no-live-line-picker');
       if(!accountText.includes("state === 'score'") || !accountText.includes('manualOutcomeEdit') || !accountText.includes('const lineSelection = edit.lineSelection') || !accountText.includes('selection.marketType')) failures.push('editor:no-line-selection-engine');
       if(!themeText.includes('v113: live line picker inside bet editor') || !themeText.includes('.edit-line-market-select')) failures.push('editor:no-line-picker-style');
+      if(!appText.includes('data-action="duplicate-bet"') || !appText.includes("action === 'duplicate-bet'")) failures.push('editor:no-duplicate-action');
+      if(!accountText.includes('duplicateBet(id)') || !accountText.includes('duplicatedFrom') || !accountText.includes("id:'bet:' + duplicateId")) failures.push('account:no-bet-duplicate-engine');
+      if(!themeText.includes('v114: duplicate bet action') || !themeText.includes('.edit-bet-duplicate')) failures.push('editor:no-duplicate-style');
       if(!appText.includes('new SportsApp')) failures.push('app:no-sports-init');
       if(!accountText.includes('settleBets')) failures.push('account:missing');
       if(!accountText.includes('const delta = requestedNumber - oldNumber') || !accountText.includes('other.number = shifted[index]')) failures.push('account:no-global-bet-renumber');
