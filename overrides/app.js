@@ -187,6 +187,49 @@ function openEditBet(id) {
     return ['2:0','2:1','0:2','1:2','3:0','3:1','3:2','0:3','1:3','2:3'];
   };
 
+  const priorEditorWatchIds = [...(sports?.feed?.selectedIds || [])];
+  const editorEventIds = [...new Set(selections.map(selection => String(selection.eventId || '')).filter(Boolean))];
+  if (sports?.feed?.watch && editorEventIds.length) {
+    sports.feed.watch([...new Set([...priorEditorWatchIds,...editorEventIds])]);
+  }
+
+  const lineSelectionsFor = selection => {
+    try {
+      return (sports?.feed?.selections?.(String(selection.eventId || '')) || [])
+        .filter(item => item && Number(item.odds) > 1 && !item.frozen);
+    } catch {
+      return [];
+    }
+  };
+
+  const lineMarketGroups = selection => {
+    const groups = new Map();
+    for (const item of lineSelectionsFor(selection)) {
+      const key = [Number(item.period || 0),Number(item.marketType || 0),String(item.marketName || '')].join(':');
+      if (!groups.has(key)) groups.set(key,{key,name:String(item.marketName || ''),items:[]});
+      groups.get(key).items.push(item);
+    }
+    return [...groups.values()];
+  };
+
+  const lineSelectionPayload = item => item ? {
+    id:String(item.id || ''),
+    eventId:String(item.eventId || ''),
+    marketName:String(item.marketName || ''),
+    label:String(item.label || ''),
+    shortLabel:String(item.shortLabel || ''),
+    odds:Number(item.odds || 0),
+    outcomeType:item.outcomeType == null ? null : Number(item.outcomeType),
+    outcomeValues:Array.isArray(item.outcomeValues) ? item.outcomeValues : [],
+    resultKind:item.resultKind == null ? null : Number(item.resultKind),
+    frozen:!!item.frozen,
+    stage:item.stage == null ? null : Number(item.stage),
+    marketType:item.marketType == null ? null : Number(item.marketType),
+    period:item.period == null ? null : Number(item.period),
+    parameters:Array.isArray(item.parameters) ? item.parameters : [],
+    version:item.version == null ? null : Number(item.version)
+  } : null;
+
   const selectionState = selections.map(selection => {
     const teams = selection.competitors?.length
       ? selection.competitors.map(team => typeof team === 'string' ? team : team.name)
@@ -218,7 +261,7 @@ function openEditBet(id) {
     }
     const marketName=String(selection.marketName || '');
     const label=String(selection.label || '');
-    return {teams,score,winnerIndex,state,marketName,label,originalMarketName:marketName,originalLabel:label,displayMarketName:t(marketName),displayLabel:t(label),odds:Number(selection.odds || 0)};
+    return {teams,score,winnerIndex,state,marketName,label,originalMarketName:marketName,originalLabel:label,displayMarketName:t(marketName),displayLabel:t(label),odds:Number(selection.odds || 0),lineSelection:null};
   });
 
   const selectionCards = selections.map((selection,index) => {
@@ -239,11 +282,25 @@ function openEditBet(id) {
         </summary>
         <div class="edit-selection-body">
           <div class="edit-selection-section-title">Вибір у ставці</div>
-          <label for="edit-market-${index}">Ринок</label>
-          <input id="edit-market-${index}" class="edit-market-name" data-index="${index}" value="${esc(state.displayMarketName)}" maxlength="180" required>
-          <label for="edit-label-${index}">Вибраний результат</label>
-          <input id="edit-label-${index}" class="edit-outcome-label" data-index="${index}" value="${esc(state.displayLabel)}" maxlength="180" required>
-          ${presetMarkup}
+          <div class="edit-line-picker" data-edit-line-picker="${index}">
+            <label for="edit-line-market-${index}">Ринок з лінії</label>
+            <select id="edit-line-market-${index}" class="edit-line-market-select" data-index="${index}" disabled>
+              <option value="">Завантаження лінії матчу…</option>
+            </select>
+            <label for="edit-line-outcome-${index}">Вибраний результат</label>
+            <select id="edit-line-outcome-${index}" class="edit-line-outcome-select" data-index="${index}" disabled>
+              <option value="">Оберіть результат</option>
+            </select>
+            <div class="edit-line-status" data-edit-line-status="${index}">Завантаження лінії матчу…</div>
+          </div>
+          <details class="edit-manual-fallback">
+            <summary>Ручний ввід</summary>
+            <label for="edit-market-${index}">Ринок</label>
+            <input id="edit-market-${index}" class="edit-market-name" data-index="${index}" value="${esc(state.displayMarketName)}" maxlength="180" required>
+            <label for="edit-label-${index}">Вибраний результат</label>
+            <input id="edit-label-${index}" class="edit-outcome-label" data-index="${index}" value="${esc(state.displayLabel)}" maxlength="180" required>
+            ${presetMarkup}
+          </details>
 
           <div class="edit-selection-section-title edit-result-title">Фактичний результат</div>
           <div class="edit-bet-label">Переможець матчу</div>
@@ -323,9 +380,99 @@ function openEditBet(id) {
     const state = selectionState[index];
     const input = form.querySelector(field === 'marketName' ? `#edit-market-${index}` : `#edit-label-${index}`);
     const current = input?.value.trim() || '';
+    if (state.lineSelection) return field === 'marketName' ? String(state.lineSelection.marketName || '') : String(state.lineSelection.label || '');
     const display = field === 'marketName' ? state.displayMarketName : state.displayLabel;
     const original = field === 'marketName' ? state.originalMarketName : state.originalLabel;
     return current === display ? original : current;
+  };
+
+  const lineOptionMaps = selectionState.map(() => new Map());
+  let linePollAttempts = 0;
+  let linePollTimer = null;
+
+  const applyLineSelection = (index,item) => {
+    if (!item) return;
+    const state = selectionState[index];
+    state.lineSelection = item;
+    state.marketName = String(item.marketName || '');
+    state.label = String(item.label || '');
+    state.displayMarketName = t(state.marketName);
+    state.displayLabel = t(state.label);
+    const marketInput = form.querySelector(`#edit-market-${index}`);
+    const labelInput = form.querySelector(`#edit-label-${index}`);
+    const oddsInput = form.querySelector(`#edit-odds-${index}`);
+    if (marketInput) marketInput.value = state.displayMarketName;
+    if (labelInput) labelInput.value = state.displayLabel;
+    if (oddsInput && Number.isFinite(Number(item.odds))) oddsInput.value = Number(item.odds).toFixed(2);
+    form.querySelectorAll(`[data-edit-score-preset="${index}"]`).forEach(button => {
+      const selectedScore = parseExactScore(item.label)?.join(':') || '';
+      button.classList.toggle('selected',button.dataset.value === selectedScore);
+    });
+    updateSelectionSummary(index);
+    preview();
+  };
+
+  const renderLineOutcomes = (index,group,chooseFirst = false) => {
+    const outcomeSelect = form.querySelector(`#edit-line-outcome-${index}`);
+    if (!outcomeSelect || !group) return;
+    const state = selectionState[index];
+    lineOptionMaps[index] = new Map(group.items.map(item => [String(item.id),item]));
+    const current = state.lineSelection
+      ? group.items.find(item => String(item.id) === String(state.lineSelection.id))
+      : group.items.find(item => String(item.id) === String(selections[index]?.id))
+        || group.items.find(item => String(item.label || '') === state.originalLabel);
+    outcomeSelect.innerHTML = group.items.map(item =>
+      `<option value="§ITEMID§" §SELECTED§>§ITEMLABEL§ · §ODDS§</option>`
+        .replace('§ITEMID§',esc(item.id))
+        .replace('§SELECTED§',current && String(current.id) === String(item.id) ? 'selected' : '')
+        .replace('§ITEMLABEL§',esc(t(item.label)))
+        .replace('§ODDS§',Number(item.odds).toFixed(2))
+    ).join('');
+    outcomeSelect.disabled = false;
+    if (chooseFirst && group.items[0]) {
+      outcomeSelect.value = String(group.items[0].id);
+      applyLineSelection(index,group.items[0]);
+    }
+  };
+
+  const renderLinePicker = index => {
+    const selection = selections[index];
+    const marketSelect = form.querySelector(`#edit-line-market-${index}`);
+    const outcomeSelect = form.querySelector(`#edit-line-outcome-${index}`);
+    const statusNode = form.querySelector(`[data-edit-line-status="${index}"]`);
+    if (!marketSelect || !outcomeSelect || !statusNode) return false;
+    const groups = lineMarketGroups(selection);
+    if (!groups.length) {
+      marketSelect.disabled = true;
+      outcomeSelect.disabled = true;
+      marketSelect.innerHTML = `<option value="">§STATUS§</option>`.replace('§STATUS§',esc(t(linePollAttempts < 16 ? 'Завантаження лінії матчу…' : 'Лінія матчу зараз недоступна')));
+      outcomeSelect.innerHTML = `<option value="">§OUTCOME§</option>`.replace('§OUTCOME§',esc(t('Оберіть результат')));
+      statusNode.textContent = t(linePollAttempts < 16 ? 'Завантаження лінії матчу…' : 'Лінія матчу зараз недоступна');
+      return false;
+    }
+
+    const state = selectionState[index];
+    const matchedGroup = groups.find(group => group.items.some(item => String(item.id) === String(state.lineSelection?.id || selection.id)))
+      || groups.find(group => String(group.name) === state.originalMarketName)
+      || groups[0];
+    marketSelect.innerHTML = groups.map(group =>
+      `<option value="§KEY§" §SELECTED§>§NAME§</option>`
+        .replace('§KEY§',esc(group.key))
+        .replace('§SELECTED§',group.key === matchedGroup.key ? 'selected' : '')
+        .replace('§NAME§',esc(t(group.name)))
+    ).join('');
+    marketSelect.disabled = false;
+    marketSelect._arenaGroups = groups;
+    statusNode.textContent = t('Лінія матчу');
+    renderLineOutcomes(index,matchedGroup,false);
+    return true;
+  };
+
+  const refreshLinePickers = () => {
+    if (!dialog.open || !form.isConnected) return;
+    linePollAttempts++;
+    const ready = selections.map((_,index) => renderLinePicker(index));
+    if (ready.some(value => !value) && linePollAttempts < 16) linePollTimer = setTimeout(refreshLinePickers,250);
   };
 
   const preview = () => {
@@ -363,6 +510,7 @@ function openEditBet(id) {
       const value = button.dataset.value;
       const input = form.querySelector(`#edit-label-${index}`);
       input.value = value;
+      selectionState[index].lineSelection = null;
       selectionState[index].label = value;
       form.querySelectorAll(`[data-edit-score-preset="${index}"]`).forEach(item => item.classList.toggle('selected', item === button));
       updateSelectionSummary(index);
@@ -392,6 +540,23 @@ function openEditBet(id) {
     });
   });
 
+  form.querySelectorAll('.edit-line-market-select').forEach(select => {
+    select.addEventListener('change', () => {
+      const index = Number(select.dataset.index);
+      const groups = Array.isArray(select._arenaGroups) ? select._arenaGroups : lineMarketGroups(selections[index]);
+      const group = groups.find(item => item.key === select.value);
+      if (group) renderLineOutcomes(index,group,true);
+    });
+  });
+  form.querySelectorAll('.edit-line-outcome-select').forEach(select => {
+    select.addEventListener('change', () => {
+      const index = Number(select.dataset.index);
+      const item = lineOptionMaps[index]?.get(String(select.value));
+      if (item) applyLineSelection(index,item);
+    });
+  });
+  refreshLinePickers();
+
   statusInput.addEventListener('change', () => {
     cashoutWrap.hidden = statusInput.value !== 'cashout';
     preview();
@@ -399,6 +564,7 @@ function openEditBet(id) {
   form.querySelectorAll('.edit-market-name,.edit-outcome-label,.edit-odds').forEach(input => {
     input.addEventListener('input', () => {
       const index = Number(input.dataset.index);
+      if (input.classList.contains('edit-market-name') || input.classList.contains('edit-outcome-label')) selectionState[index].lineSelection = null;
       if (input.classList.contains('edit-outcome-label')) {
         const value = input.value.trim();
         form.querySelectorAll(`[data-edit-score-preset="${index}"]`).forEach(item => item.classList.toggle('selected', item.dataset.value === value));
@@ -418,6 +584,7 @@ function openEditBet(id) {
       const selectionEdits = selections.map((_,index) => ({
         state:selectionState[index].state,
         winnerIndex:selectionState[index].winnerIndex,
+        lineSelection:lineSelectionPayload(selectionState[index].lineSelection),
         marketName:persistedSelectionText(index,'marketName'),
         label:persistedSelectionText(index,'label'),
         odds:Number(String(form.querySelector(`#edit-odds-${index}`).value).replace(',', '.')),
@@ -444,6 +611,12 @@ function openEditBet(id) {
       submit.disabled = false;
     }
   });
+
+  const restoreEditorWatch = () => {
+    if (linePollTimer) clearTimeout(linePollTimer);
+    if (sports?.feed?.watch) sports.feed.watch(priorEditorWatchIds);
+  };
+  dialog.addEventListener('close',restoreEditorWatch,{once:true});
 }
 
 const themeLabels = {dark:'Темна',standard:'Стандартна',auto:'Авто'};
