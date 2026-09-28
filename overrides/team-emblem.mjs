@@ -7,17 +7,17 @@ export function emblemCandidates(team) {
   const name = String(team?.name || '').trim();
   const category = String(team?.categoryName || '').trim();
   const source = String(team?.icon?.url || team?.iconUrl || '').trim();
-  if (!/^[0-9]{1,12}$/.test(id)) return [];
+  const numericId=/^[0-9]{1,16}$/.test(id);
+  if (!numericId && !name) return [];
 
-  const base='/api/media/team?id=' + encodeURIComponent(id) +
-    '&name=' + encodeURIComponent(name) +
+  const base='/api/media/team?' +
+    (numericId ? 'id=' + encodeURIComponent(id) + '&' : '') +
+    'name=' + encodeURIComponent(name) +
     '&category=' + encodeURIComponent(category) +
     '&source=' + encodeURIComponent(source);
-  const urls=[
-    base + '&prefer=parik',
-    base + '&prefer=parik-alt',
-    base + '&prefer=bo3'
-  ];
+  const urls=numericId
+    ? [base + '&prefer=parik',base + '&prefer=parik-alt',base + '&prefer=bo3']
+    : [base + '&prefer=bo3'];
   const failed=globalThis.window?.__arenaFailedLogoSources;
   return urls.filter(url => !failed || !failed.has(url));
 }
@@ -36,7 +36,7 @@ export function teamEmblem(team) {
     .join('')
     .toUpperCase() || '—';
 
-  const rawEntityKey=String(team?.id || team?.name || '');
+  const rawEntityKey=String(team?.id || (String(team?.categoryName || '') + ':' + String(team?.name || '')) || '');
   const entityKey='team:' + rawEntityKey;
   const entity=globalThis.window?.__arenaEntityLogoCache?.get(entityKey);
   const logoCache=globalThis.window?.__arenaLogoCache;
