@@ -206,7 +206,8 @@ export class Accounts {
     if (selections.some(s => !s.id || !s.eventId || !s.eventName || !s.label || !Number.isFinite(s.odds) || s.odds <= 1 || s.odds > 10000)) throw new Error('Коэффициент недоступен');
     const totals = betTotals(stake, selections, type, systemSize);
     if (totals.cost > account.balance) throw new Error('Недостаточно средств');
-    const bet = { id, number: Math.max(0, ...account.bets.map(b => b.number || 0), account.bets.length) + 1, type, stake, systemSize, ...totals, status: 'open', date: new Date().toISOString(), selections: structuredClone(selections) };
+    this.ensureBetNumbers(account);
+    const bet = { id, number:this.nextBetNumber(account), type, stake, systemSize, ...totals, status: 'open', date: new Date().toISOString(), selections: structuredClone(selections) };
     account.balance -= totals.cost;
     account.bets.unshift(bet);
     this._persist(data, account);
@@ -232,8 +233,9 @@ export class Accounts {
     }
 
     duplicate.id = duplicateId;
-    duplicate.number = Math.max(0, ...account.bets.map(bet => Number(bet.number) || 0), account.bets.length) + 1;
+    duplicate.number = this.nextBetNumber(account);
     duplicate.hidden = false;
+    delete duplicate.hiddenNumber;
     duplicate.duplicatedFrom = source.id;
     duplicate.duplicatedAt = new Date().toISOString();
 
@@ -256,11 +258,16 @@ export class Accounts {
 
   hideBet(id) {
     const data = this.read(), account = data.find(a => a.email === this.storage.getItem(SESSION));
-    const bet = account?.bets.find(b => b.id === id);
+    if (!account) return false;
+    this.ensureBetNumbers(account);
+    const bet = account.bets.find(b => b.id === id);
     if (!bet || bet.hidden) return false;
-    // Removing a card never refunds a stake or reverses a credited payout.
-    // Pending hidden bets still settle normally, preserving the balance ledger.
+    // Hidden records keep their financial/settlement history, but no longer reserve an active bet number.
+    const releasedNumber = Number(bet.number);
+    if (Number.isSafeInteger(releasedNumber)) bet.hiddenNumber = releasedNumber;
     bet.hidden = true;
+    delete bet.number;
+    this.ensureBetNumbers(account, releasedNumber);
     this._persist(data, account);
     return true;
   }
@@ -333,6 +340,9 @@ export class Accounts {
     const oldCost = Number(bet.cost || 0);
     const oldPayout = Number(bet.payout || 0);
     const oldNumber = Number(bet.number || 1);
+    const nextDateValue = changes.date == null ? String(bet.date || '') : String(changes.date || '');
+    const nextDate = new Date(nextDateValue);
+    if (!Number.isFinite(nextDate.getTime())) throw new Error('Некорректное время ставки');
     const nextStake = changes.stake == null ? Number(bet.stake) : Number(changes.stake);
     if (!Number.isSafeInteger(nextStake) || nextStake <= 0) throw new Error('Некорректная сумма ставки');
 
@@ -587,6 +597,7 @@ export class Accounts {
     if (!Number.isSafeInteger(nextBalance) || nextBalance < 0) throw new Error('Недостаточно средств для изменения ставки');
 
     Object.assign(bet, {
+      date:nextDate.toISOString(),
       stake:nextStake,
       selections,
       ...totals,
@@ -607,10 +618,15 @@ export class Accounts {
     if (!Number.isSafeInteger(requestedNumber) || requestedNumber < 1) throw new Error('Некорректный номер ставки');
     if (requestedNumber !== oldNumber) {
       const delta = requestedNumber - oldNumber;
-      const shifted = account.bets.map(other => Number(other.number) + delta);
-      if (shifted.some(number => !Number.isSafeInteger(number))) throw new Error('Некорректный номер ставки');
-      account.bets.forEach((other,index) => { other.number = shifted[index]; });
-      account.bets.sort((a,b) => Number(b.number || 0) - Number(a.number || 0));
+      const visibleBets = account.bets.filter(other => !other.hidden);
+      const shifted = visibleBets.map(other => Number(other.number) + delta);
+      if (shifted.some(number => !Number.isSafeInteger(number) || number < 1)) throw new Error('Некорректный номер ставки');
+      visibleBets.forEach((other,index) => { other.number = shifted[index]; });
+      account.bets.sort((a,b) => {
+        if (!!a.hidden !== !!b.hidden) return a.hidden ? 1 : -1;
+        if (!a.hidden) return Number(b.number || 0) - Number(a.number || 0);
+        return new Date(b.date || 0) - new Date(a.date || 0);
+      });
     }
 
     account.balance = nextBalance;
