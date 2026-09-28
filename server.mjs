@@ -458,6 +458,19 @@ window.__arenaEntityKey = window.__arenaEntityKey || function(img) {
   const key=String(img?.dataset?.entityKey || '');
   return kind && key ? kind+':'+key : '';
 };
+window.__arenaSetLogoState = window.__arenaSetLogoState || function(img,state) {
+  if(!img) return;
+  img.dataset.logoState=state;
+  const holder=img.closest?.('.team-emblem-picture');
+  if(holder) holder.dataset.logoState=state;
+  if(state === 'failed'){
+    img.hidden=true;
+    if(img.nextElementSibling) img.nextElementSibling.hidden=false;
+  }else{
+    img.hidden=false;
+    if(img.nextElementSibling) img.nextElementSibling.hidden=true;
+  }
+};
 window.__arenaRememberLogo = window.__arenaRememberLogo || function(img,src,source) {
   if(!img || !src) return;
   const key=window.__arenaEntityKey(img);
@@ -508,7 +521,7 @@ window.__arenaNextLogo = window.__arenaNextLogo || function(img) {
     const next=list[index++];
     img.dataset.fallbackIndex=String(index);
     if(window.__arenaFailedLogoSources.has(next)) continue;
-    img.hidden=false;
+    window.__arenaSetLogoState(img,'loading');
     img.dataset.arenaSource=next;
     img.dataset.arenaNormalized='0';
     img.dataset.arenaNormalizing='0';
@@ -525,8 +538,7 @@ window.__arenaRejectLogo = window.__arenaRejectLogo || function(img) {
     window.__arenaLogoCache.delete(source);
   }
   if(window.__arenaNextLogo(img)) return true;
-  img.hidden=true;
-  if(img.nextElementSibling) img.nextElementSibling.hidden=false;
+  window.__arenaSetLogoState(img,'failed');
   return false;
 };
 window.__arenaFailLogo = window.__arenaFailLogo || function(img) {
@@ -537,8 +549,7 @@ window.__arenaApplyCachedLogo = window.__arenaApplyCachedLogo || function(img) {
   const entity=window.__arenaEntityLogoCache.get(window.__arenaEntityKey(img));
   if(entity?.src){
     img.dataset.arenaNormalized='1';
-    img.hidden=false;
-    if(img.nextElementSibling) img.nextElementSibling.hidden=true;
+    window.__arenaSetLogoState(img,'ready');
     if(img.src !== entity.src) img.src=entity.src;
     return;
   }
@@ -546,8 +557,7 @@ window.__arenaApplyCachedLogo = window.__arenaApplyCachedLogo || function(img) {
   const cached=window.__arenaLogoCache.get(source);
   if(cached){
     img.dataset.arenaNormalized='1';
-    img.hidden=false;
-    if(img.nextElementSibling) img.nextElementSibling.hidden=true;
+    window.__arenaSetLogoState(img,'ready');
     if(img.src !== cached) img.src=cached;
   }
 };
@@ -570,14 +580,17 @@ if (!window.__arenaNormalizeLogo) {
     const cached = window.__arenaLogoCache.get(original);
     if (cached) {
       img.dataset.arenaNormalized = '1';
-      img.hidden=false;
-      if(img.nextElementSibling) img.nextElementSibling.hidden=true;
+      window.__arenaSetLogoState(img,'ready');
       window.__arenaRememberLogo(img,cached,original);
       if (img.src !== cached) img.src = cached;
       return;
     }
-    if (img.dataset.arenaNormalized === '1') return;
+    if (img.dataset.arenaNormalized === '1') {
+      window.__arenaSetLogoState(img,'ready');
+      return;
+    }
     if (!img.naturalWidth || !img.naturalHeight) return;
+    window.__arenaSetLogoState(img,'loading');
 
     img.dataset.arenaNormalizing = '1';
     try {
@@ -672,11 +685,15 @@ if (!window.__arenaNormalizeLogo) {
       window.__arenaLogoCache.set(original,data);
       window.__arenaRememberLogo(img,data,original);
       img.dataset.arenaNormalized='1';
-      img.hidden=false;
-      if(img.nextElementSibling) img.nextElementSibling.hidden=true;
-      if (img.src !== data) img.src=data;
+      if (img.src !== data) {
+        window.__arenaSetLogoState(img,'loading');
+        img.src=data;
+      } else {
+        window.__arenaSetLogoState(img,'ready');
+      }
     } catch (error) {
       img.dataset.arenaNormalizeError='1';
+      window.__arenaRejectLogo(img);
     } finally {
       img.dataset.arenaNormalizing='0';
     }
