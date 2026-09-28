@@ -366,8 +366,12 @@ export class Accounts {
           selection.odds = odd;
         }
 
-        const nextMarketName = edit.marketName == null ? String(selection.marketName || '') : String(edit.marketName).trim();
-        const nextLabel = edit.label == null ? String(selection.label || '') : String(edit.label).trim();
+        const lineSelection = edit.lineSelection && typeof edit.lineSelection === 'object' ? edit.lineSelection : null;
+        if (lineSelection && String(lineSelection.eventId || selection.eventId || '') !== String(selection.eventId || '')) {
+          throw new Error(`Некорректний вибір матча #${index + 1}`);
+        }
+        const nextMarketName = lineSelection ? String(lineSelection.marketName || '').trim() : edit.marketName == null ? String(selection.marketName || '') : String(edit.marketName).trim();
+        const nextLabel = lineSelection ? String(lineSelection.label || '').trim() : edit.label == null ? String(selection.label || '') : String(edit.label).trim();
         if (!nextMarketName || nextMarketName.length > 180) {
           throw new Error(`Некорректний ринок матча #${index + 1}`);
         }
@@ -377,8 +381,9 @@ export class Accounts {
 
         const marketChanged = nextMarketName !== String(selection.marketName || '');
         const labelChanged = nextLabel !== String(selection.label || '');
+        const lineIdChanged = !!lineSelection?.id && String(lineSelection.id) !== String(selection.id || '');
 
-        if (marketChanged || labelChanged) {
+        if (marketChanged || labelChanged || lineIdChanged) {
           if (!selection.manualOriginalOutcome) {
             selection.manualOriginalOutcome = {
               id:selection.id,
@@ -392,18 +397,39 @@ export class Accounts {
 
           selection.marketName = nextMarketName;
           selection.label = nextLabel;
-          selection.shortLabel = nextLabel;
+          if (lineSelection) {
+            selection.id = String(lineSelection.id || selection.id || '');
+            selection.shortLabel = String(lineSelection.shortLabel || nextLabel);
+            if (lineSelection.outcomeType == null) delete selection.outcomeType;
+            else selection.outcomeType = Number(lineSelection.outcomeType);
+            selection.outcomeValues = Array.isArray(lineSelection.outcomeValues) ? clone(lineSelection.outcomeValues) : [];
+            if (lineSelection.resultKind == null) delete selection.resultKind;
+            else selection.resultKind = Number(lineSelection.resultKind);
+            if (lineSelection.marketType == null) delete selection.marketType;
+            else selection.marketType = Number(lineSelection.marketType);
+            if (lineSelection.period == null) delete selection.period;
+            else selection.period = Number(lineSelection.period);
+            selection.parameters = Array.isArray(lineSelection.parameters) ? clone(lineSelection.parameters) : [];
+            if (lineSelection.version == null) delete selection.version;
+            else selection.version = Number(lineSelection.version);
+            if (lineSelection.stage != null) selection.stage = Number(lineSelection.stage);
+            selection.frozen = !!lineSelection.frozen;
+          } else {
+            selection.shortLabel = nextLabel;
+          }
           selection.manualOutcomeEdit = true;
           selection.manualOutcomeEditedAt = new Date().toISOString();
 
-          const teams = teamNames(selection);
-          const normalizedLabel = normalized(nextLabel);
-          if (/^(?:п1|p1)$/i.test(nextLabel) || (teams[0] && normalized(teams[0]) === normalizedLabel)) {
-            selection.outcomeType = 0;
-          } else if (/^(?:п2|p2)$/i.test(nextLabel) || (teams[1] && normalized(teams[1]) === normalizedLabel)) {
-            selection.outcomeType = 3;
-          } else {
-            delete selection.outcomeType;
+          if (!lineSelection) {
+            const teams = teamNames(selection);
+            const normalizedLabel = normalized(nextLabel);
+            if (/^(?:п1|p1)$/i.test(nextLabel) || (teams[0] && normalized(teams[0]) === normalizedLabel)) {
+              selection.outcomeType = 0;
+            } else if (/^(?:п2|p2)$/i.test(nextLabel) || (teams[1] && normalized(teams[1]) === normalizedLabel)) {
+              selection.outcomeType = 3;
+            } else {
+              delete selection.outcomeType;
+            }
           }
 
           delete selection.settlement;
