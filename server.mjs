@@ -20,6 +20,7 @@ const emblemModule = await readFile(new URL('./overrides/team-emblem.mjs', impor
 const accountModule = await readFile(new URL('./overrides/account.mjs', import.meta.url), 'utf8');
 const appModule = await readFile(new URL('./overrides/app.js', import.meta.url), 'utf8');
 const betViewModule = await readFile(new URL('./overrides/bet-view.mjs', import.meta.url), 'utf8');
+const eventViewModule = await readFile(new URL('./overrides/event-view.mjs', import.meta.url), 'utf8');
 const shareCouponModule = await readFile(new URL('./overrides/share-coupon.mjs', import.meta.url), 'utf8');
 const themeCssModule = await readFile(new URL('./overrides/theme.css', import.meta.url), 'utf8');
 const serviceWorkerModule = await readFile(new URL('./overrides/sw.js', import.meta.url), 'utf8');
@@ -157,7 +158,7 @@ function patchIndexHtml(source) {
     /<meta\s+name=["']viewport["']\s+content=["'][^"']*["']\s*\/?>/i,
     '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">'
   );
-  html=html.replace(/\?+v=\d+/g,'?v=102');
+  html=html.replace(/\?+v=\d+/g,'?v=103');
   html=html.replace(
     '<img class="wordmark" src="/assets/wordmark.png" width="120" height="24" alt="Parik24">',
     '<span class="wordmark brand-placeholder" aria-hidden="true"></span>'
@@ -172,9 +173,9 @@ function patchIndexHtml(source) {
       '<link rel="manifest" href="/manifest.webmanifest">\n  <link rel="apple-touch-icon" href="/assets/icons/esports-controller-clean-v79.png">\n  <meta name="apple-mobile-web-app-capable" content="yes">\n  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">'
     );
   }
-  if (!html.includes('arena-editor-hotfix-v102')) {
+  if (!html.includes('arena-editor-hotfix-v103')) {
     html=html.replace('</head>', `
-<style id="arena-editor-hotfix-v102">
+<style id="arena-editor-hotfix-v103">
 dialog#dialog.edit-bet-dialog{
   position:fixed!important;
   top:auto!important;
@@ -352,18 +353,18 @@ dialog#dialog.edit-bet-dialog .edit-bet-hide{
 }
 </style>
 <script>
-window.__ARENA_BUILD__='102';
+window.__ARENA_BUILD__='103';
 </script>
 </head>`);
   }
   html=html
-    .replace(/href="\/(app|sports|bet-view|event-view|share-coupon|settings|theme)\.css\?v=102"/g,'href="/v102/$1.css"')
-    .replace('src="/lucide.min.js"','src="/v102/lucide.min.js"')
-    .replace('src="/app.js?v=102"','src="/v102/app.js"');
-  if(!html.includes('arena-client-diagnostics-v102')){
+    .replace(/href="\/(app|sports|bet-view|event-view|share-coupon|settings|theme)\.css\?v=103"/g,'href="/v103/$1.css"')
+    .replace('src="/lucide.min.js"','src="/v103/lucide.min.js"')
+    .replace('src="/app.js?v=103"','src="/v103/app.js"');
+  if(!html.includes('arena-client-diagnostics-v103')){
     html=html.replace('<title>Arena Line</title>',`<title>Arena Line</title>
-<script id="arena-client-diagnostics-v102">
-(()=>{const send=(kind,message,extra={})=>{try{fetch('/api/client-diagnostic',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({kind,message:String(message||'').slice(0,1800),build:'102',href:location.href,...extra}),keepalive:true,cache:'no-store'}).catch(()=>{})}catch{}};
+<script id="arena-client-diagnostics-v103">
+(()=>{const send=(kind,message,extra={})=>{try{fetch('/api/client-diagnostic',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({kind,message:String(message||'').slice(0,1800),build:'103',href:location.href,...extra}),keepalive:true,cache:'no-store'}).catch(()=>{})}catch{}};
 window.addEventListener('error',event=>send('CLIENT_ERROR',event.message||event.error?.message||'window error',{source:event.filename||'',line:event.lineno||0,column:event.colno||0}));
 window.addEventListener('unhandledrejection',event=>send('CLIENT_REJECTION',event.reason?.stack||event.reason?.message||event.reason||'unhandled rejection'));
 window.__arenaClientDiagnostic=send;
@@ -694,7 +695,12 @@ if (!window.__arenaLogoObserver) {
   window.__arenaLogoObserver.observe(document.documentElement,{childList:true,subtree:true});
 }
 `;
-  return (source.includes('__arenaNormalizeLogo') ? '' : normalizer) + source.replace(oldBlock,newBlock);
+  let patched=source.replace(oldBlock,newBlock);
+  patched=patched.replace(
+    "startTime:saved.startTime, date:saved.date, competitors:saved.competitors || (saved.eventName || '').split(' - ').filter(Boolean).map(name => ({ name })),",
+    "startTime:saved.startTime, date:saved.date, settlement:saved.settlement || null, competitors:saved.competitors || (saved.eventName || '').split(' - ').filter(Boolean).map(name => ({ name })),"
+  );
+  return (source.includes('__arenaNormalizeLogo') ? '' : normalizer) + patched;
 }
 
 const sportsCssPatch = `
@@ -1390,8 +1396,8 @@ const server=http.createServer(async (req,res)=>{
       return textResponse(res,method,'text/html; charset=utf-8',patchIndexHtml(source),'no-store');
     }
 
-    if (url.pathname.startsWith('/v102/') && ['GET','HEAD'].includes(method)) {
-      const runtimePath='/' + url.pathname.slice('/v102/'.length);
+    if (url.pathname.startsWith('/v103/') && ['GET','HEAD'].includes(method)) {
+      const runtimePath='/' + url.pathname.slice('/v103/'.length);
       if (runtimePath === '/feed.mjs') return js(res,method,feedModule,'no-store');
       if (runtimePath === '/team-emblem.mjs') return js(res,method,emblemModule,'no-store');
       if (runtimePath === '/ui.mjs') return js(res,method,uiModule,'no-store');
@@ -1399,6 +1405,7 @@ const server=http.createServer(async (req,res)=>{
       if (runtimePath === '/account.mjs') return js(res,method,accountModule,'no-store');
       if (runtimePath === '/app.js') return js(res,method,appModule,'no-store');
       if (runtimePath === '/bet-view.mjs') return js(res,method,betViewModule,'no-store');
+      if (runtimePath === '/event-view.mjs') return js(res,method,eventViewModule,'no-store');
       if (runtimePath === '/share-coupon.mjs') return js(res,method,shareCouponModule,'no-store');
       if (runtimePath === '/theme.css') return css(res,method,themeCssModule,'no-store');
       if (runtimePath === '/sports.mjs') {
@@ -1428,6 +1435,7 @@ const server=http.createServer(async (req,res)=>{
     if (url.pathname === '/account.mjs' && ['GET','HEAD'].includes(method)) return js(res,method,accountModule);
     if (url.pathname === '/app.js' && ['GET','HEAD'].includes(method)) return js(res,method,appModule);
     if (url.pathname === '/bet-view.mjs' && ['GET','HEAD'].includes(method)) return js(res,method,betViewModule);
+    if (url.pathname === '/event-view.mjs' && ['GET','HEAD'].includes(method)) return js(res,method,eventViewModule);
     if (url.pathname === '/theme.css' && ['GET','HEAD'].includes(method)) return css(res,method,themeCssModule);
     if (url.pathname === '/sw.js' && ['GET','HEAD'].includes(method)) {
       res.setHeader('service-worker-allowed','/');
@@ -1680,20 +1688,21 @@ server.listen(port,'0.0.0.0',()=>{
     };
     try{
       const html=await request('/');
-      const appText=await request('/v102/app.js');
-      const accountText=await request('/v102/account.mjs');
-      const sportsText=await request('/v102/sports.mjs');
-      const betText=await request('/v102/bet-view.mjs');
-      const shareText=await request('/v102/share-coupon.mjs');
-      const i18nText=await request('/v102/i18n.mjs');
-      const uiText=await request('/v102/ui.mjs');
-      const themeText=await request('/v102/theme.css');
-      await request('/v102/feed.mjs');
-      await request('/v102/event-view.mjs');
+      const appText=await request('/v103/app.js');
+      const accountText=await request('/v103/account.mjs');
+      const sportsText=await request('/v103/sports.mjs');
+      const betText=await request('/v103/bet-view.mjs');
+      const eventViewText=await request('/v103/event-view.mjs');
+      const shareText=await request('/v103/share-coupon.mjs');
+      const i18nText=await request('/v103/i18n.mjs');
+      const uiText=await request('/v103/ui.mjs');
+      const themeText=await request('/v103/theme.css');
+      await request('/v103/feed.mjs');
+      await request('/v103/event-view.mjs');
       const failures=[];
       for(const row of checks) if(row.status!==200) failures.push(row.path+':'+row.status);
-      if(!html.includes('/v102/app.js')) failures.push('html:no-v65-app');
-      if(!html.includes('/v102/app.css')) failures.push('html:no-v65-css');
+      if(!html.includes('/v103/app.js')) failures.push('html:no-v65-app');
+      if(!html.includes('/v103/app.css')) failures.push('html:no-v65-css');
       if(!appText.includes('CLIENT_BOOT_OK')) failures.push('app:no-client-boot-probe');
       if(!appText.includes('new SportsApp')) failures.push('app:no-sports-init');
       if(!accountText.includes('settleBets')) failures.push('account:missing');
@@ -1717,7 +1726,7 @@ server.listen(port,'0.0.0.0',()=>{
       if(!shareText.includes('cropRatio') || !shareText.includes('font(16)')) failures.push('share:scale-or-gamepad-crop-missing');
       if(shareText.includes("return drawLegacyCoupon(canvas,bet,showAmount)") || !shareText.includes("const width = 361")) failures.push('share:legacy-scale-still-active');
       const swText=await request('/sw.js');
-      if(!swText.includes("arena-line-sync-v102") || !swText.includes("self.clients.matchAll")) failures.push('sw:v102-refresh-missing');
+      if(!swText.includes("arena-line-sync-v103") || !swText.includes("self.clients.matchAll")) failures.push('sw:v103-refresh-missing');
       if(!themeText.includes('v94: screenshot-matched share scale') || !themeText.includes('body.share-coupon-open::before') || !themeText.includes('display:none!important') || !themeText.includes('max-width:393px!important')) failures.push('theme:share-v94-scale-or-dark-bars');
       if(!themeText.includes('v76: compact accumulator detail rows') || !themeText.includes('min-height:56px!important')) failures.push('theme:compact-accumulator-missing');
       if(!themeText.includes('v77: clean transparent esports controller') || !themeText.includes('clip-path:none!important')) failures.push('theme:clean-controller-missing');
@@ -1740,6 +1749,9 @@ server.listen(port,'0.0.0.0',()=>{
       if(!accountText.includes("Array.isArray(changes.selectionEdits)") || !accountText.includes("const chosenSide = selection =>") || !accountText.includes("winnerIndex") || !accountText.includes("factor:won ? selection.odds : 0") || !accountText.includes("settledBetTotals")) failures.push('editor:manual-winner-persist-v101-missing');
       if(!appText.includes("classList.toggle('bet-detail-open',isBetDetail)") || !appText.includes("themeMeta.setAttribute('content',isBetDetail ? '#ffffff' : '#171716')")) failures.push('detail:bottom-safe-area-state-v102-missing');
       if(!themeText.includes('v102: express detail owns the bottom safe area') || !themeText.includes('html.bet-detail-open') || !themeText.includes('background:#fff!important')) failures.push('detail:bottom-safe-area-style-v102-missing');
+      if(!eventViewText.includes('completed-match-card') || !eventViewText.includes('completedResult(app,event)') || !eventViewText.includes('parsedSavedResult')) failures.push('event:completed-fallback-v103-missing');
+      if(!sportsText.includes('settlement:saved.settlement || null')) failures.push('event:saved-settlement-passthrough-v103-missing');
+      if(!themeText.includes('v103: completed match screen') || !themeText.includes('.completed-score-table')) failures.push('event:completed-style-v103-missing');
       if(!themeText.includes('v98: detailed per-match bet editor') || !themeText.includes('.edit-selection-card') || !themeText.includes('.edit-result-controls')) failures.push('editor:per-selection-style-v98-missing');
       if(!html.includes('brand-placeholder') || html.includes('VIP HOUSE')) failures.push('brand:blank-main-v100-missing');
       if(!uiText.includes('brand-placeholder') || uiText.includes('VIP HOUSE')) failures.push('brand:blank-ui-v100-missing');
@@ -1751,7 +1763,7 @@ server.listen(port,'0.0.0.0',()=>{
       const summary=checks.map(({path,status,type,bytes})=>({path,status,type,bytes}));
       summary.push({path:'/assets/icons/esports-controller-clean-v79.png',status:controllerResponse.status,type:controllerResponse.headers.get('content-type')||'',bytes:controllerBytes});
       if(failures.length) console.error('FRONTEND_SELFTEST_FAILED '+JSON.stringify({failures,summary}));
-      else console.log('FRONTEND_SELFTEST_OK '+JSON.stringify({build:'102',summary}));
+      else console.log('FRONTEND_SELFTEST_OK '+JSON.stringify({build:'103',summary}));
     }catch(error){
       console.error('FRONTEND_SELFTEST_ERROR '+String(error?.stack||error));
     }
