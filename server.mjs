@@ -158,7 +158,7 @@ function patchIndexHtml(source) {
     /<meta\s+name=["']viewport["']\s+content=["'][^"']*["']\s*\/?>/i,
     '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">'
   );
-  html=html.replace(/\?+v=\d+/g,'?v=103');
+  html=html.replace(/\?+v=\d+/g,'?v=104');
   html=html.replace(
     '<img class="wordmark" src="/assets/wordmark.png" width="120" height="24" alt="Parik24">',
     '<span class="wordmark brand-placeholder" aria-hidden="true"></span>'
@@ -173,9 +173,9 @@ function patchIndexHtml(source) {
       '<link rel="manifest" href="/manifest.webmanifest">\n  <link rel="apple-touch-icon" href="/assets/icons/esports-controller-clean-v79.png">\n  <meta name="apple-mobile-web-app-capable" content="yes">\n  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">'
     );
   }
-  if (!html.includes('arena-editor-hotfix-v103')) {
+  if (!html.includes('arena-editor-hotfix-v104')) {
     html=html.replace('</head>', `
-<style id="arena-editor-hotfix-v103">
+<style id="arena-editor-hotfix-v104">
 dialog#dialog.edit-bet-dialog{
   position:fixed!important;
   top:auto!important;
@@ -353,18 +353,18 @@ dialog#dialog.edit-bet-dialog .edit-bet-hide{
 }
 </style>
 <script>
-window.__ARENA_BUILD__='103';
+window.__ARENA_BUILD__='104';
 </script>
 </head>`);
   }
   html=html
-    .replace(/href="\/(app|sports|bet-view|event-view|share-coupon|settings|theme)\.css\?v=103"/g,'href="/v103/$1.css"')
-    .replace('src="/lucide.min.js"','src="/v103/lucide.min.js"')
-    .replace('src="/app.js?v=103"','src="/v103/app.js"');
-  if(!html.includes('arena-client-diagnostics-v103')){
+    .replace(/href="\/(app|sports|bet-view|event-view|share-coupon|settings|theme)\.css\?v=104"/g,'href="/v104/$1.css"')
+    .replace('src="/lucide.min.js"','src="/v104/lucide.min.js"')
+    .replace('src="/app.js?v=104"','src="/v104/app.js"');
+  if(!html.includes('arena-client-diagnostics-v104')){
     html=html.replace('<title>Arena Line</title>',`<title>Arena Line</title>
-<script id="arena-client-diagnostics-v103">
-(()=>{const send=(kind,message,extra={})=>{try{fetch('/api/client-diagnostic',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({kind,message:String(message||'').slice(0,1800),build:'103',href:location.href,...extra}),keepalive:true,cache:'no-store'}).catch(()=>{})}catch{}};
+<script id="arena-client-diagnostics-v104">
+(()=>{const send=(kind,message,extra={})=>{try{fetch('/api/client-diagnostic',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({kind,message:String(message||'').slice(0,1800),build:'104',href:location.href,...extra}),keepalive:true,cache:'no-store'}).catch(()=>{})}catch{}};
 window.addEventListener('error',event=>send('CLIENT_ERROR',event.message||event.error?.message||'window error',{source:event.filename||'',line:event.lineno||0,column:event.colno||0}));
 window.addEventListener('unhandledrejection',event=>send('CLIENT_REJECTION',event.reason?.stack||event.reason?.message||event.reason||'unhandled rejection'));
 window.__arenaClientDiagnostic=send;
@@ -1396,8 +1396,8 @@ const server=http.createServer(async (req,res)=>{
       return textResponse(res,method,'text/html; charset=utf-8',patchIndexHtml(source),'no-store');
     }
 
-    if (url.pathname.startsWith('/v103/') && ['GET','HEAD'].includes(method)) {
-      const runtimePath='/' + url.pathname.slice('/v103/'.length);
+    if (url.pathname.startsWith('/v104/') && ['GET','HEAD'].includes(method)) {
+      const runtimePath='/' + url.pathname.slice('/v104/'.length);
       if (runtimePath === '/feed.mjs') return js(res,method,feedModule,'no-store');
       if (runtimePath === '/team-emblem.mjs') return js(res,method,emblemModule,'no-store');
       if (runtimePath === '/ui.mjs') return js(res,method,uiModule,'no-store');
@@ -1688,21 +1688,21 @@ server.listen(port,'0.0.0.0',()=>{
     };
     try{
       const html=await request('/');
-      const appText=await request('/v103/app.js');
-      const accountText=await request('/v103/account.mjs');
-      const sportsText=await request('/v103/sports.mjs');
-      const betText=await request('/v103/bet-view.mjs');
-      const eventViewText=await request('/v103/event-view.mjs');
-      const shareText=await request('/v103/share-coupon.mjs');
-      const i18nText=await request('/v103/i18n.mjs');
-      const uiText=await request('/v103/ui.mjs');
-      const themeText=await request('/v103/theme.css');
-      await request('/v103/feed.mjs');
-      await request('/v103/event-view.mjs');
+      const appText=await request('/v104/app.js');
+      const accountText=await request('/v104/account.mjs');
+      const sportsText=await request('/v104/sports.mjs');
+      const betText=await request('/v104/bet-view.mjs');
+      const eventViewText=await request('/v104/event-view.mjs');
+      const shareText=await request('/v104/share-coupon.mjs');
+      const i18nText=await request('/v104/i18n.mjs');
+      const uiText=await request('/v104/ui.mjs');
+      const themeText=await request('/v104/theme.css');
+      await request('/v104/feed.mjs');
+      await request('/v104/event-view.mjs');
       const failures=[];
       for(const row of checks) if(row.status!==200) failures.push(row.path+':'+row.status);
-      if(!html.includes('/v103/app.js')) failures.push('html:no-v65-app');
-      if(!html.includes('/v103/app.css')) failures.push('html:no-v65-css');
+      if(!html.includes('/v104/app.js')) failures.push('html:no-v65-app');
+      if(!html.includes('/v104/app.css')) failures.push('html:no-v65-css');
       if(!appText.includes('CLIENT_BOOT_OK')) failures.push('app:no-client-boot-probe');
       if(!appText.includes('new SportsApp')) failures.push('app:no-sports-init');
       if(!accountText.includes('settleBets')) failures.push('account:missing');
@@ -1726,7 +1726,7 @@ server.listen(port,'0.0.0.0',()=>{
       if(!shareText.includes('cropRatio') || !shareText.includes('font(16)')) failures.push('share:scale-or-gamepad-crop-missing');
       if(shareText.includes("return drawLegacyCoupon(canvas,bet,showAmount)") || !shareText.includes("const width = 361")) failures.push('share:legacy-scale-still-active');
       const swText=await request('/sw.js');
-      if(!swText.includes("arena-line-sync-v103") || !swText.includes("self.clients.matchAll")) failures.push('sw:v103-refresh-missing');
+      if(!swText.includes("arena-line-sync-v104") || !swText.includes("self.clients.matchAll")) failures.push('sw:v104-refresh-missing');
       if(!themeText.includes('v94: screenshot-matched share scale') || !themeText.includes('body.share-coupon-open::before') || !themeText.includes('display:none!important') || !themeText.includes('max-width:393px!important')) failures.push('theme:share-v94-scale-or-dark-bars');
       if(!themeText.includes('v76: compact accumulator detail rows') || !themeText.includes('min-height:56px!important')) failures.push('theme:compact-accumulator-missing');
       if(!themeText.includes('v77: clean transparent esports controller') || !themeText.includes('clip-path:none!important')) failures.push('theme:clean-controller-missing');
@@ -1752,6 +1752,8 @@ server.listen(port,'0.0.0.0',()=>{
       if(!eventViewText.includes('completed-match-card') || !eventViewText.includes('completedResult(app,event)') || !eventViewText.includes('parsedSavedResult')) failures.push('event:completed-fallback-v103-missing');
       if(!sportsText.includes('settlement:saved.settlement || null')) failures.push('event:saved-settlement-passthrough-v103-missing');
       if(!themeText.includes('v103: completed match screen') || !themeText.includes('.completed-score-table')) failures.push('event:completed-style-v103-missing');
+      if(!eventViewText.includes('completed-event-header-inner') || !eventViewText.includes('completed-score-pill') || !eventViewText.includes("Array.from({length:played},()=>[null,null])")) failures.push('event:reference-markup-v104-missing');
+      if(!themeText.includes('v104: completed-match geometry measured') || !themeText.includes('height:38px!important') || !themeText.includes('height:112px!important') || !themeText.includes('height:80px!important') || !themeText.includes('background:#f3f2ee!important')) failures.push('event:reference-geometry-v104-missing');
       if(!themeText.includes('v98: detailed per-match bet editor') || !themeText.includes('.edit-selection-card') || !themeText.includes('.edit-result-controls')) failures.push('editor:per-selection-style-v98-missing');
       if(!html.includes('brand-placeholder') || html.includes('VIP HOUSE')) failures.push('brand:blank-main-v100-missing');
       if(!uiText.includes('brand-placeholder') || uiText.includes('VIP HOUSE')) failures.push('brand:blank-ui-v100-missing');
@@ -1763,7 +1765,7 @@ server.listen(port,'0.0.0.0',()=>{
       const summary=checks.map(({path,status,type,bytes})=>({path,status,type,bytes}));
       summary.push({path:'/assets/icons/esports-controller-clean-v79.png',status:controllerResponse.status,type:controllerResponse.headers.get('content-type')||'',bytes:controllerBytes});
       if(failures.length) console.error('FRONTEND_SELFTEST_FAILED '+JSON.stringify({failures,summary}));
-      else console.log('FRONTEND_SELFTEST_OK '+JSON.stringify({build:'103',summary}));
+      else console.log('FRONTEND_SELFTEST_OK '+JSON.stringify({build:'104',summary}));
     }catch(error){
       console.error('FRONTEND_SELFTEST_ERROR '+String(error?.stack||error));
     }
