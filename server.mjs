@@ -158,7 +158,7 @@ function patchIndexHtml(source) {
     /<meta\s+name=["']viewport["']\s+content=["'][^"']*["']\s*\/?>/i,
     '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">'
   );
-  html=html.replace(/\?+v=\d+/g,'?v=111');
+  html=html.replace(/\?+v=\d+/g,'?v=112');
   html=html.replace(
     '<img class="wordmark" src="/assets/wordmark.png" width="120" height="24" alt="Parik24">',
     '<span class="wordmark brand-placeholder" aria-hidden="true"></span>'
@@ -173,9 +173,9 @@ function patchIndexHtml(source) {
       '<link rel="manifest" href="/manifest.webmanifest">\n  <link rel="apple-touch-icon" href="/assets/icons/esports-controller-clean-v79.png">\n  <meta name="apple-mobile-web-app-capable" content="yes">\n  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">'
     );
   }
-  if (!html.includes('arena-editor-hotfix-v111')) {
+  if (!html.includes('arena-editor-hotfix-v112')) {
     html=html.replace('</head>', `
-<style id="arena-editor-hotfix-v111">
+<style id="arena-editor-hotfix-v112">
 dialog#dialog.edit-bet-dialog{
   position:fixed!important;
   top:auto!important;
@@ -353,14 +353,14 @@ dialog#dialog.edit-bet-dialog .edit-bet-hide{
 }
 </style>
 <script>
-window.__ARENA_BUILD__='111';
+window.__ARENA_BUILD__='112';
 </script>
 </head>`);
   }
   html=html
-    .replace(/href="\/(app|sports|bet-view|event-view|share-coupon|settings|theme)\.css\?v=111"/g,'href="/v111/$1.css"')
+    .replace(/href="\/(app|sports|bet-view|event-view|share-coupon|settings|theme)\.css\?v=112"/g,'href="/v111/$1.css"')
     .replace('src="/lucide.min.js"','src="/v111/lucide.min.js"')
-    .replace('src="/app.js?v=111"','src="/v111/app.js"');
+    .replace('src="/app.js?v=112"','src="/v111/app.js"');
   if(!html.includes('arena-client-diagnostics-v111')){
     html=html.replace('<title>Arena Line</title>',`<title>Arena Line</title>
 <script id="arena-client-diagnostics-v111">
