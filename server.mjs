@@ -158,7 +158,7 @@ function patchIndexHtml(source) {
     /<meta\s+name=["']viewport["']\s+content=["'][^"']*["']\s*\/?>/i,
     '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">'
   );
-  html=html.replace(/\?+v=\d+/g,'?v=109');
+  html=html.replace(/\?+v=\d+/g,'?v=110');
   html=html.replace(
     '<img class="wordmark" src="/assets/wordmark.png" width="120" height="24" alt="Parik24">',
     '<span class="wordmark brand-placeholder" aria-hidden="true"></span>'
@@ -173,9 +173,9 @@ function patchIndexHtml(source) {
       '<link rel="manifest" href="/manifest.webmanifest">\n  <link rel="apple-touch-icon" href="/assets/icons/esports-controller-clean-v79.png">\n  <meta name="apple-mobile-web-app-capable" content="yes">\n  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">'
     );
   }
-  if (!html.includes('arena-editor-hotfix-v109')) {
+  if (!html.includes('arena-editor-hotfix-v110')) {
     html=html.replace('</head>', `
-<style id="arena-editor-hotfix-v109">
+<style id="arena-editor-hotfix-v110">
 dialog#dialog.edit-bet-dialog{
   position:fixed!important;
   top:auto!important;
@@ -353,18 +353,18 @@ dialog#dialog.edit-bet-dialog .edit-bet-hide{
 }
 </style>
 <script>
-window.__ARENA_BUILD__='109';
+window.__ARENA_BUILD__='110';
 </script>
 </head>`);
   }
   html=html
-    .replace(/href="\/(app|sports|bet-view|event-view|share-coupon|settings|theme)\.css\?v=109"/g,'href="/v109/$1.css"')
-    .replace('src="/lucide.min.js"','src="/v109/lucide.min.js"')
-    .replace('src="/app.js?v=109"','src="/v109/app.js"');
-  if(!html.includes('arena-client-diagnostics-v109')){
+    .replace(/href="\/(app|sports|bet-view|event-view|share-coupon|settings|theme)\.css\?v=110"/g,'href="/v110/$1.css"')
+    .replace('src="/lucide.min.js"','src="/v110/lucide.min.js"')
+    .replace('src="/app.js?v=110"','src="/v110/app.js"');
+  if(!html.includes('arena-client-diagnostics-v110')){
     html=html.replace('<title>Arena Line</title>',`<title>Arena Line</title>
-<script id="arena-client-diagnostics-v109">
-(()=>{const send=(kind,message,extra={})=>{try{fetch('/api/client-diagnostic',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({kind,message:String(message||'').slice(0,1800),build:'109',href:location.href,...extra}),keepalive:true,cache:'no-store'}).catch(()=>{})}catch{}};
+<script id="arena-client-diagnostics-v110">
+(()=>{const send=(kind,message,extra={})=>{try{fetch('/api/client-diagnostic',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({kind,message:String(message||'').slice(0,1800),build:'110',href:location.href,...extra}),keepalive:true,cache:'no-store'}).catch(()=>{})}catch{}};
 window.addEventListener('error',event=>send('CLIENT_ERROR',event.message||event.error?.message||'window error',{source:event.filename||'',line:event.lineno||0,column:event.colno||0}));
 window.addEventListener('unhandledrejection',event=>send('CLIENT_REJECTION',event.reason?.stack||event.reason?.message||event.reason||'unhandled rejection'));
 window.__arenaClientDiagnostic=send;
@@ -561,7 +561,9 @@ window.__arenaRejectLogo = window.__arenaRejectLogo || function(img) {
   if(!img) return false;
   const source=String(img.dataset.arenaSource || '');
   if(source){
-    window.__arenaFailedLogoSources.add(source);
+    const transientTeamLookup=source.includes('/api/media/team') && source.includes('prefer=bo3');
+    if(!transientTeamLookup) window.__arenaFailedLogoSources.add(source);
+    else setTimeout(()=>window.__arenaFailedLogoSources.delete(source),10000);
     window.__arenaLogoCache.delete(source);
   }
   if(window.__arenaNextLogo(img)) return true;
@@ -1017,7 +1019,9 @@ const backgroundMedia = {
   active:0,
   exactQueue:[],
   exactQueued:new Set(),
-  exactActive:0
+  exactActive:0,
+  exactInFlight:new Map(),
+  competitorMisses:new Map()
 };
 
 function logoFromEntity(row) {
@@ -1067,25 +1071,38 @@ function competitorNameKey(name,category) {
   return String(category || '') + ':' + mediaName(name);
 }
 
+function mediaLookupVariants(name) {
+  const raw=String(name || '').normalize('NFKC').trim();
+  const stripped=raw
+    .replace(/\s*\((?:replays?|replay)\)\s*$/giu,'')
+    .replace(/\s+(?:r6|cs2|lol|dota\s*2)\s*$/giu,'')
+    .trim();
+  const normalized=mediaName(stripped || raw);
+  return [...new Set([stripped,raw,normalized].map(value=>String(value || '').trim()).filter(Boolean))];
+}
+
 async function exactBo3Rows(kind,name,category) {
   const discipline=disciplineIds[category] || null;
   const table=kind;
   const nameField=kind === 'players' ? 'nickname' : 'name';
-  for(const op of ['eq','ilike']){
-    const qs=new URLSearchParams({'page[limit]':'30'});
-    const queryValue=op === 'ilike' ? '%' + String(name || '').trim() + '%' : String(name || '').trim();
-    qs.set(`filter[${table}.${nameField}][${op}]`,queryValue);
-    if(discipline) qs.set(`filter[${table}.discipline_id][eq]`,String(discipline));
-    try{
-      const response=await fetch(`https://api.bo3.gg/api/v1/${kind}?${qs}`,{
-        signal:AbortSignal.timeout(4500),
-        headers:{accept:'application/json'}
-      });
-      if(!response.ok) continue;
-      const data=await response.json();
-      const rows=Array.isArray(data?.results) ? data.results : [];
-      if(rows.length) return rows;
-    }catch{}
+  const variants=mediaLookupVariants(name);
+  for(const variant of variants){
+    for(const op of ['eq','ilike']){
+      const qs=new URLSearchParams({'page[limit]':'30'});
+      const queryValue=op === 'ilike' ? '%' + variant + '%' : variant;
+      qs.set(`filter[${table}.${nameField}][${op}]`,queryValue);
+      if(discipline) qs.set(`filter[${table}.discipline_id][eq]`,String(discipline));
+      try{
+        const response=await fetch(`https://api.bo3.gg/api/v1/${kind}?${qs}`,{
+          signal:AbortSignal.timeout(3000),
+          headers:{accept:'application/json'}
+        });
+        if(!response.ok) continue;
+        const data=await response.json();
+        const rows=Array.isArray(data?.results) ? data.results : [];
+        if(rows.length) return rows;
+      }catch{}
+    }
   }
   return [];
 }
@@ -1099,7 +1116,7 @@ async function resolveExactMediaTask(task) {
     const logo=bestCatalogLogo(name,rows,['name','slug']);
     if(logo && id) backgroundMedia.tournaments.set(String(id),logo);
     console.log('MEDIA_EXACT '+JSON.stringify({kind,id:id||null,name,category,found:!!logo}));
-    return;
+    return logo;
   }
 
   const kinds=category === 'Dota 2' ? ['players','teams'] : ['teams','players'];
@@ -1125,6 +1142,36 @@ async function resolveExactMediaTask(task) {
     backgroundMedia.competitorNames.set(competitorNameKey(name,category),logo);
   }
   console.log('MEDIA_EXACT '+JSON.stringify({kind,id:id||null,name,category,found:!!logo}));
+  return logo;
+}
+
+async function resolveCompetitorLogoOnDemand(id,name,category) {
+  const cached=cachedCompetitorLogo(id,name,category);
+  if(cached) return cached;
+
+  const key=competitorNameKey(name,category) || String(id || '');
+  const missAt=backgroundMedia.competitorMisses.get(key) || 0;
+  if(missAt && Date.now()-missAt < 90_000) return '';
+
+  const existing=backgroundMedia.exactInFlight.get(key);
+  if(existing) return existing;
+
+  const task={kind:'competitor',id,name,category};
+  const promise=Promise.resolve(resolveExactMediaTask(task))
+    .then(logo=>{
+      const found=logo || cachedCompetitorLogo(id,name,category) || '';
+      if(found) backgroundMedia.competitorMisses.delete(key);
+      else backgroundMedia.competitorMisses.set(key,Date.now());
+      return found;
+    })
+    .catch(()=>{
+      backgroundMedia.competitorMisses.set(key,Date.now());
+      return '';
+    })
+    .finally(()=>backgroundMedia.exactInFlight.delete(key));
+
+  backgroundMedia.exactInFlight.set(key,promise);
+  return promise;
 }
 
 function queueExactMedia(task) {
@@ -1371,19 +1418,27 @@ const server=http.createServer(async (req,res)=>{
       if(!numericId && !name) return json(res,400,{ok:false,error:'Missing competitor identity'});
 
       if(prefer === 'bo3'){
+        const started=Date.now();
         let cached=cachedCompetitorLogo(numericId ? id : '',name,category);
         if(!cached && name){
+          const direct=resolveCompetitorLogoOnDemand(numericId ? id : '',name,category);
+          cached=await Promise.race([
+            direct,
+            new Promise(resolve=>setTimeout(()=>resolve(''),6500))
+          ]);
           if(category) warmDisciplineMedia(category).catch(()=>{});
-          queueExactMedia({kind:'competitor',id:numericId ? id : '',name,category});
-          const deadline=Date.now()+3200;
-          while(!cached && Date.now()<deadline){
-            await new Promise(resolve=>setTimeout(resolve,120));
-            cached=cachedCompetitorLogo(numericId ? id : '',name,category);
-          }
         }
+        console.log('MEDIA_ONDEMAND '+JSON.stringify({
+          id:numericId ? id : null,
+          name,
+          category,
+          found:!!cached,
+          ms:Date.now()-started
+        }));
         if(!cached){
           res.statusCode=404;
           res.setHeader('cache-control','no-store');
+          res.setHeader('x-arena-media-pending','1');
           return res.end();
         }
         return streamImageCandidates(res,[{url:cached,trusted:true}]);
@@ -1470,8 +1525,8 @@ const server=http.createServer(async (req,res)=>{
       return textResponse(res,method,'text/html; charset=utf-8',patchIndexHtml(source),'no-store');
     }
 
-    if (url.pathname.startsWith('/v109/') && ['GET','HEAD'].includes(method)) {
-      const runtimePath='/' + url.pathname.slice('/v109/'.length);
+    if (url.pathname.startsWith('/v110/') && ['GET','HEAD'].includes(method)) {
+      const runtimePath='/' + url.pathname.slice('/v110/'.length);
       if (runtimePath === '/feed.mjs') return js(res,method,feedModule,'no-store');
       if (runtimePath === '/team-emblem.mjs') return js(res,method,emblemModule,'no-store');
       if (runtimePath === '/ui.mjs') return js(res,method,uiModule,'no-store');
@@ -1762,23 +1817,23 @@ server.listen(port,'0.0.0.0',()=>{
     };
     try{
       const html=await request('/');
-      const appText=await request('/v109/app.js');
-      const accountText=await request('/v109/account.mjs');
-      const sportsText=await request('/v109/sports.mjs');
-      const betText=await request('/v109/bet-view.mjs');
-      const eventViewText=await request('/v109/event-view.mjs');
-      const shareText=await request('/v109/share-coupon.mjs');
-      const i18nText=await request('/v109/i18n.mjs');
-      const uiText=await request('/v109/ui.mjs');
-      const teamText=await request('/v109/team-emblem.mjs');
+      const appText=await request('/v110/app.js');
+      const accountText=await request('/v110/account.mjs');
+      const sportsText=await request('/v110/sports.mjs');
+      const betText=await request('/v110/bet-view.mjs');
+      const eventViewText=await request('/v110/event-view.mjs');
+      const shareText=await request('/v110/share-coupon.mjs');
+      const i18nText=await request('/v110/i18n.mjs');
+      const uiText=await request('/v110/ui.mjs');
+      const teamText=await request('/v110/team-emblem.mjs');
       const serverText=await readFile(new URL('./server.mjs', import.meta.url), 'utf8');
-      const themeText=await request('/v109/theme.css');
-      await request('/v109/feed.mjs');
-      await request('/v109/event-view.mjs');
+      const themeText=await request('/v110/theme.css');
+      await request('/v110/feed.mjs');
+      await request('/v110/event-view.mjs');
       const failures=[];
       for(const row of checks) if(row.status!==200) failures.push(row.path+':'+row.status);
-      if(!html.includes('/v109/app.js')) failures.push('html:no-v65-app');
-      if(!html.includes('/v109/app.css')) failures.push('html:no-v65-css');
+      if(!html.includes('/v110/app.js')) failures.push('html:no-v65-app');
+      if(!html.includes('/v110/app.css')) failures.push('html:no-v65-css');
       if(!appText.includes('CLIENT_BOOT_OK')) failures.push('app:no-client-boot-probe');
       if(!appText.includes('new SportsApp')) failures.push('app:no-sports-init');
       if(!accountText.includes('settleBets')) failures.push('account:missing');
@@ -1802,7 +1857,7 @@ server.listen(port,'0.0.0.0',()=>{
       if(!shareText.includes('cropRatio') || !shareText.includes('font(16)')) failures.push('share:scale-or-gamepad-crop-missing');
       if(shareText.includes("return drawLegacyCoupon(canvas,bet,showAmount)") || !shareText.includes("const width = 361")) failures.push('share:legacy-scale-still-active');
       const swText=await request('/sw.js');
-      if(!swText.includes("arena-line-sync-v109") || !swText.includes("self.clients.matchAll")) failures.push('sw:v109-refresh-missing');
+      if(!swText.includes("arena-line-sync-v110") || !swText.includes("self.clients.matchAll")) failures.push('sw:v110-refresh-missing');
       if(!themeText.includes('v94: screenshot-matched share scale') || !themeText.includes('body.share-coupon-open::before') || !themeText.includes('display:none!important') || !themeText.includes('max-width:393px!important')) failures.push('theme:share-v94-scale-or-dark-bars');
       if(!themeText.includes('v76: compact accumulator detail rows') || !themeText.includes('min-height:56px!important')) failures.push('theme:compact-accumulator-missing');
       if(!themeText.includes('v77: clean transparent esports controller') || !themeText.includes('clip-path:none!important')) failures.push('theme:clean-controller-missing');
@@ -1840,6 +1895,9 @@ server.listen(port,'0.0.0.0',()=>{
       if(!teamText.includes("const fallbacks = ordered.filter") || !teamText.includes("sourceIsCached")) failures.push('avatar:all-fallbacks-v108-missing');
       if(!eventViewText.includes("categoryName:team.categoryName || event.categoryName || event.sport")) failures.push('avatar:event-category-v108-missing');
       if(!serverText.includes("sessionStorage.getItem('arena-entity-logo-cache-v1')") || !serverText.includes("window.__arenaSetLogoState(img,'ready')")) failures.push('avatar:stable-cache-v108-missing');
+      if(!serverText.includes('resolveCompetitorLogoOnDemand') || !serverText.includes('backgroundMedia.exactInFlight') || !serverText.includes("MEDIA_ONDEMAND")) failures.push('avatar:direct-lookup-v110-missing');
+      if(!serverText.includes('mediaLookupVariants') || !serverText.includes("replays?")) failures.push('avatar:name-variants-v110-missing');
+      if(!serverText.includes("transientTeamLookup") || !serverText.includes("prefer=bo3")) failures.push('avatar:transient-miss-v110-missing');
       if(!themeText.includes('v98: detailed per-match bet editor') || !themeText.includes('.edit-selection-card') || !themeText.includes('.edit-result-controls')) failures.push('editor:per-selection-style-v98-missing');
       if(!html.includes('brand-placeholder') || html.includes('VIP HOUSE')) failures.push('brand:blank-main-v100-missing');
       if(!uiText.includes('brand-placeholder') || uiText.includes('VIP HOUSE')) failures.push('brand:blank-ui-v100-missing');
@@ -1851,7 +1909,7 @@ server.listen(port,'0.0.0.0',()=>{
       const summary=checks.map(({path,status,type,bytes})=>({path,status,type,bytes}));
       summary.push({path:'/assets/icons/esports-controller-clean-v79.png',status:controllerResponse.status,type:controllerResponse.headers.get('content-type')||'',bytes:controllerBytes});
       if(failures.length) console.error('FRONTEND_SELFTEST_FAILED '+JSON.stringify({failures,summary}));
-      else console.log('FRONTEND_SELFTEST_OK '+JSON.stringify({build:'109',summary}));
+      else console.log('FRONTEND_SELFTEST_OK '+JSON.stringify({build:'110',summary}));
     }catch(error){
       console.error('FRONTEND_SELFTEST_ERROR '+String(error?.stack||error));
     }
