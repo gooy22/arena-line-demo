@@ -2296,3 +2296,32 @@ body.bet-detail-open .bet-detail-footer{
 .completed-event-page .event-history-block{
   margin:20px 8px 0!important;
 }
+
+
+/* v106: lock the completed total score to the measured reference position. */
+.completed-match-scoreboard{
+  position:relative!important;
+}
+.completed-center{
+  position:absolute!important;
+  top:29px!important;
+  left:50%!important;
+  width:96px!important;
+  grid-column:auto!important;
+  padding:0!important;
+  margin:0!important;
+  transform:translateX(-50%)!important;
+  z-index:2!important;
+}
+.completed-center>span{
+  display:block!important;
+  height:14px!important;
+  margin:0!important;
+  line-height:14px!important;
+}
+.completed-center>b{
+  display:block!important;
+  height:32px!important;
+  margin:0!important;
+  line-height:32px!important;
+}
