@@ -2325,3 +2325,33 @@ body.bet-detail-open .bet-detail-footer{
   margin:0!important;
   line-height:32px!important;
 }
+
+
+/* v107: no broken-image/question-mark flash while team avatars resolve. */
+.team-emblem-picture[data-logo-state="loading"] .team-logo{
+  opacity:0!important;
+  visibility:hidden!important;
+}
+.team-emblem-picture[data-logo-state="loading"] .team-emblem-fallback{
+  opacity:0!important;
+  visibility:hidden!important;
+}
+.team-emblem-picture[data-logo-state="ready"] .team-logo{
+  opacity:1!important;
+  visibility:visible!important;
+}
+.team-emblem-picture[data-logo-state="ready"] .team-emblem-fallback{
+  opacity:0!important;
+  visibility:hidden!important;
+}
+.team-emblem-picture[data-logo-state="failed"] .team-logo{
+  opacity:0!important;
+  visibility:hidden!important;
+}
+.team-emblem-picture[data-logo-state="failed"] .team-emblem-fallback{
+  opacity:1!important;
+  visibility:visible!important;
+}
+.team-logo{
+  transition:none!important;
+}
