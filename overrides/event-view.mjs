@@ -98,7 +98,7 @@ function completedOverview(app,event,result) {
     </nav>
     <div class="completed-match-scoreboard">
       ${teams.map((team,index)=>`<div class="completed-team team-${index}">
-        <span class="completed-team-emblem">${teamEmblem(team,event.sport)}</span>
+        <span class="completed-team-emblem">${teamEmblem({...team,categoryName:team.categoryName || event.categoryName || event.sport})}</span>
         <strong>${esc(team.name || '')}</strong>
       </div>`).join('')}
       <div class="completed-center"><span>ЗАВЕРШЕНО</span><b>${esc(scoreText)}</b></div>
@@ -117,7 +117,7 @@ function overview(app, event, completed) {
   const today = event.startTime && new Date(event.startTime * 1000).toDateString() === new Date().toDateString();
   const subtitle = completed ? 'ЗАВЕРШЕНО' : event.stage === 2 ? app.status(event) : today ? 'СЬОГОДНІ' : event.startTime ? new Date(event.startTime * 1000).toLocaleDateString(getLocale(), { day:'2-digit',month:'short' }) : '';
   const center = score?.length ? score.join(' : ') : event.startTime ? new Date(event.startTime * 1000).toLocaleTimeString(getLocale(), { hour:'2-digit', minute:'2-digit' }) : '—';
-  return `<section class="event-scoreboard">${teams.slice(0,2).map((team,i) => `<div class="event-team team-${i}"><span class="event-team-emblem">${teamEmblem(team,event.sport)}</span><div>${esc(team.name)}</div><div class="event-form">${form(history,team)}</div></div>`).join('')}<div class="event-score-center"><span class="event-kickoff ${event.stage === 2 && !completed ? 'live-text' : ''}">${esc(subtitle)}</span><strong>${esc(center)}</strong>${h2h.length ? `<div class="event-h2h-count"><span>${wins[0]}<small>W</small></span><span>${h2h.length-wins[0]-wins[1]}<small>D</small></span><span>${wins[1]}<small>W</small></span></div>` : ''}</div></section>`;
+  return `<section class="event-scoreboard">${teams.slice(0,2).map((team,i) => `<div class="event-team team-${i}"><span class="event-team-emblem">${teamEmblem({...team,categoryName:team.categoryName || event.categoryName || event.sport})}</span><div>${esc(team.name)}</div><div class="event-form">${form(history,team)}</div></div>`).join('')}<div class="event-score-center"><span class="event-kickoff ${event.stage === 2 && !completed ? 'live-text' : ''}">${esc(subtitle)}</span><strong>${esc(center)}</strong>${h2h.length ? `<div class="event-h2h-count"><span>${wins[0]}<small>W</small></span><span>${h2h.length-wins[0]-wins[1]}<small>D</small></span><span>${wins[1]}<small>W</small></span></div>` : ''}</div></section>`;
 }
 
 function historyRows(rows) {
