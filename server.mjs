@@ -158,7 +158,7 @@ function patchIndexHtml(source) {
     /<meta\s+name=["']viewport["']\s+content=["'][^"']*["']\s*\/?>/i,
     '<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">'
   );
-  html=html.replace(/\?+v=\d+/g,'?v=106');
+  html=html.replace(/\?+v=\d+/g,'?v=107');
   html=html.replace(
     '<img class="wordmark" src="/assets/wordmark.png" width="120" height="24" alt="Parik24">',
     '<span class="wordmark brand-placeholder" aria-hidden="true"></span>'
@@ -173,9 +173,9 @@ function patchIndexHtml(source) {
       '<link rel="manifest" href="/manifest.webmanifest">\n  <link rel="apple-touch-icon" href="/assets/icons/esports-controller-clean-v79.png">\n  <meta name="apple-mobile-web-app-capable" content="yes">\n  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">'
     );
   }
-  if (!html.includes('arena-editor-hotfix-v106')) {
+  if (!html.includes('arena-editor-hotfix-v107')) {
     html=html.replace('</head>', `
-<style id="arena-editor-hotfix-v106">
+<style id="arena-editor-hotfix-v107">
 dialog#dialog.edit-bet-dialog{
   position:fixed!important;
   top:auto!important;
@@ -353,18 +353,18 @@ dialog#dialog.edit-bet-dialog .edit-bet-hide{
 }
 </style>
 <script>
-window.__ARENA_BUILD__='106';
+window.__ARENA_BUILD__='107';
 </script>
 </head>`);
   }
   html=html
-    .replace(/href="\/(app|sports|bet-view|event-view|share-coupon|settings|theme)\.css\?v=106"/g,'href="/v106/$1.css"')
-    .replace('src="/lucide.min.js"','src="/v106/lucide.min.js"')
-    .replace('src="/app.js?v=106"','src="/v106/app.js"');
-  if(!html.includes('arena-client-diagnostics-v106')){
+    .replace(/href="\/(app|sports|bet-view|event-view|share-coupon|settings|theme)\.css\?v=107"/g,'href="/v107/$1.css"')
+    .replace('src="/lucide.min.js"','src="/v107/lucide.min.js"')
+    .replace('src="/app.js?v=107"','src="/v107/app.js"');
+  if(!html.includes('arena-client-diagnostics-v107')){
     html=html.replace('<title>Arena Line</title>',`<title>Arena Line</title>
-<script id="arena-client-diagnostics-v106">
-(()=>{const send=(kind,message,extra={})=>{try{fetch('/api/client-diagnostic',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({kind,message:String(message||'').slice(0,1800),build:'106',href:location.href,...extra}),keepalive:true,cache:'no-store'}).catch(()=>{})}catch{}};
+<script id="arena-client-diagnostics-v107">
+(()=>{const send=(kind,message,extra={})=>{try{fetch('/api/client-diagnostic',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({kind,message:String(message||'').slice(0,1800),build:'107',href:location.href,...extra}),keepalive:true,cache:'no-store'}).catch(()=>{})}catch{}};
 window.addEventListener('error',event=>send('CLIENT_ERROR',event.message||event.error?.message||'window error',{source:event.filename||'',line:event.lineno||0,column:event.colno||0}));
 window.addEventListener('unhandledrejection',event=>send('CLIENT_REJECTION',event.reason?.stack||event.reason?.message||event.reason||'unhandled rejection'));
 window.__arenaClientDiagnostic=send;
@@ -1444,8 +1444,8 @@ const server=http.createServer(async (req,res)=>{
       return textResponse(res,method,'text/html; charset=utf-8',patchIndexHtml(source),'no-store');
     }
 
-    if (url.pathname.startsWith('/v106/') && ['GET','HEAD'].includes(method)) {
-      const runtimePath='/' + url.pathname.slice('/v106/'.length);
+    if (url.pathname.startsWith('/v107/') && ['GET','HEAD'].includes(method)) {
+      const runtimePath='/' + url.pathname.slice('/v107/'.length);
       if (runtimePath === '/feed.mjs') return js(res,method,feedModule,'no-store');
       if (runtimePath === '/team-emblem.mjs') return js(res,method,emblemModule,'no-store');
       if (runtimePath === '/ui.mjs') return js(res,method,uiModule,'no-store');
@@ -1736,23 +1736,23 @@ server.listen(port,'0.0.0.0',()=>{
     };
     try{
       const html=await request('/');
-      const appText=await request('/v106/app.js');
-      const accountText=await request('/v106/account.mjs');
-      const sportsText=await request('/v106/sports.mjs');
-      const betText=await request('/v106/bet-view.mjs');
-      const eventViewText=await request('/v106/event-view.mjs');
-      const shareText=await request('/v106/share-coupon.mjs');
-      const i18nText=await request('/v106/i18n.mjs');
-      const uiText=await request('/v106/ui.mjs');
-      const teamText=await request('/v106/team-emblem.mjs');
+      const appText=await request('/v107/app.js');
+      const accountText=await request('/v107/account.mjs');
+      const sportsText=await request('/v107/sports.mjs');
+      const betText=await request('/v107/bet-view.mjs');
+      const eventViewText=await request('/v107/event-view.mjs');
+      const shareText=await request('/v107/share-coupon.mjs');
+      const i18nText=await request('/v107/i18n.mjs');
+      const uiText=await request('/v107/ui.mjs');
+      const teamText=await request('/v107/team-emblem.mjs');
       const serverText=await readFile(new URL('./server.mjs', import.meta.url), 'utf8');
-      const themeText=await request('/v106/theme.css');
-      await request('/v106/feed.mjs');
-      await request('/v106/event-view.mjs');
+      const themeText=await request('/v107/theme.css');
+      await request('/v107/feed.mjs');
+      await request('/v107/event-view.mjs');
       const failures=[];
       for(const row of checks) if(row.status!==200) failures.push(row.path+':'+row.status);
-      if(!html.includes('/v106/app.js')) failures.push('html:no-v65-app');
-      if(!html.includes('/v106/app.css')) failures.push('html:no-v65-css');
+      if(!html.includes('/v107/app.js')) failures.push('html:no-v65-app');
+      if(!html.includes('/v107/app.css')) failures.push('html:no-v65-css');
       if(!appText.includes('CLIENT_BOOT_OK')) failures.push('app:no-client-boot-probe');
       if(!appText.includes('new SportsApp')) failures.push('app:no-sports-init');
       if(!accountText.includes('settleBets')) failures.push('account:missing');
@@ -1776,7 +1776,7 @@ server.listen(port,'0.0.0.0',()=>{
       if(!shareText.includes('cropRatio') || !shareText.includes('font(16)')) failures.push('share:scale-or-gamepad-crop-missing');
       if(shareText.includes("return drawLegacyCoupon(canvas,bet,showAmount)") || !shareText.includes("const width = 361")) failures.push('share:legacy-scale-still-active');
       const swText=await request('/sw.js');
-      if(!swText.includes("arena-line-sync-v106") || !swText.includes("self.clients.matchAll")) failures.push('sw:v106-refresh-missing');
+      if(!swText.includes("arena-line-sync-v107") || !swText.includes("self.clients.matchAll")) failures.push('sw:v107-refresh-missing');
       if(!themeText.includes('v94: screenshot-matched share scale') || !themeText.includes('body.share-coupon-open::before') || !themeText.includes('display:none!important') || !themeText.includes('max-width:393px!important')) failures.push('theme:share-v94-scale-or-dark-bars');
       if(!themeText.includes('v76: compact accumulator detail rows') || !themeText.includes('min-height:56px!important')) failures.push('theme:compact-accumulator-missing');
       if(!themeText.includes('v77: clean transparent esports controller') || !themeText.includes('clip-path:none!important')) failures.push('theme:clean-controller-missing');
@@ -1808,6 +1808,9 @@ server.listen(port,'0.0.0.0',()=>{
       if(!serverText.includes("competitorNames:new Map()") || !serverText.includes("competitorNameKey(name,category)") || !serverText.includes("queryValue=op === 'ilike' ? '%'")) failures.push('avatar:name-cache-search-v105-missing');
       if(!serverText.includes("row.keys.size >= 5 && row.categories.size >= 2")) failures.push('avatar:generic-threshold-v105-missing');
       if(!themeText.includes('v106: lock the completed total score') || !themeText.includes('top:29px!important') || !themeText.includes('left:50%!important') || !themeText.includes('transform:translateX(-50%)!important')) failures.push('event:total-score-position-v106-missing');
+      if(!teamText.includes('data-logo-state') || !teamText.includes("logoState = entity?.src ? 'ready' : primary ? 'loading' : 'failed'")) failures.push('avatar:markup-state-v107-missing');
+      if(!themeText.includes('v107: no broken-image/question-mark flash') || !themeText.includes('[data-logo-state="loading"] .team-logo') || !themeText.includes('[data-logo-state="failed"] .team-emblem-fallback')) failures.push('avatar:state-style-v107-missing');
+      if(!serverText.includes('window.__arenaSetLogoState') || !serverText.includes("window.__arenaSetLogoState(img,'loading')") || !serverText.includes("window.__arenaSetLogoState(img,'failed')")) failures.push('avatar:runtime-state-v107-missing');
       if(!themeText.includes('v98: detailed per-match bet editor') || !themeText.includes('.edit-selection-card') || !themeText.includes('.edit-result-controls')) failures.push('editor:per-selection-style-v98-missing');
       if(!html.includes('brand-placeholder') || html.includes('VIP HOUSE')) failures.push('brand:blank-main-v100-missing');
       if(!uiText.includes('brand-placeholder') || uiText.includes('VIP HOUSE')) failures.push('brand:blank-ui-v100-missing');
@@ -1819,7 +1822,7 @@ server.listen(port,'0.0.0.0',()=>{
       const summary=checks.map(({path,status,type,bytes})=>({path,status,type,bytes}));
       summary.push({path:'/assets/icons/esports-controller-clean-v79.png',status:controllerResponse.status,type:controllerResponse.headers.get('content-type')||'',bytes:controllerBytes});
       if(failures.length) console.error('FRONTEND_SELFTEST_FAILED '+JSON.stringify({failures,summary}));
-      else console.log('FRONTEND_SELFTEST_OK '+JSON.stringify({build:'106',summary}));
+      else console.log('FRONTEND_SELFTEST_OK '+JSON.stringify({build:'107',summary}));
     }catch(error){
       console.error('FRONTEND_SELFTEST_ERROR '+String(error?.stack||error));
     }
