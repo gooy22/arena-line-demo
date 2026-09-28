@@ -967,6 +967,7 @@ const backgroundMedia = {
   disciplines:new Map(),
   tournaments:new Map(),
   competitors:new Map(),
+  competitorNames:new Map(),
   warming:new Set(),
   queued:new Set(),
   queue:[],
@@ -1019,6 +1020,10 @@ function bestCatalogLogo(name, rows, fields) {
 }
 
 
+function competitorNameKey(name,category) {
+  return String(category || '') + ':' + mediaName(name);
+}
+
 async function exactBo3Rows(kind,name,category) {
   const discipline=disciplineIds[category] || null;
   const table=kind;
@@ -1043,13 +1048,13 @@ async function exactBo3Rows(kind,name,category) {
 
 async function resolveExactMediaTask(task) {
   const {kind,id,name,category}=task;
-  if(!id || !name) return;
+  if(!name) return;
 
   if(kind === 'tournament'){
     const rows=await exactBo3Rows('tournaments',mediaName(name),category);
     const logo=bestCatalogLogo(name,rows,['name','slug']);
-    if(logo) backgroundMedia.tournaments.set(String(id),logo);
-    console.log('MEDIA_EXACT '+JSON.stringify({kind,id,name,category,found:!!logo}));
+    if(logo && id) backgroundMedia.tournaments.set(String(id),logo);
+    console.log('MEDIA_EXACT '+JSON.stringify({kind,id:id||null,name,category,found:!!logo}));
     return;
   }
 
@@ -1060,13 +1065,28 @@ async function resolveExactMediaTask(task) {
     logo=bestCatalogLogo(name,rows,['nickname','name','slug']);
     if(logo) break;
   }
-  if(logo) backgroundMedia.competitors.set(String(id),logo);
-  console.log('MEDIA_EXACT '+JSON.stringify({kind,id,name,category,found:!!logo}));
+
+  if(!logo){
+    const catalog=backgroundMedia.disciplines.get(String(category || ''));
+    if(catalog){
+      const preferred=category === 'Dota 2'
+        ? [...(catalog.players || []),...(catalog.teams || [])]
+        : [...(catalog.teams || []),...(catalog.players || [])];
+      logo=bestCatalogLogo(name,preferred,['nickname','name','slug']);
+    }
+  }
+
+  if(logo){
+    if(id) backgroundMedia.competitors.set(String(id),logo);
+    backgroundMedia.competitorNames.set(competitorNameKey(name,category),logo);
+  }
+  console.log('MEDIA_EXACT '+JSON.stringify({kind,id:id||null,name,category,found:!!logo}));
 }
 
 function queueExactMedia(task) {
-  const key=task.kind+':'+String(task.id || '');
-  if(!task.id || !task.name || backgroundMedia.exactQueued.has(key)) return;
+  const identity=String(task.id || competitorNameKey(task.name,task.category));
+  const key=task.kind+':'+identity;
+  if(!task.name || !identity || backgroundMedia.exactQueued.has(key)) return;
   backgroundMedia.exactQueued.add(key);
   backgroundMedia.exactQueue.push({...task,key});
   drainExactMediaQueue();
@@ -1113,6 +1133,7 @@ function applyDisciplineCatalog(category,catalog) {
         : [...teams,...players];
       const logo=bestCatalogLogo(team.name,preferred,['nickname','name','slug']);
       backgroundMedia.competitors.set(id,logo || '');
+      if(logo) backgroundMedia.competitorNames.set(competitorNameKey(team.name,category),logo);
       if(!logo) queueExactMedia({
         kind:'competitor',
         id,
@@ -1195,8 +1216,10 @@ function cachedTournamentLogo(id) {
   return backgroundMedia.tournaments.get(String(id || '')) || '';
 }
 
-function cachedCompetitorLogo(id) {
-  return backgroundMedia.competitors.get(String(id || '')) || '';
+function cachedCompetitorLogo(id,name,category) {
+  const byId=id ? backgroundMedia.competitors.get(String(id)) : '';
+  if(byId) return byId;
+  return backgroundMedia.competitorNames.get(competitorNameKey(name,category)) || '';
 }
 
 async function remoteImageResponse(candidate) {
@@ -1300,16 +1323,18 @@ const server=http.createServer(async (req,res)=>{
       const name=safeString(url.searchParams.get('name'),160);
       const category=safeString(url.searchParams.get('category'),80);
       const exactSource=safeParikMediaURL(url.searchParams.get('source'));
-      if(!/^[0-9]{1,16}$/.test(id)) return json(res,400,{ok:false,error:'Invalid competitor id'});
+      const numericId=/^[0-9]{1,16}$/.test(id);
+      if(!numericId && !name) return json(res,400,{ok:false,error:'Missing competitor identity'});
 
       if(prefer === 'bo3'){
-        let cached=cachedCompetitorLogo(id);
+        let cached=cachedCompetitorLogo(numericId ? id : '',name,category);
         if(!cached && name){
-          queueExactMedia({kind:'competitor',id,name,category});
-          const deadline=Date.now()+1800;
+          if(category) warmDisciplineMedia(category).catch(()=>{});
+          queueExactMedia({kind:'competitor',id:numericId ? id : '',name,category});
+          const deadline=Date.now()+3200;
           while(!cached && Date.now()<deadline){
             await new Promise(resolve=>setTimeout(resolve,120));
-            cached=cachedCompetitorLogo(id);
+            cached=cachedCompetitorLogo(numericId ? id : '',name,category);
           }
         }
         if(!cached){
@@ -1321,6 +1346,11 @@ const server=http.createServer(async (req,res)=>{
       }
 
       if(prefer === 'parik-alt'){
+        if(!numericId){
+          res.statusCode=404;
+          res.setHeader('cache-control','no-store');
+          return res.end();
+        }
         return streamImageCandidates(res,[
           {url:'https://24parik-bet.org/taxonomyicons/competitors/'+id+'-164w'}
         ]);
@@ -1328,7 +1358,7 @@ const server=http.createServer(async (req,res)=>{
 
       return streamImageCandidates(res,[
         {url:exactSource},
-        {url:'https://parik24.pro/taxonomyicons/competitors/'+id+'-164w'}
+        ...(numericId ? [{url:'https://parik24.pro/taxonomyicons/competitors/'+id+'-164w'}] : [])
       ]);
     }
 
