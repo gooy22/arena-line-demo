@@ -1,4 +1,4 @@
-const CACHE = 'arena-line-sync-v103';
+const CACHE = 'arena-line-sync-v104';
 
 const PRECACHE = [
   '/',
