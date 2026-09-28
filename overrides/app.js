@@ -168,6 +168,12 @@ function openEditBet(id) {
 
   const selections = bet.selections || [];
   const status = ['open','won','lost','void','cashout'].includes(bet.status) ? bet.status : 'open';
+  const editBetDateValue = (() => {
+    const date = new Date(bet.date || Date.now());
+    if (!Number.isFinite(date.getTime())) return '';
+    const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0,16);
+  })();
 
   const parseExactScore = value => {
     const match = String(value || '').match(/(?:^|\s)(\d{1,2})\s*[:\-]\s*(\d{1,2})(?:$|\s)/);
@@ -300,6 +306,8 @@ function openEditBet(id) {
             <label for="edit-label-${index}">Вибраний результат</label>
             <input id="edit-label-${index}" class="edit-outcome-label" data-index="${index}" value="${esc(state.displayLabel)}" maxlength="180" required>
             ${presetMarkup}
+            <label for="edit-odds-${index}">Коефіцієнт вручну</label>
+            <input id="edit-odds-${index}" class="edit-odds" data-index="${index}" inputmode="decimal" value="${Number(selection.odds || 0).toFixed(2)}" required>
           </details>
 
           <div class="edit-selection-section-title edit-result-title">Фактичний результат</div>
@@ -313,9 +321,6 @@ function openEditBet(id) {
           <button type="button" class="${state.state === 'score' ? 'selected' : ''}" data-edit-selection-state="${index}" data-state="score">За рахунком</button>
           <button type="button" class="${state.state === 'void' ? 'selected' : ''}" data-edit-selection-state="${index}" data-state="void">Повернення</button>
         </div>
-
-        <label for="edit-odds-${index}">Коефіцієнт</label>
-        <input id="edit-odds-${index}" class="edit-odds" data-index="${index}" inputmode="decimal" value="${Number(selection.odds || 0).toFixed(2)}" required>
 
         <div class="edit-score-grid">
           <div>
@@ -347,6 +352,9 @@ function openEditBet(id) {
             <input id="edit-bet-stake" inputmode="decimal" value="${(Number(bet.stake || 0) / 100).toFixed(2)}" required>
           </div>
         </div>
+
+        <label for="edit-bet-date">Час ставки</label>
+        <input id="edit-bet-date" class="edit-bet-date" type="datetime-local" value="${esc(editBetDateValue)}" required>
 
         <label for="edit-bet-status">Статус ставки</label>
         <select id="edit-bet-status">
@@ -594,6 +602,7 @@ function openEditBet(id) {
       }));
       const change = {
         number:Number($('#edit-bet-number').value),
+        date:$('#edit-bet-date').value,
         stake:cents($('#edit-bet-stake').value),
         odds:selectionEdits.map(item => item.odds),
         selectionEdits,
