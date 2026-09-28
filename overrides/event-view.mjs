@@ -12,6 +12,10 @@ const isTeam = (candidate, team) => team.id && candidate.id ? String(candidate.i
 const includesTeam = (row, team) => row.competitors?.some(candidate => isTeam(candidate, team));
 
 export function eventHeader(app, event) {
+  const completed=completedResult(app,event);
+  if(completed){
+    return `<div class="event-header-inner completed-event-header-inner"><button data-action="sports-event-back" aria-label="Назад">${icon('chevron-left')}</button><div class="event-heading"><h1>${esc(sports[event.sport] || 'Спорт')}</h1></div><button data-action="sports-event-alert" aria-label="Сповіщення про матч">${icon('bell')}</button></div>`;
+  }
   return `<div class="event-header-inner"><button data-action="sports-event-back" aria-label="Назад">${icon('chevron-left')}</button><div class="event-heading"><h1>${esc(sports[event.sport] || 'Спорт')}</h1><p>${esc([event.categoryName, event.tournamentName].filter(Boolean).join('. '))}</p></div><button class="favorite ${app.favorites.has(app.detailId) ? 'selected' : ''}" data-action="sports-favorite" data-value="${esc(app.detailId)}" aria-label="Вибране">${icon('star')}</button><button data-action="sports-event-alert" aria-label="Сповіщення про матч">${icon('bell')}</button></div>`;
 }
 
@@ -66,6 +70,10 @@ function completedScore(result) {
     const match=/\((\d+-\d+(?:,\s*\d+-\d+)*)\)/.exec(String(result.scoreText || ''));
     if (match) periods=match[1].split(/,\s*/).map(row=>row.split('-').map(Number));
   }
+  if (!periods.length && total && Number.isFinite(total[0]) && Number.isFinite(total[1])) {
+    const played=Math.max(0,Math.min(5,Number(total[0])+Number(total[1])));
+    if(played) periods=Array.from({length:played},()=>[null,null]);
+  }
   return {total,periods};
 }
 
@@ -85,7 +93,7 @@ function completedOverview(app,event,result) {
   const scoreText=total ? total.join(':') : '—:—';
   return `<section class="completed-match-card">
     <nav class="completed-match-tabs">
-      <button class="active" type="button">${esc(scoreText)}</button>
+      <button class="active" type="button" aria-label="Рахунок"><span class="completed-score-pill">${esc(scoreText)}</span></button>
       <button type="button" data-action="sports-event-tab" data-value="h2h">H2H</button>
     </nav>
     <div class="completed-match-scoreboard">
