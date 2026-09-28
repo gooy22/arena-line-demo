@@ -212,6 +212,48 @@ export class Accounts {
     this._persist(data, account);
     return bet;
   }
+  duplicateBet(id) {
+    const data = this.read();
+    const account = data.find(a => a.email === this.storage.getItem(SESSION));
+    if (!account) throw new Error('Сначала войдите в аккаунт');
+    this.ensureBetNumbers(account);
+    const source = account.bets.find(item => item.id === id);
+    if (!source) throw new Error('Ставка не найдена');
+
+    const duplicate = clone(source);
+    const duplicateId = crypto.randomUUID();
+    const cost = Number.isSafeInteger(Number(source.cost))
+      ? Number(source.cost)
+      : betTotals(Number(source.stake || 0), source.selections || [], source.type, source.systemSize).cost;
+    const payout = source.status === 'open' ? 0 : Math.max(0, Number(source.payout || 0));
+    const nextBalance = account.balance - cost + payout;
+    if (!Number.isSafeInteger(nextBalance) || nextBalance < 0) {
+      throw new Error('Недостаточно средств для дублирования ставки');
+    }
+
+    duplicate.id = duplicateId;
+    duplicate.number = Math.max(0, ...account.bets.map(bet => Number(bet.number) || 0), account.bets.length) + 1;
+    duplicate.hidden = false;
+    duplicate.duplicatedFrom = source.id;
+    duplicate.duplicatedAt = new Date().toISOString();
+
+    account.balance = nextBalance;
+    account.bets.unshift(duplicate);
+
+    if (payout > 0 && duplicate.status !== 'open') {
+      account.payments.unshift({
+        id:'bet:' + duplicateId,
+        type:duplicate.status === 'cashout' ? 'bet-cashout' : 'bet-payout',
+        amount:payout,
+        betId:duplicateId,
+        date:duplicate.settledAt || duplicate.duplicatedAt
+      });
+    }
+
+    this._persist(data, account);
+    return duplicate;
+  }
+
   hideBet(id) {
     const data = this.read(), account = data.find(a => a.email === this.storage.getItem(SESSION));
     const bet = account?.bets.find(b => b.id === id);
