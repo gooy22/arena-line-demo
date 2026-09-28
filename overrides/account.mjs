@@ -230,6 +230,7 @@ export class Accounts {
       if (bet.status !== 'open') continue;
       for (const selection of bet.selections) {
         if (selection.settlement) continue;
+        if (selection.manualOutcomeEdit) continue;
         const confirmed = results.get(String(selection.eventId));
         const result = settleSelection(selection, confirmed);
         if (result) {
@@ -331,6 +332,12 @@ export class Accounts {
       return score;
     };
 
+    const exactScoreFromLabel = value => {
+      const match = String(value || '').match(/(?:^|\s)(\d{1,2})\s*[:\-]\s*(\d{1,2})(?:$|\s)/);
+      if (!match) return null;
+      return [Number(match[1]),Number(match[2])];
+    };
+
     if (Array.isArray(changes.odds)) {
       changes.odds.forEach((odd,index) => {
         if (odd == null || !selections[index]) return;
@@ -359,6 +366,52 @@ export class Accounts {
           selection.odds = odd;
         }
 
+        const nextMarketName = edit.marketName == null ? String(selection.marketName || '') : String(edit.marketName).trim();
+        const nextLabel = edit.label == null ? String(selection.label || '') : String(edit.label).trim();
+        if (!nextMarketName || nextMarketName.length > 180) {
+          throw new Error(`Некорректний ринок матча #${index + 1}`);
+        }
+        if (!nextLabel || nextLabel.length > 180) {
+          throw new Error(`Некорректний вибір матча #${index + 1}`);
+        }
+
+        const marketChanged = nextMarketName !== String(selection.marketName || '');
+        const labelChanged = nextLabel !== String(selection.label || '');
+
+        if (marketChanged || labelChanged) {
+          if (!selection.manualOriginalOutcome) {
+            selection.manualOriginalOutcome = {
+              id:selection.id,
+              marketName:selection.marketName,
+              label:selection.label,
+              shortLabel:selection.shortLabel,
+              outcomeType:selection.outcomeType,
+              odds:selection.odds
+            };
+          }
+
+          selection.marketName = nextMarketName;
+          selection.label = nextLabel;
+          selection.shortLabel = nextLabel;
+          selection.manualOutcomeEdit = true;
+          selection.manualOutcomeEditedAt = new Date().toISOString();
+
+          const teams = teamNames(selection);
+          const normalizedLabel = normalized(nextLabel);
+          if (/^(?:п1|p1)$/i.test(nextLabel) || (teams[0] && normalized(teams[0]) === normalizedLabel)) {
+            selection.outcomeType = 0;
+          } else if (/^(?:п2|p2)$/i.test(nextLabel) || (teams[1] && normalized(teams[1]) === normalizedLabel)) {
+            selection.outcomeType = 3;
+          } else {
+            delete selection.outcomeType;
+          }
+
+          delete selection.settlement;
+        } else {
+          selection.marketName = nextMarketName;
+          selection.label = nextLabel;
+        }
+
         const state = String(edit.state || 'open');
         const score = makeScore(edit.score1,edit.score2,index);
         const previousSettlement = selection.settlement ? {...selection.settlement} : {};
@@ -376,6 +429,28 @@ export class Accounts {
             manual:true,
             date:new Date().toISOString(),
             ...(score.every(value => value != null) ? {score,periods:[]} : {})
+          };
+          return;
+        }
+
+        if (state === 'score') {
+          if (!score.every(value => value != null)) {
+            throw new Error(`Вкажіть фактичний рахунок матча #${index + 1}`);
+          }
+          const selectedScore = exactScoreFromLabel(selection.label);
+          if (!selectedScore) {
+            throw new Error(`Для розрахунку за рахунком вибір матча #${index + 1} повинен містити рахунок, наприклад 3:2`);
+          }
+          const won = selectedScore[0] === score[0] && selectedScore[1] === score[1];
+          selection.settlement = {
+            ...previousSettlement,
+            status:won ? 'won' : 'lost',
+            factor:won ? selection.odds : 0,
+            manual:true,
+            manualScoreMarket:true,
+            date:new Date().toISOString(),
+            score,
+            periods:[]
           };
           return;
         }
