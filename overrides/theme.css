@@ -2546,3 +2546,30 @@ body.bet-detail-open .bet-detail-footer{
 .edit-manual-fallback>summary{padding:10px 0 2px!important;color:#8f897f!important;font-size:11px!important;line-height:16px!important;cursor:pointer!important}
 .edit-manual-fallback>label{display:block!important;margin:8px 0 6px!important;color:#aaa69d!important;font-size:11px!important}
 .edit-manual-fallback input{width:100%!important}
+
+
+/* v114: duplicate bet action in the existing editor. */
+.edit-bet-duplicate{
+  width:100%!important;
+  min-height:44px!important;
+  margin-top:8px!important;
+  padding:0 14px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:8px!important;
+  border:1px solid #403d38!important;
+  border-radius:11px!important;
+  background:#2a2825!important;
+  color:#f5f4f1!important;
+  font-size:13px!important;
+  font-weight:600!important;
+}
+.edit-bet-duplicate svg{
+  width:16px!important;
+  height:16px!important;
+  flex:0 0 16px!important;
+}
+.edit-bet-duplicate:active{
+  background:#34312d!important;
+}
