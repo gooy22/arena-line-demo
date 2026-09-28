@@ -313,21 +313,42 @@ export class Accounts {
     account.payments.unshift({ id: crypto.randomUUID(), type, amount, date: new Date().toISOString() });
     this._persist(data, account);
   }
-  ensureBetNumbers(account) {
-    const ordered = [...account.bets].sort((a,b) => new Date(a.date) - new Date(b.date));
+  ensureBetNumbers(account, releasedNumber = null) {
+    const all = Array.isArray(account?.bets) ? account.bets : [];
+    for (const hidden of all.filter(bet => bet.hidden)) {
+      const number = Number(hidden.number);
+      if (Number.isSafeInteger(number) && !Number.isSafeInteger(Number(hidden.hiddenNumber))) hidden.hiddenNumber = number;
+      delete hidden.number;
+    }
+
+    const ordered = all
+      .filter(bet => !bet.hidden)
+      .sort((a,b) => new Date(a.date || 0) - new Date(b.date || 0));
     if (!ordered.length) return;
+
     const numbers = ordered.map(bet => Number(bet.number));
+    const finite = numbers.filter(Number.isSafeInteger);
+    const released = Number(releasedNumber);
+    const firstCandidates = [...finite, ...(Number.isSafeInteger(released) ? [released] : [])];
+    const first = firstCandidates.length ? Math.min(...firstCandidates) : 1;
+
     const valid = numbers.every(number => Number.isSafeInteger(number)) &&
       new Set(numbers).size === numbers.length &&
-      numbers.every((number,index) => index === 0 || number === numbers[index - 1] + 1);
+      numbers.every((number,index) => number === first + index);
     if (valid) return;
 
-    // Preserve an existing external numbering range when repairing legacy data.
-    // Bet numbers are not tied to 1..N: 498,499,500 is just as valid as 1,2,3.
-    const finite = numbers.filter(Number.isSafeInteger);
-    const latest = finite.length ? Math.max(...finite) : ordered.length;
-    const first = latest - ordered.length + 1;
     ordered.forEach((bet,index) => { bet.number = first + index; });
+  }
+  nextBetNumber(account) {
+    this.ensureBetNumbers(account);
+    const visible = (account?.bets || []).filter(bet => !bet.hidden);
+    const numbers = visible.map(bet => Number(bet.number)).filter(Number.isSafeInteger);
+    if (numbers.length) return Math.max(...numbers) + 1;
+    const released = (account?.bets || [])
+      .filter(bet => bet.hidden)
+      .map(bet => Number(bet.hiddenNumber))
+      .filter(Number.isSafeInteger);
+    return released.length ? Math.max(...released) : 1;
   }
   editBet(id, changes = {}) {
     const data = this.read();
