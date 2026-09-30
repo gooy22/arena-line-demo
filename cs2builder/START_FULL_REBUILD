@@ -1,9 +1,10 @@
-v6 merged roster-aware + opponent-adjusted + VRS-details rebuild
-raw_unique_maps=41665
+v6 final candidate
+corpus_maps=41665
 asof=snapshot_date<=D-1
-roster_hash_identity=true
+top150_dedicated=true
+top150_oof_soft_voting=true
+roster_aware=true
 vrs_detail_strength=true
 player_distribution=true
 snapshot_freshness=true
-models=rf,extra_trees,hist_gb,xgboost
-trigger=2026-09-30T17:05Z
+trigger=2026-09-30T17:09Z
