@@ -29,6 +29,7 @@ PLAYER_PATH = ART / "player_snapshots.csv"
 ALIASES_PATH = ART / "team_aliases.csv"
 UI_PATH = ART / "ui_teams.json"
 META_PATH = ART / "saved_model_metadata.json"
+LIVE_STATE_PATH = ART / "live_state_v7.joblib"
 
 MAP_TO_INTERNAL = {
     "ancient": "anc",
@@ -235,6 +236,71 @@ def _compare_rows(expected: pd.Series, actual: pd.Series, cols: list[str]) -> li
     return diffs
 
 
+def _load_precomputed_state(artifact, metadata) -> bool:
+    if not LIVE_STATE_PATH.exists():
+        return False
+    bundle = joblib.load(LIVE_STATE_PATH)
+    required = {"teams","team_name_to_id","profiles","team_entity","h2h","prediction_date","parity"}
+    missing = required - set(bundle)
+    if missing:
+        raise RuntimeError(f"live_state_v7 missing keys: {sorted(missing)}")
+    if int(bundle.get("feature_count", 0)) != len(artifact.get("feature_columns", [])):
+        raise RuntimeError("live_state_v7 feature count does not match model")
+    h2h = {tuple(map(int,k)) if not isinstance(k, tuple) else tuple(map(int,k)): deque(v, maxlen=20)
+           for k,v in bundle["h2h"].items()}
+    with lock:
+        state.update({
+            "artifact": artifact,
+            "metadata": metadata,
+            "teams": list(bundle["teams"]),
+            "team_name_to_id": {str(k): int(v) for k,v in bundle["team_name_to_id"].items()},
+            "profiles": bundle["profiles"],
+            "team_entity": {int(k): int(v) for k,v in bundle["team_entity"].items()},
+            "h2h": h2h,
+            "prediction_date": bundle["prediction_date"],
+            "parity": bundle["parity"],
+            "phase": "ready",
+            "ready": True,
+            "error": None,
+        })
+    print("V7_LIVE_READY_PRECOMPUTED", json.dumps({
+        "teams": len(state["teams"]),
+        "profiles": len(state["profiles"]),
+        "feature_count": len(artifact["feature_columns"]),
+        "prediction_date": state["prediction_date"],
+        "parity_checks": len(state["parity"] or []),
+        "holdout_accuracy": metadata.get("holdout", {}).get("accuracy"),
+        "holdout_auc": metadata.get("holdout", {}).get("roc_auc"),
+    }), flush=True)
+    return True
+
+
+def export_live_state(path: Path = LIVE_STATE_PATH) -> Path:
+    if not state.get("ready"):
+        _bootstrap()
+    if not state.get("ready"):
+        raise RuntimeError(state.get("error") or "live state build failed")
+    payload = {
+        "version": 7,
+        "feature_count": len(state["artifact"]["feature_columns"]),
+        "teams": list(state["teams"]),
+        "team_name_to_id": dict(state["team_name_to_id"]),
+        "profiles": state["profiles"],
+        "team_entity": dict(state["team_entity"]),
+        "h2h": {tuple(map(int,k)): list(v) for k,v in state["h2h"].items()},
+        "prediction_date": state["prediction_date"],
+        "parity": state["parity"],
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    joblib.dump(payload, path, compress=6)
+    print("V7_LIVE_STATE_EXPORTED", json.dumps({
+        "path": str(path), "bytes": path.stat().st_size,
+        "teams": len(payload["teams"]), "profiles": len(payload["profiles"]),
+        "feature_count": payload["feature_count"]
+    }), flush=True)
+    return path
+
+
 def _bootstrap() -> None:
     with lock:
         state.update({"phase": "loading", "ready": False, "error": None})
@@ -246,13 +312,15 @@ def _bootstrap() -> None:
         artifact = joblib.load(MODEL_PATH)
         if not isinstance(artifact, dict) or "model" not in artifact or len(artifact.get("feature_columns", [])) != 253:
             raise RuntimeError("Expected v7 253-feature saved_model.joblib")
+        metadata = json.loads(META_PATH.read_text(encoding="utf-8"))
+        if _load_precomputed_state(artifact, metadata):
+            return
 
         matches = pd.read_csv(MATCHES_PATH)
         ranking = pd.read_csv(RANKING_PATH)
         rosters = pd.read_csv(ROSTER_PATH)
         players = pd.read_csv(PLAYER_PATH)
         aliases = pd.read_csv(ALIASES_PATH)
-        metadata = json.loads(META_PATH.read_text(encoding="utf-8"))
         ui = json.loads(UI_PATH.read_text(encoding="utf-8"))
         ui = [x for x in ui if bool(x.get("maps", 0) >= 12)]
         teams = sorted(ui, key=lambda x: str(x["team_name"]).lower())
