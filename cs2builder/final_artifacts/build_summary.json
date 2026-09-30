@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-30T16:37:18.201874Z",
+  "generated_at": "2026-09-30T16:44:31.557394Z",
   "unique_map_rows": 41665,
   "unique_teams": 1365,
   "date_min": "2025-01-03",
@@ -7,7 +7,7 @@
   "training_samples": 31822,
   "ranking_snapshot_rows": 7297,
   "roster_snapshot_rows": 7297,
-  "player_snapshot_rows": 300,
+  "player_snapshot_rows": 8230,
   "team_map_snapshot_rows": 76504,
   "cross_id_roster_aliases": 54,
   "top150_status": {
@@ -19,141 +19,149 @@
   "model": {
     "selected_model": "random_forest",
     "all_samples_total": 31822,
-    "samples_total": 19265,
-    "quality_filter": "both ASOF VRS ranks <=150 and both teams >=12 prior maps",
-    "train_samples": 15625,
-    "holdout_samples": 3640,
+    "samples_total": 31822,
+    "quality_filter": "diagnostic only: both ASOF VRS ranks <=150",
+    "train_samples": 24922,
+    "holdout_samples": 6900,
     "train_date_min": "2025-01-17",
-    "train_date_max": "2026-05-23",
-    "holdout_date_min": "2026-05-24",
+    "train_date_max": "2026-05-22",
+    "holdout_date_min": "2026-05-23",
     "holdout_date_max": "2026-09-30",
     "models": {
       "random_forest": {
         "folds": [
           {
-            "accuracy": 0.5774040534713238,
-            "roc_auc": 0.609218305656789,
-            "log_loss": 0.6751538416212984,
-            "brier": 0.2411348816242667,
+            "accuracy": 0.6037619488128276,
+            "roc_auc": 0.6311206804090305,
+            "log_loss": 0.6668006301863367,
+            "brier": 0.23707652758016745,
             "threshold": 0.5,
-            "n": 2319
+            "n": 3243
           },
           {
-            "accuracy": 0.5995876288659794,
-            "roc_auc": 0.6356110303248154,
-            "log_loss": 0.6634681657815333,
-            "brier": 0.23556343977451594,
+            "accuracy": 0.6155334438916529,
+            "roc_auc": 0.6602935764899188,
+            "log_loss": 0.6532928400656393,
+            "brier": 0.23065536732040418,
             "threshold": 0.5,
-            "n": 2425
+            "n": 3618
           },
           {
-            "accuracy": 0.5712507778469197,
-            "roc_auc": 0.6085817134461959,
-            "log_loss": 0.675186670896097,
-            "brier": 0.24111142437266736,
+            "accuracy": 0.6010733452593918,
+            "roc_auc": 0.6445206228531855,
+            "log_loss": 0.6593041126919612,
+            "brier": 0.23364288977382236,
             "threshold": 0.5,
-            "n": 3214
+            "n": 5031
           },
           {
-            "accuracy": 0.5769230769230769,
-            "roc_auc": 0.6139238038211305,
-            "log_loss": 0.6723668688418559,
-            "brier": 0.23982564539319215,
+            "accuracy": 0.6045918367346939,
+            "roc_auc": 0.6507760422483111,
+            "log_loss": 0.6570239392788348,
+            "brier": 0.23254309249990643,
             "threshold": 0.5,
-            "n": 2522
+            "n": 3920
           },
           {
-            "accuracy": 0.6014492753623188,
-            "roc_auc": 0.6335036152752527,
-            "log_loss": 0.6653939454277792,
-            "brier": 0.2364863949964798,
+            "accuracy": 0.6053552677633882,
+            "roc_auc": 0.64742270832537,
+            "log_loss": 0.6584734908609707,
+            "brier": 0.23324104939540732,
             "threshold": 0.5,
-            "n": 2898
+            "n": 5714
           }
         ],
         "pooled": {
-          "accuracy": 0.5880550156974137,
-          "roc_auc": 0.6197644546718474,
-          "log_loss": 0.67040386590439,
-          "brier": 0.23886553298363414,
-          "threshold": 0.515,
-          "n": 13378
+          "accuracy": 0.6071262659109914,
+          "roc_auc": 0.6467683901392669,
+          "log_loss": 0.6587874337432709,
+          "brier": 0.23335110820425517,
+          "threshold": 0.495,
+          "n": 21526
         },
-        "accuracy_mean": 0.5853229624939238,
-        "auc_mean": 0.6201676937048368
+        "accuracy_mean": 0.606063168492391,
+        "auc_mean": 0.6468267260651632
       },
       "xgboost": {
         "folds": [
           {
-            "accuracy": 0.5554118154376887,
-            "roc_auc": 0.565996616016036,
-            "log_loss": 0.7443501353263855,
-            "brier": 0.2685408890247345,
+            "accuracy": 0.5679925994449584,
+            "roc_auc": 0.6003494543294227,
+            "log_loss": 0.7148146033287048,
+            "brier": 0.25547081232070923,
             "threshold": 0.5,
-            "n": 2319
+            "n": 3243
           },
           {
-            "accuracy": 0.5756701030927835,
-            "roc_auc": 0.6079821171818836,
-            "log_loss": 0.696867823600769,
-            "brier": 0.24908703565597534,
+            "accuracy": 0.6025428413488115,
+            "roc_auc": 0.6404011973632091,
+            "log_loss": 0.6768397092819214,
+            "brier": 0.23960058391094208,
             "threshold": 0.5,
-            "n": 2425
+            "n": 3618
           },
           {
-            "accuracy": 0.5625388923459863,
-            "roc_auc": 0.5954059601933526,
-            "log_loss": 0.698530375957489,
-            "brier": 0.25057050585746765,
+            "accuracy": 0.5931226396342676,
+            "roc_auc": 0.6346537707917219,
+            "log_loss": 0.6727253794670105,
+            "brier": 0.2391476035118103,
             "threshold": 0.5,
-            "n": 3214
+            "n": 5031
           },
           {
-            "accuracy": 0.5721649484536082,
-            "roc_auc": 0.6017324403608789,
-            "log_loss": 0.6918364763259888,
-            "brier": 0.24801549315452576,
+            "accuracy": 0.6005102040816327,
+            "roc_auc": 0.6392724000313421,
+            "log_loss": 0.6759825348854065,
+            "brier": 0.24004557728767395,
             "threshold": 0.5,
-            "n": 2522
+            "n": 3920
           },
           {
-            "accuracy": 0.5821256038647343,
-            "roc_auc": 0.6178552098460506,
-            "log_loss": 0.6750331521034241,
-            "brier": 0.24086591601371765,
+            "accuracy": 0.59957997899895,
+            "roc_auc": 0.6440624537509397,
+            "log_loss": 0.6687646508216858,
+            "brier": 0.2371692806482315,
             "threshold": 0.5,
-            "n": 2898
+            "n": 5714
           }
         ],
         "pooled": {
-          "accuracy": 0.5705636119001346,
-          "roc_auc": 0.5967132627227617,
-          "log_loss": 0.6998195648193359,
-          "brier": 0.25083276629447937,
-          "threshold": 0.515,
-          "n": 13378
+          "accuracy": 0.5947691164173557,
+          "roc_auc": 0.6331466848653527,
+          "log_loss": 0.6792996525764465,
+          "brier": 0.24132129549980164,
+          "threshold": 0.51,
+          "n": 21526
         },
-        "accuracy_mean": 0.5695822726389601,
-        "auc_mean": 0.5977944687196404
+        "accuracy_mean": 0.592749652701724,
+        "auc_mean": 0.6317478552533271
       }
     },
     "holdout": {
-      "accuracy": 0.5986263736263736,
-      "roc_auc": 0.6341816473339162,
-      "log_loss": 0.6664294145912337,
-      "brier": 0.23682665552081758,
-      "threshold": 0.515,
-      "n": 3640
+      "accuracy": 0.6039130434782609,
+      "roc_auc": 0.6450289138094869,
+      "log_loss": 0.6600620408907579,
+      "brier": 0.23392154369557536,
+      "threshold": 0.495,
+      "n": 6900
+    },
+    "quality_holdout": {
+      "accuracy": 0.5984294611427025,
+      "roc_auc": 0.6363737425408946,
+      "log_loss": 0.6652630428217445,
+      "brier": 0.23631207313069724,
+      "threshold": 0.495,
+      "n": 3693
     },
     "vrs_baseline_holdout": {
-      "accuracy": 0.5876373626373627,
-      "roc_auc": 0.6188562556464353,
-      "log_loss": 0.6862589690796714,
-      "brier": 0.24401291205526912,
+      "accuracy": 0.5878918254456054,
+      "roc_auc": 0.619619972322057,
+      "log_loss": 0.6934528814670843,
+      "brier": 0.24617561711630606,
       "threshold": 0.5,
-      "n": 3640
+      "n": 6508
     },
-    "feature_count": 58
+    "feature_count": 89
   },
   "leakage_guard": "All external snapshots are selected with snapshot_date <= D-1. Same-day form/Elo/map state updates only after all maps on D are featurized.",
   "side_note": "HLTV results corpus has no side-round split; CT/T fields are null and side_data_available=0, never fabricated."
