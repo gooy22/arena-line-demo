@@ -1,0 +1,1045 @@
+[
+  {
+    "rank": 1,
+    "team_id": 7020,
+    "team_name": "Spirit",
+    "maps": 282,
+    "status": "READY"
+  },
+  {
+    "rank": 2,
+    "team_id": 4494,
+    "team_name": "MOUZ",
+    "maps": 329,
+    "status": "READY"
+  },
+  {
+    "rank": 3,
+    "team_id": 11283,
+    "team_name": "Falcons",
+    "maps": 319,
+    "status": "READY"
+  },
+  {
+    "rank": 4,
+    "team_id": 13286,
+    "team_name": "FUT",
+    "maps": 269,
+    "status": "READY"
+  },
+  {
+    "rank": 5,
+    "team_id": 9565,
+    "team_name": "Vitality",
+    "maps": 335,
+    "status": "READY"
+  },
+  {
+    "rank": 6,
+    "team_id": 12468,
+    "team_name": "Legacy",
+    "maps": 389,
+    "status": "READY"
+  },
+  {
+    "rank": 7,
+    "team_id": 8297,
+    "team_name": "FURIA",
+    "maps": 368,
+    "status": "READY"
+  },
+  {
+    "rank": 8,
+    "team_id": 5995,
+    "team_name": "G2",
+    "maps": 342,
+    "status": "READY"
+  },
+  {
+    "rank": 9,
+    "team_id": 9996,
+    "team_name": "9z",
+    "maps": 386,
+    "status": "READY"
+  },
+  {
+    "rank": 10,
+    "team_id": 6667,
+    "team_name": "FaZe",
+    "maps": 295,
+    "status": "READY"
+  },
+  {
+    "rank": 11,
+    "team_id": 4608,
+    "team_name": "Natus Vincere",
+    "maps": 288,
+    "status": "READY"
+  },
+  {
+    "rank": 12,
+    "team_id": 11861,
+    "team_name": "Aurora",
+    "maps": 430,
+    "status": "READY"
+  },
+  {
+    "rank": 13,
+    "team_id": 11241,
+    "team_name": "B8",
+    "maps": 366,
+    "status": "READY"
+  },
+  {
+    "rank": 14,
+    "team_id": 13117,
+    "team_name": "Inner Circle",
+    "maps": 273,
+    "status": "READY"
+  },
+  {
+    "rank": 15,
+    "team_id": 12394,
+    "team_name": "BETBOOM",
+    "maps": 440,
+    "status": "READY"
+  },
+  {
+    "rank": 16,
+    "team_id": 7532,
+    "team_name": "BIG",
+    "maps": 398,
+    "status": "READY"
+  },
+  {
+    "rank": 17,
+    "team_id": 5973,
+    "team_name": "Liquid",
+    "maps": 301,
+    "status": "READY"
+  },
+  {
+    "rank": 18,
+    "team_id": 12467,
+    "team_name": "PARIVISION",
+    "maps": 458,
+    "status": "READY"
+  },
+  {
+    "rank": 19,
+    "team_id": 6248,
+    "team_name": "The MongolZ",
+    "maps": 319,
+    "status": "READY"
+  },
+  {
+    "rank": 20,
+    "team_id": 6665,
+    "team_name": "Astralis",
+    "maps": 343,
+    "status": "READY"
+  },
+  {
+    "rank": 21,
+    "team_id": 9215,
+    "team_name": "MIBR",
+    "maps": 293,
+    "status": "READY"
+  },
+  {
+    "rank": 22,
+    "team_id": 12474,
+    "team_name": "Alliance",
+    "maps": 503,
+    "status": "READY"
+  },
+  {
+    "rank": 23,
+    "team_id": 13592,
+    "team_name": "magic",
+    "maps": 169,
+    "status": "READY"
+  },
+  {
+    "rank": 24,
+    "team_id": 7175,
+    "team_name": "HEROIC",
+    "maps": 368,
+    "status": "READY"
+  },
+  {
+    "rank": 25,
+    "team_id": 11581,
+    "team_name": "HOTU",
+    "maps": 391,
+    "status": "READY"
+  },
+  {
+    "rank": 26,
+    "team_id": 4863,
+    "team_name": "TYLOO",
+    "maps": 304,
+    "status": "READY"
+  },
+  {
+    "rank": 27,
+    "team_id": 8474,
+    "team_name": "100 Thieves",
+    "maps": 167,
+    "status": "READY"
+  },
+  {
+    "rank": 28,
+    "team_id": 9928,
+    "team_name": "GamerLegion",
+    "maps": 324,
+    "status": "READY"
+  },
+  {
+    "rank": 29,
+    "team_id": 4411,
+    "team_name": "Ninjas in Pyjamas",
+    "maps": 395,
+    "status": "READY"
+  },
+  {
+    "rank": 30,
+    "team_id": 12916,
+    "team_name": "Betclic",
+    "maps": 408,
+    "status": "READY"
+  },
+  {
+    "rank": 31,
+    "team_id": 10621,
+    "team_name": "1win",
+    "maps": 438,
+    "status": "READY"
+  },
+  {
+    "rank": 32,
+    "team_id": 10245,
+    "team_name": "JiJieHao",
+    "maps": 345,
+    "status": "READY"
+  },
+  {
+    "rank": 33,
+    "team_id": 4991,
+    "team_name": "fnatic",
+    "maps": 489,
+    "status": "READY"
+  },
+  {
+    "rank": 34,
+    "team_id": 13926,
+    "team_name": "DENDELE",
+    "maps": 44,
+    "status": "PARTIAL"
+  },
+  {
+    "rank": 35,
+    "team_id": 4914,
+    "team_name": "3DMAX",
+    "maps": 376,
+    "status": "PARTIAL"
+  },
+  {
+    "rank": 36,
+    "team_id": 11737,
+    "team_name": "EYEBALLERS",
+    "maps": 446,
+    "status": "READY"
+  },
+  {
+    "rank": 37,
+    "team_id": 12895,
+    "team_name": "K27",
+    "maps": 443,
+    "status": "READY"
+  },
+  {
+    "rank": 38,
+    "team_id": 12878,
+    "team_name": "BC.Game",
+    "maps": 305,
+    "status": "READY"
+  },
+  {
+    "rank": 39,
+    "team_id": 8840,
+    "team_name": "Lynn Vision",
+    "maps": 277,
+    "status": "READY"
+  },
+  {
+    "rank": 40,
+    "team_id": 5378,
+    "team_name": "Virtus.pro",
+    "maps": 247,
+    "status": "READY"
+  },
+  {
+    "rank": 41,
+    "team_id": 12376,
+    "team_name": "M80",
+    "maps": 350,
+    "status": "READY"
+  },
+  {
+    "rank": 42,
+    "team_id": 4773,
+    "team_name": "paiN",
+    "maps": 312,
+    "status": "PARTIAL"
+  },
+  {
+    "rank": 43,
+    "team_id": 13027,
+    "team_name": "Nuclear TigeRES",
+    "maps": 434,
+    "status": "READY"
+  },
+  {
+    "rank": 44,
+    "team_id": 6290,
+    "team_name": "Luminosity",
+    "maps": 28,
+    "status": "PARTIAL"
+  },
+  {
+    "rank": 45,
+    "team_id": 13355,
+    "team_name": "Nemesis",
+    "maps": 284,
+    "status": "READY"
+  },
+  {
+    "rank": 46,
+    "team_id": 13518,
+    "team_name": "Acend",
+    "maps": 255,
+    "status": "READY"
+  },
+  {
+    "rank": 47,
+    "team_id": 10823,
+    "team_name": "INFINITE",
+    "maps": 147,
+    "status": "READY"
+  },
+  {
+    "rank": 48,
+    "team_id": 11712,
+    "team_name": "Sashi",
+    "maps": 570,
+    "status": "READY"
+  },
+  {
+    "rank": 49,
+    "team_id": 7969,
+    "team_name": "Nemiga",
+    "maps": 539,
+    "status": "READY"
+  },
+  {
+    "rank": 50,
+    "team_id": 6673,
+    "team_name": "NRG",
+    "maps": 337,
+    "status": "READY"
+  },
+  {
+    "rank": 51,
+    "team_id": 13679,
+    "team_name": "FOKUS",
+    "maps": 169,
+    "status": "READY"
+  },
+  {
+    "rank": 52,
+    "team_id": 12774,
+    "team_name": "FlyQuest",
+    "maps": 213,
+    "status": "READY"
+  },
+  {
+    "rank": 53,
+    "team_id": 13996,
+    "team_name": "BBL",
+    "maps": 36,
+    "status": "PARTIAL"
+  },
+  {
+    "rank": 54,
+    "team_id": 12257,
+    "team_name": "Wildcard",
+    "maps": 299,
+    "status": "READY"
+  },
+  {
+    "rank": 55,
+    "team_id": 13479,
+    "team_name": "Omega",
+    "maps": 237,
+    "status": "READY"
+  },
+  {
+    "rank": 56,
+    "team_id": 13946,
+    "team_name": "Jam",
+    "maps": 18,
+    "status": "PARTIAL"
+  },
+  {
+    "rank": 57,
+    "team_id": 13814,
+    "team_name": "INOX Division",
+    "maps": 221,
+    "status": "READY"
+  },
+  {
+    "rank": 58,
+    "team_id": 10577,
+    "team_name": "SINNERS",
+    "maps": 544,
+    "status": "READY"
+  },
+  {
+    "rank": 59,
+    "team_id": 12536,
+    "team_name": "DEPO",
+    "maps": 137,
+    "status": "READY"
+  },
+  {
+    "rank": 60,
+    "team_id": 13973,
+    "team_name": "Color",
+    "maps": 66,
+    "status": "PARTIAL"
+  },
+  {
+    "rank": 61,
+    "team_id": 13104,
+    "team_name": "Iberian Soul",
+    "maps": 288,
+    "status": "READY"
+  },
+  {
+    "rank": 62,
+    "team_id": 11641,
+    "team_name": "Metizport",
+    "maps": 378,
+    "status": "READY"
+  },
+  {
+    "rank": 63,
+    "team_id": 13173,
+    "team_name": "Phantom",
+    "maps": 321,
+    "status": "READY"
+  },
+  {
+    "rank": 64,
+    "team_id": 12967,
+    "team_name": "WW",
+    "maps": 238,
+    "status": "READY"
+  },
+  {
+    "rank": 65,
+    "team_id": 9455,
+    "team_name": "Imperial",
+    "maps": 435,
+    "status": "READY"
+  },
+  {
+    "rank": 66,
+    "team_id": 13617,
+    "team_name": "ex-RUBY",
+    "maps": 335,
+    "status": "READY"
+  },
+  {
+    "rank": 67,
+    "team_id": 11251,
+    "team_name": "Eternal Fire",
+    "maps": 540,
+    "status": "READY"
+  },
+  {
+    "rank": 68,
+    "team_id": 11609,
+    "team_name": "GenOne",
+    "maps": 574,
+    "status": "READY"
+  },
+  {
+    "rank": 69,
+    "team_id": 13375,
+    "team_name": "SportsBetExpert",
+    "maps": 138,
+    "status": "READY"
+  },
+  {
+    "rank": 70,
+    "team_id": 13908,
+    "team_name": "Butterfly",
+    "maps": 69,
+    "status": "PARTIAL"
+  },
+  {
+    "rank": 71,
+    "team_id": 10278,
+    "team_name": "9INE",
+    "maps": 520,
+    "status": "READY"
+  },
+  {
+    "rank": 72,
+    "team_id": 11837,
+    "team_name": "Fluxo",
+    "maps": 391,
+    "status": "READY"
+  },
+  {
+    "rank": 73,
+    "team_id": 13333,
+    "team_name": "ASTRAL",
+    "maps": 270,
+    "status": "READY"
+  },
+  {
+    "rank": 74,
+    "team_id": 9139,
+    "team_name": "BRUTE",
+    "maps": 262,
+    "status": "READY"
+  },
+  {
+    "rank": 75,
+    "team_id": 12194,
+    "team_name": "Rune Eaters",
+    "maps": 223,
+    "status": "READY"
+  },
+  {
+    "rank": 76,
+    "team_id": 13573,
+    "team_name": "ex-Zero Tenacity",
+    "maps": 317,
+    "status": "READY"
+  },
+  {
+    "rank": 77,
+    "team_id": 13486,
+    "team_name": "THUNDER dOWNUNDER",
+    "maps": 145,
+    "status": "READY"
+  },
+  {
+    "rank": 78,
+    "team_id": 12380,
+    "team_name": "CYBERSHOKE",
+    "maps": 615,
+    "status": "READY"
+  },
+  {
+    "rank": 79,
+    "team_id": 13178,
+    "team_name": "NOVAQ",
+    "maps": 304,
+    "status": "READY"
+  },
+  {
+    "rank": 80,
+    "team_id": 11312,
+    "team_name": "QUAZAR",
+    "maps": 139,
+    "status": "READY"
+  },
+  {
+    "rank": 81,
+    "team_id": 13838,
+    "team_name": "EAC",
+    "maps": 125,
+    "status": "READY"
+  },
+  {
+    "rank": 82,
+    "team_id": 10503,
+    "team_name": "OG",
+    "maps": 376,
+    "status": "READY"
+  },
+  {
+    "rank": 83,
+    "team_id": 13989,
+    "team_name": "UPGRADE",
+    "maps": 49,
+    "status": "PARTIAL"
+  },
+  {
+    "rank": 84,
+    "team_id": 12677,
+    "team_name": "Galorys",
+    "maps": 327,
+    "status": "READY"
+  },
+  {
+    "rank": 85,
+    "team_id": 12144,
+    "team_name": "BESTIA",
+    "maps": 366,
+    "status": "READY"
+  },
+  {
+    "rank": 86,
+    "team_id": 13181,
+    "team_name": "BASEMENT BOYS",
+    "maps": 284,
+    "status": "READY"
+  },
+  {
+    "rank": 87,
+    "team_id": 11955,
+    "team_name": "LAG",
+    "maps": 341,
+    "status": "READY"
+  },
+  {
+    "rank": 88,
+    "team_id": 13281,
+    "team_name": "Bushido Wildcats",
+    "maps": 331,
+    "status": "READY"
+  },
+  {
+    "rank": 89,
+    "team_id": 13619,
+    "team_name": "BET-M",
+    "maps": 195,
+    "status": "READY"
+  },
+  {
+    "rank": 90,
+    "team_id": 13924,
+    "team_name": "Black Phoenix",
+    "maps": 165,
+    "status": "PARTIAL"
+  },
+  {
+    "rank": 91,
+    "team_id": 13314,
+    "team_name": "KOLESIE",
+    "maps": 210,
+    "status": "READY"
+  },
+  {
+    "rank": 92,
+    "team_id": 13499,
+    "team_name": "Voca",
+    "maps": 224,
+    "status": "READY"
+  },
+  {
+    "rank": 93,
+    "team_id": 12267,
+    "team_name": "UNiTY",
+    "maps": 405,
+    "status": "READY"
+  },
+  {
+    "rank": 94,
+    "team_id": 13808,
+    "team_name": "Walczaki",
+    "maps": 147,
+    "status": "READY"
+  },
+  {
+    "rank": 95,
+    "team_id": 7187,
+    "team_name": "Nexus",
+    "maps": 477,
+    "status": "READY"
+  },
+  {
+    "rank": 96,
+    "team_id": 13214,
+    "team_name": "SPARTA",
+    "maps": 543,
+    "status": "READY"
+  },
+  {
+    "rank": 97,
+    "team_id": 12959,
+    "team_name": "ShindeN",
+    "maps": 391,
+    "status": "READY"
+  },
+  {
+    "rank": 98,
+    "team_id": 13901,
+    "team_name": "ex-RUSTEC",
+    "maps": 143,
+    "status": "PARTIAL"
+  },
+  {
+    "rank": 99,
+    "team_id": 12857,
+    "team_name": "FORZE Reload",
+    "maps": 452,
+    "status": "READY"
+  },
+  {
+    "rank": 100,
+    "team_id": 11699,
+    "team_name": "BAKS",
+    "maps": 100,
+    "status": "PARTIAL"
+  },
+  {
+    "rank": 101,
+    "team_id": 13304,
+    "team_name": "LP",
+    "maps": 298,
+    "status": "READY"
+  },
+  {
+    "rank": 102,
+    "team_id": 10459,
+    "team_name": "ARCRED",
+    "maps": 443,
+    "status": "READY"
+  },
+  {
+    "rank": 103,
+    "team_id": 13623,
+    "team_name": "STATE",
+    "maps": 174,
+    "status": "READY"
+  },
+  {
+    "rank": 104,
+    "team_id": 8536,
+    "team_name": "Ground Zero",
+    "maps": 244,
+    "status": "PARTIAL"
+  },
+  {
+    "rank": 105,
+    "team_id": 13124,
+    "team_name": "Marsborne",
+    "maps": 464,
+    "status": "READY"
+  },
+  {
+    "rank": 106,
+    "team_id": 12604,
+    "team_name": "Johnny Speeds",
+    "maps": 489,
+    "status": "READY"
+  },
+  {
+    "rank": 107,
+    "team_id": 12889,
+    "team_name": "G2 Ares",
+    "maps": 313,
+    "status": "READY"
+  },
+  {
+    "rank": 108,
+    "team_id": 6089,
+    "team_name": "The Last Resort",
+    "maps": 176,
+    "status": "READY"
+  },
+  {
+    "rank": 109,
+    "team_id": 13681,
+    "team_name": "Inner Circle Academy",
+    "maps": 166,
+    "status": "PARTIAL"
+  },
+  {
+    "rank": 110,
+    "team_id": 13776,
+    "team_name": "Just Players",
+    "maps": 199,
+    "status": "READY"
+  },
+  {
+    "rank": 111,
+    "team_id": 12604,
+    "team_name": "Johnny Speeds",
+    "maps": 489,
+    "status": "READY"
+  },
+  {
+    "rank": 112,
+    "team_id": 11446,
+    "team_name": "Leo",
+    "maps": 492,
+    "status": "READY"
+  },
+  {
+    "rank": 113,
+    "team_id": 12380,
+    "team_name": "CYBERSHOKE",
+    "maps": 615,
+    "status": "READY"
+  },
+  {
+    "rank": 114,
+    "team_id": 12609,
+    "team_name": "Lavked",
+    "maps": 252,
+    "status": "READY"
+  },
+  {
+    "rank": 115,
+    "team_id": 13799,
+    "team_name": "PsychoFace",
+    "maps": 88,
+    "status": "READY"
+  },
+  {
+    "rank": 116,
+    "team_id": 7900,
+    "team_name": "Spirit Academy",
+    "maps": 275,
+    "status": "READY"
+  },
+  {
+    "rank": 117,
+    "team_id": 7865,
+    "team_name": "HAVU",
+    "maps": 268,
+    "status": "READY"
+  },
+  {
+    "rank": 118,
+    "team_id": 12776,
+    "team_name": "Bounty Hunters",
+    "maps": 495,
+    "status": "READY"
+  },
+  {
+    "rank": 119,
+    "team_id": 13107,
+    "team_name": "Chicken Coop",
+    "maps": 221,
+    "status": "PARTIAL"
+  },
+  {
+    "rank": 120,
+    "team_id": 7120,
+    "team_name": "Entropy",
+    "maps": 150,
+    "status": "PARTIAL"
+  },
+  {
+    "rank": 121,
+    "team_id": 13724,
+    "team_name": "5star",
+    "maps": 111,
+    "status": "READY"
+  },
+  {
+    "rank": 122,
+    "team_id": 4869,
+    "team_name": "ENCE",
+    "maps": 466,
+    "status": "READY"
+  },
+  {
+    "rank": 123,
+    "team_id": 13991,
+    "team_name": "Azuolas",
+    "maps": 36,
+    "status": "PARTIAL"
+  },
+  {
+    "rank": 124,
+    "team_id": 13937,
+    "team_name": "Nordic Partners",
+    "maps": 31,
+    "status": "PARTIAL"
+  },
+  {
+    "rank": 125,
+    "team_id": 4246,
+    "team_name": "Enjoy",
+    "maps": 91,
+    "status": "PARTIAL"
+  },
+  {
+    "rank": 126,
+    "team_id": 12642,
+    "team_name": "RBLS",
+    "maps": 237,
+    "status": "PARTIAL"
+  },
+  {
+    "rank": 127,
+    "team_id": 10371,
+    "team_name": "NAVI Junior",
+    "maps": 249,
+    "status": "READY"
+  },
+  {
+    "rank": 128,
+    "team_id": 13759,
+    "team_name": "mellren",
+    "maps": 67,
+    "status": "PARTIAL"
+  },
+  {
+    "rank": 129,
+    "team_id": 13651,
+    "team_name": "ReThink",
+    "maps": 56,
+    "status": "PARTIAL"
+  },
+  {
+    "rank": 130,
+    "team_id": 10867,
+    "team_name": "MASONIC",
+    "maps": 287,
+    "status": "READY"
+  },
+  {
+    "rank": 131,
+    "team_id": 11768,
+    "team_name": "ODDIK",
+    "maps": 382,
+    "status": "READY"
+  },
+  {
+    "rank": 132,
+    "team_id": 13173,
+    "team_name": "Phantom",
+    "maps": 321,
+    "status": "READY"
+  },
+  {
+    "rank": 133,
+    "team_id": 13683,
+    "team_name": "WBT",
+    "maps": 87,
+    "status": "PARTIAL"
+  },
+  {
+    "rank": 134,
+    "team_id": 13012,
+    "team_name": "HYPERSPIRIT",
+    "maps": 226,
+    "status": "READY"
+  },
+  {
+    "rank": 135,
+    "team_id": 12087,
+    "team_name": "Lazer Cats",
+    "maps": 178,
+    "status": "READY"
+  },
+  {
+    "rank": 136,
+    "team_id": 13667,
+    "team_name": "NEXVOID",
+    "maps": 142,
+    "status": "READY"
+  },
+  {
+    "rank": 137,
+    "team_id": 12916,
+    "team_name": "Betclic",
+    "maps": 408,
+    "status": "READY"
+  },
+  {
+    "rank": 138,
+    "team_id": 13054,
+    "team_name": "PCIFIC",
+    "maps": 101,
+    "status": "PARTIAL"
+  },
+  {
+    "rank": 139,
+    "team_id": 6033,
+    "team_name": "Keyd Stars",
+    "maps": 333,
+    "status": "READY"
+  },
+  {
+    "rank": 141,
+    "team_id": 13552,
+    "team_name": "Endless Journey",
+    "maps": 69,
+    "status": "PARTIAL"
+  },
+  {
+    "rank": 142,
+    "team_id": 11514,
+    "team_name": "Rare Atom",
+    "maps": 371,
+    "status": "READY"
+  },
+  {
+    "rank": 143,
+    "team_id": 7653,
+    "team_name": "Isurus",
+    "maps": 169,
+    "status": "PARTIAL"
+  },
+  {
+    "rank": 144,
+    "team_id": 11110,
+    "team_name": "Honvéd",
+    "maps": 146,
+    "status": "PARTIAL"
+  },
+  {
+    "rank": 145,
+    "team_id": 9958,
+    "team_name": "Alter Ego",
+    "maps": 81,
+    "status": "PARTIAL"
+  },
+  {
+    "rank": 146,
+    "team_id": 12769,
+    "team_name": "Fisher College",
+    "maps": 167,
+    "status": "READY"
+  },
+  {
+    "rank": 147,
+    "team_id": 12800,
+    "team_name": "For Fun",
+    "maps": 29,
+    "status": "PARTIAL"
+  },
+  {
+    "rank": 148,
+    "team_id": 13599,
+    "team_name": "benched gods",
+    "maps": 91,
+    "status": "PARTIAL"
+  },
+  {
+    "rank": 149,
+    "team_id": 12426,
+    "team_name": "Passion UA",
+    "maps": 393,
+    "status": "READY"
+  },
+  {
+    "rank": 150,
+    "team_id": 6914,
+    "team_name": "Without a Roof",
+    "maps": 57,
+    "status": "PARTIAL"
+  }
+]

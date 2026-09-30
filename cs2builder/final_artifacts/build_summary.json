@@ -1,0 +1,160 @@
+{
+  "generated_at": "2026-09-30T16:37:18.201874Z",
+  "unique_map_rows": 41665,
+  "unique_teams": 1365,
+  "date_min": "2025-01-03",
+  "date_max": "2026-09-30",
+  "training_samples": 31822,
+  "ranking_snapshot_rows": 7297,
+  "roster_snapshot_rows": 7297,
+  "player_snapshot_rows": 300,
+  "team_map_snapshot_rows": 76504,
+  "cross_id_roster_aliases": 54,
+  "top150_status": {
+    "READY": 118,
+    "PARTIAL": 31,
+    "MISSING": 1
+  },
+  "ui_eligible_12plus": 149,
+  "model": {
+    "selected_model": "random_forest",
+    "all_samples_total": 31822,
+    "samples_total": 19265,
+    "quality_filter": "both ASOF VRS ranks <=150 and both teams >=12 prior maps",
+    "train_samples": 15625,
+    "holdout_samples": 3640,
+    "train_date_min": "2025-01-17",
+    "train_date_max": "2026-05-23",
+    "holdout_date_min": "2026-05-24",
+    "holdout_date_max": "2026-09-30",
+    "models": {
+      "random_forest": {
+        "folds": [
+          {
+            "accuracy": 0.5774040534713238,
+            "roc_auc": 0.609218305656789,
+            "log_loss": 0.6751538416212984,
+            "brier": 0.2411348816242667,
+            "threshold": 0.5,
+            "n": 2319
+          },
+          {
+            "accuracy": 0.5995876288659794,
+            "roc_auc": 0.6356110303248154,
+            "log_loss": 0.6634681657815333,
+            "brier": 0.23556343977451594,
+            "threshold": 0.5,
+            "n": 2425
+          },
+          {
+            "accuracy": 0.5712507778469197,
+            "roc_auc": 0.6085817134461959,
+            "log_loss": 0.675186670896097,
+            "brier": 0.24111142437266736,
+            "threshold": 0.5,
+            "n": 3214
+          },
+          {
+            "accuracy": 0.5769230769230769,
+            "roc_auc": 0.6139238038211305,
+            "log_loss": 0.6723668688418559,
+            "brier": 0.23982564539319215,
+            "threshold": 0.5,
+            "n": 2522
+          },
+          {
+            "accuracy": 0.6014492753623188,
+            "roc_auc": 0.6335036152752527,
+            "log_loss": 0.6653939454277792,
+            "brier": 0.2364863949964798,
+            "threshold": 0.5,
+            "n": 2898
+          }
+        ],
+        "pooled": {
+          "accuracy": 0.5880550156974137,
+          "roc_auc": 0.6197644546718474,
+          "log_loss": 0.67040386590439,
+          "brier": 0.23886553298363414,
+          "threshold": 0.515,
+          "n": 13378
+        },
+        "accuracy_mean": 0.5853229624939238,
+        "auc_mean": 0.6201676937048368
+      },
+      "xgboost": {
+        "folds": [
+          {
+            "accuracy": 0.5554118154376887,
+            "roc_auc": 0.565996616016036,
+            "log_loss": 0.7443501353263855,
+            "brier": 0.2685408890247345,
+            "threshold": 0.5,
+            "n": 2319
+          },
+          {
+            "accuracy": 0.5756701030927835,
+            "roc_auc": 0.6079821171818836,
+            "log_loss": 0.696867823600769,
+            "brier": 0.24908703565597534,
+            "threshold": 0.5,
+            "n": 2425
+          },
+          {
+            "accuracy": 0.5625388923459863,
+            "roc_auc": 0.5954059601933526,
+            "log_loss": 0.698530375957489,
+            "brier": 0.25057050585746765,
+            "threshold": 0.5,
+            "n": 3214
+          },
+          {
+            "accuracy": 0.5721649484536082,
+            "roc_auc": 0.6017324403608789,
+            "log_loss": 0.6918364763259888,
+            "brier": 0.24801549315452576,
+            "threshold": 0.5,
+            "n": 2522
+          },
+          {
+            "accuracy": 0.5821256038647343,
+            "roc_auc": 0.6178552098460506,
+            "log_loss": 0.6750331521034241,
+            "brier": 0.24086591601371765,
+            "threshold": 0.5,
+            "n": 2898
+          }
+        ],
+        "pooled": {
+          "accuracy": 0.5705636119001346,
+          "roc_auc": 0.5967132627227617,
+          "log_loss": 0.6998195648193359,
+          "brier": 0.25083276629447937,
+          "threshold": 0.515,
+          "n": 13378
+        },
+        "accuracy_mean": 0.5695822726389601,
+        "auc_mean": 0.5977944687196404
+      }
+    },
+    "holdout": {
+      "accuracy": 0.5986263736263736,
+      "roc_auc": 0.6341816473339162,
+      "log_loss": 0.6664294145912337,
+      "brier": 0.23682665552081758,
+      "threshold": 0.515,
+      "n": 3640
+    },
+    "vrs_baseline_holdout": {
+      "accuracy": 0.5876373626373627,
+      "roc_auc": 0.6188562556464353,
+      "log_loss": 0.6862589690796714,
+      "brier": 0.24401291205526912,
+      "threshold": 0.5,
+      "n": 3640
+    },
+    "feature_count": 58
+  },
+  "leakage_guard": "All external snapshots are selected with snapshot_date <= D-1. Same-day form/Elo/map state updates only after all maps on D are featurized.",
+  "side_note": "HLTV results corpus has no side-round split; CT/T fields are null and side_data_available=0, never fabricated."
+}

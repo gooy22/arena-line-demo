@@ -1,0 +1,57 @@
+[
+  {
+    "snapshot_date": "2025-11-02",
+    "offset": 0,
+    "error": "HTTPError('429 Client Error: Too Many Requests for url: https://api.csapi.de/players/stats?start_date=2025-08-05&end_date=2025-11-02&limit=100&offset=0&min_played=3&sideid=0')"
+  },
+  {
+    "snapshot_date": "2025-11-30",
+    "offset": 0,
+    "error": "HTTPError('429 Client Error: Too Many Requests for url: https://api.csapi.de/players/stats?start_date=2025-09-02&end_date=2025-11-30&limit=100&offset=0&min_played=3&sideid=0')"
+  },
+  {
+    "snapshot_date": "2026-01-04",
+    "offset": 0,
+    "error": "HTTPError('429 Client Error: Too Many Requests for url: https://api.csapi.de/players/stats?start_date=2025-10-07&end_date=2026-01-04&limit=100&offset=0&min_played=3&sideid=0')"
+  },
+  {
+    "snapshot_date": "2026-02-01",
+    "offset": 0,
+    "error": "HTTPError('429 Client Error: Too Many Requests for url: https://api.csapi.de/players/stats?start_date=2025-11-04&end_date=2026-02-01&limit=100&offset=0&min_played=3&sideid=0')"
+  },
+  {
+    "snapshot_date": "2026-03-01",
+    "offset": 0,
+    "error": "HTTPError('429 Client Error: Too Many Requests for url: https://api.csapi.de/players/stats?start_date=2025-12-02&end_date=2026-03-01&limit=100&offset=0&min_played=3&sideid=0')"
+  },
+  {
+    "snapshot_date": "2026-04-05",
+    "offset": 100,
+    "error": "HTTPError('429 Client Error: Too Many Requests for url: https://api.csapi.de/players/stats?start_date=2026-01-06&end_date=2026-04-05&limit=100&offset=100&min_played=3&sideid=0')"
+  },
+  {
+    "snapshot_date": "2026-05-03",
+    "offset": 100,
+    "error": "HTTPError('429 Client Error: Too Many Requests for url: https://api.csapi.de/players/stats?start_date=2026-02-03&end_date=2026-05-03&limit=100&offset=100&min_played=3&sideid=0')"
+  },
+  {
+    "snapshot_date": "2026-05-31",
+    "offset": 0,
+    "error": "HTTPError('429 Client Error: Too Many Requests for url: https://api.csapi.de/players/stats?start_date=2026-03-03&end_date=2026-05-31&limit=100&offset=0&min_played=3&sideid=0')"
+  },
+  {
+    "snapshot_date": "2026-07-05",
+    "offset": 0,
+    "error": "HTTPError('429 Client Error: Too Many Requests for url: https://api.csapi.de/players/stats?start_date=2026-04-07&end_date=2026-07-05&limit=100&offset=0&min_played=3&sideid=0')"
+  },
+  {
+    "snapshot_date": "2026-08-02",
+    "offset": 100,
+    "error": "HTTPError('429 Client Error: Too Many Requests for url: https://api.csapi.de/players/stats?start_date=2026-05-05&end_date=2026-08-02&limit=100&offset=100&min_played=3&sideid=0')"
+  },
+  {
+    "snapshot_date": "2026-09-06",
+    "offset": 0,
+    "error": "HTTPError('429 Client Error: Too Many Requests for url: https://api.csapi.de/players/stats?start_date=2026-06-09&end_date=2026-09-06&limit=100&offset=0&min_played=3&sideid=0')"
+  }
+]
