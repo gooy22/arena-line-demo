@@ -11,7 +11,7 @@ import pandas as pd
 import requests
 from sklearn.base import clone
 from sklearn.compose import ColumnTransformer
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, HistGradientBoostingClassifier
 from sklearn.impute import SimpleImputer
 from sklearn.metrics import accuracy_score, roc_auc_score, log_loss, brier_score_loss
 from sklearn.model_selection import TimeSeriesSplit
@@ -179,6 +179,10 @@ def train_models(features,outdir):
     models={
       "random_forest":RandomForestClassifier(n_estimators=650,max_depth=16,min_samples_leaf=4,min_samples_split=8,
           max_features="sqrt",class_weight="balanced_subsample",random_state=42,n_jobs=-1),
+      "extra_trees":ExtraTreesClassifier(n_estimators=800,max_depth=20,min_samples_leaf=3,min_samples_split=6,
+          max_features=0.70,class_weight="balanced",random_state=42,n_jobs=-1),
+      "hist_gb":HistGradientBoostingClassifier(max_iter=350,learning_rate=.045,max_leaf_nodes=31,
+          min_samples_leaf=22,l2_regularization=1.5,max_bins=255,random_state=42),
       "xgboost":XGBClassifier(n_estimators=800,max_depth=5,learning_rate=.03,subsample=.88,colsample_bytree=.88,
           min_child_weight=4,reg_lambda=2.5,reg_alpha=.05,objective="binary:logistic",eval_metric="logloss",
           random_state=42,n_jobs=2)
