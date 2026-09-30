@@ -32,3 +32,5 @@ def root(): return state
 
 @app.get("/health")
 def health(): return {"ok":True,"status":state["status"]}
+
+# railway branch deployment trigger
