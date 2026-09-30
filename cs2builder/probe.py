@@ -18,6 +18,7 @@ def run():
       ("github",lambda:requests.get("https://api.github.com/repos/ValveSoftware/counter-strike_regional_standings/contents/invitation/2025",timeout=15)),
       ("hltv",lambda:crequests.get("https://www.hltv.org/stats/matches?startDate=2025-01-01&endDate=2025-01-31&offset=0",impersonate="chrome",timeout=15)),
       ("hf",lambda:requests.get("https://huggingface.co/api/datasets/blanchon/cs2_dataset_demo",timeout=15)),
+      ("sqady",lambda:requests.get("https://sqady.com/cs2/matches/",headers={"User-Agent":"Mozilla/5.0"},timeout=15)),
     ]
     ts=[threading.Thread(target=probe,args=x,daemon=True) for x in jobs]
     [t.start() for t in ts]; [t.join() for t in ts]
