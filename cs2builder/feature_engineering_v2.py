@@ -29,9 +29,14 @@ def _asof_hist(idx,key,cutoff,days=90):
     return [r for d,r in zip(dates[:p],rows[:p]) if d>=lo]
 
 def _player_features(roster,player_idx,cutoff):
-    names=["rating","kd","adr","kast","kpr","dpr"]
+    names=["rating","kd","adr","kast","kpr","dpr","maps"]
     vals={k:[] for k in names}
-    if not roster:return {f"player_{k}":np.nan for k in names}|{"player_coverage":0.0}
+    empty={f"player_{k}":np.nan for k in names}
+    for k in ["rating","kd","adr","maps"]:
+        empty |= {f"player_{k}_min":np.nan,f"player_{k}_max":np.nan,f"player_{k}_std":np.nan}
+    empty |= {"player_rating_top2":np.nan,"player_rating_bottom2":np.nan,
+              "player_rating_spread":np.nan,"player_coverage":0.0}
+    if not roster:return empty
     ids=[int(x) for x in str(roster.get("player_ids","")).split(";") if x.strip().isdigit()]
     for pid in ids:
         r=_asof(player_idx,pid,cutoff)
@@ -40,6 +45,15 @@ def _player_features(roster,player_idx,cutoff):
             v=r.get(k)
             if v is not None and not pd.isna(v):vals[k].append(float(v))
     out={f"player_{k}":float(np.mean(v)) if v else np.nan for k,v in vals.items()}
+    for k in ["rating","kd","adr","maps"]:
+        arr=np.asarray(vals[k],dtype=float)
+        out[f"player_{k}_min"]=float(np.min(arr)) if len(arr) else np.nan
+        out[f"player_{k}_max"]=float(np.max(arr)) if len(arr) else np.nan
+        out[f"player_{k}_std"]=float(np.std(arr)) if len(arr) else np.nan
+    rs=sorted(vals["rating"],reverse=True)
+    out["player_rating_top2"]=float(np.mean(rs[:2])) if rs else np.nan
+    out["player_rating_bottom2"]=float(np.mean(rs[-2:])) if rs else np.nan
+    out["player_rating_spread"]=(float(rs[0]-rs[-1]) if len(rs)>=2 else 0.0 if len(rs)==1 else np.nan)
     out["player_coverage"]=len(vals["rating"])/max(1,len(ids))
     return out
 
@@ -218,7 +232,10 @@ def build_features(matches,ranking,rosters,players,min_history=12):
             }
             for k,v in pa.items():f[k+"_a"]=v
             for k,v in pb.items():f[k+"_b"]=v
-            for k in ["rating","kd","adr","kast","kpr","dpr"]:
+            for k in ["rating","kd","adr","kast","kpr","dpr","maps",
+                      "rating_min","rating_max","rating_std","rating_top2","rating_bottom2","rating_spread",
+                      "kd_min","kd_max","kd_std","adr_min","adr_max","adr_std",
+                      "maps_min","maps_max","maps_std"]:
                 va=f.get("player_"+k+"_a",np.nan);vb=f.get("player_"+k+"_b",np.nan)
                 f["player_"+k+"_diff"]=va-vb if not pd.isna(va) and not pd.isna(vb) else np.nan
             if n[a]>=min_history and n[b]>=min_history:rows.append(f)
