@@ -2,7 +2,7 @@
   "url": "https://www.hltv.org/stats/matches?startDate=2025-01-01&endDate=2025-01-31&csVersion=CS2&offset=0",
   "transport": "scrapling",
   "status": 200,
-  "bytes": 480532,
+  "bytes": 480474,
   "title": "HLTV.org - The home of competitive Counter-Strike",
   "cloudflare": false,
   "stats_rows": 51,
