@@ -44,13 +44,21 @@ def fetch_player_snapshots(snapshot_dates,outdir):
         start=(pd.Timestamp(end)-pd.Timedelta(days=89)).date()
         off=0; got_date=0
         while True:
-            try:
-                r=s.get(CSAPI+"/players/stats",params={
-                    "start_date":str(start),"end_date":str(end),"limit":100,"offset":off,"min_played":3,"sideid":0
-                },timeout=40)
-                r.raise_for_status(); page=r.json()
-            except Exception as e:
-                errors.append({"snapshot_date":str(end),"offset":off,"error":repr(e)})
+            page=None; last=None
+            for attempt in range(8):
+                try:
+                    r=s.get(CSAPI+"/players/stats",params={
+                        "start_date":str(start),"end_date":str(end),"limit":500,"offset":off,"min_played":3,"sideid":0
+                    },timeout=45)
+                    if r.status_code==429:
+                        wait=float(r.headers.get("Retry-After") or min(20,2.0*(attempt+1)))
+                        print(f"PLAYER_429 date={end} offset={off} attempt={attempt+1} wait={wait}",flush=True)
+                        time.sleep(wait); continue
+                    r.raise_for_status(); page=r.json(); last=None; break
+                except Exception as e:
+                    last=e; time.sleep(min(15,1.5*(attempt+1)))
+            if page is None:
+                errors.append({"snapshot_date":str(end),"offset":off,"error":repr(last)})
                 break
             if not page: break
             for x in page:
@@ -62,9 +70,10 @@ def fetch_player_snapshots(snapshot_dates,outdir):
                   "kast":float(x["kast"]) if x.get("kast") is not None else np.nan,
                   "kpr":np.nan,"dpr":np.nan
                 });got_date+=1
-            if len(page)<100: break
-            off+=100
+            if len(page)<500: break
+            off+=500
             if off>10000: break
+            time.sleep(.4)
         print(f"PLAYER_SNAPSHOT {ix}/{len(set(snapshot_dates))} date={end} rows={got_date}",flush=True)
     df=pd.DataFrame(rows)
     if len(df):df=df.drop_duplicates(["snapshot_date","player_id"])
@@ -175,21 +184,10 @@ def train_models(features,outdir):
           random_state=42,n_jobs=2)
     }
     all_df=features.sort_values(["date","mapstatsid"]).reset_index(drop=True)
-    quality_mask=(
-        (all_df["ranking_available_a"]>=1.0) &
-        (all_df["ranking_available_b"]>=1.0) &
-        (all_df["rank_a"].notna()) & (all_df["rank_b"].notna()) &
-        (all_df["rank_a"]<=150) & (all_df["rank_b"]<=150) &
-        (all_df["history_n_a"]>=12) & (all_df["history_n_b"]>=12)
-    )
-    df=all_df[quality_mask].copy().reset_index(drop=True)
-    if len(df)<5000:
-        raise RuntimeError(f"quality_cohort_too_small:{len(df)}")
-    print("QUALITY_COHORT "+json.dumps({
-        "all_samples":int(len(all_df)),"quality_samples":int(len(df)),
-        "quality_share":float(len(df)/max(1,len(all_df))),
-        "rank_rule":"both ASOF VRS ranks <=150",
-        "history_rule":"both teams >=12 prior maps"
+    df=all_df.copy()
+    print("TRAINING_COHORT "+json.dumps({
+        "all_samples":int(len(df)),
+        "rule":"all leakage-safe rows after 12-map warmup"
     }),flush=True)
     dates=np.array(sorted(df.date.unique()));cut=max(1,int(len(dates)*.8))
     tr=df[df.date.isin(set(dates[:cut]))];ho=df[df.date.isin(set(dates[cut:]))]
@@ -214,21 +212,30 @@ def train_models(features,outdir):
     best=max(reports,key=lambda n:(reports[n]["pooled"]["accuracy"],-reports[n]["pooled"]["brier"]))
     ev=Pipeline([("prep",clone(prep)),("model",clone(models[best]))]);ev.fit(tr[feat],tr.target.astype(int))
     hp=ev.predict_proba(ho[feat])[:,1];hold=metrics(ho.target.astype(int).values,hp,thresholds[best])
-    # Independent VRS-only diagnostic baseline on the exact same chronological holdout.
-    pdiff=(ho["points_a"].astype(float)-ho["points_b"].astype(float)).clip(-2000,2000).to_numpy()
+    qmask=(
+        (ho["ranking_available_a"]>=1.0)&(ho["ranking_available_b"]>=1.0)&
+        ho["rank_a"].notna()&ho["rank_b"].notna()&(ho["rank_a"]<=150)&(ho["rank_b"]<=150)
+    )
+    qh=ho[qmask].copy(); qhp=hp[np.asarray(qmask)]
+    quality_hold=metrics(qh.target.astype(int).values,qhp,thresholds[best]) if len(qh) else None
+    valid_vrs=ho["points_a"].notna()&ho["points_b"].notna()
+    vh=ho[valid_vrs]
+    pdiff=(vh["points_a"].astype(float)-vh["points_b"].astype(float)).clip(-2000,2000).to_numpy()
     vrs_prob=1.0/(1.0+np.exp(-pdiff/260.0))
-    vrs_hold=metrics(ho.target.astype(int).values,vrs_prob,.5)
+    vrs_hold=metrics(vh.target.astype(int).values,vrs_prob,.5) if len(vh) else None
+    print("QUALITY_HOLDOUT",json.dumps(quality_hold),flush=True)
     print("VRS_BASELINE_HOLDOUT",json.dumps(vrs_hold),flush=True)
     print("FINAL_HOLDOUT",json.dumps({"model":best,**hold}),flush=True)
     prod=Pipeline([("prep",clone(prep)),("model",clone(models[best]))]);prod.fit(df[feat],df.target.astype(int))
     joblib.dump({"model":prod,"threshold":thresholds[best],"feature_columns":feat,"categorical_columns":cats,
                  "model_name":best},Path(outdir)/"saved_model.joblib",compress=9)
     report={"selected_model":best,"all_samples_total":len(all_df),"samples_total":len(df),
-            "quality_filter":"both ASOF VRS ranks <=150 and both teams >=12 prior maps",
+            "quality_filter":"diagnostic only: both ASOF VRS ranks <=150",
             "train_samples":len(tr),"holdout_samples":len(ho),
             "train_date_min":tr.date.min(),"train_date_max":tr.date.max(),
             "holdout_date_min":ho.date.min(),"holdout_date_max":ho.date.max(),
-            "models":reports,"holdout":hold,"vrs_baseline_holdout":vrs_hold,"feature_count":len(feat)}
+            "models":reports,"holdout":hold,"quality_holdout":quality_hold,
+            "vrs_baseline_holdout":vrs_hold,"feature_count":len(feat)}
     Path(outdir,"saved_model_metadata.json").write_text(json.dumps(report,indent=2),encoding="utf-8")
     return report
 
