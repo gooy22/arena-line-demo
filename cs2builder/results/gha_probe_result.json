@@ -1,0 +1,10 @@
+{
+  "url": "https://www.hltv.org/stats/matches?startDate=2025-01-01&endDate=2025-01-31&csVersion=CS2&offset=0",
+  "transport": "scrapling",
+  "status": 200,
+  "bytes": 480532,
+  "title": "HLTV.org - The home of competitive Counter-Strike",
+  "cloudflare": false,
+  "stats_rows": 51,
+  "text_head": "HLTV.org - The home of competitive Counter-Strike News Matches Results Events News Matches Results Ranking Events All events Ongoing Archive Calendar VRS Invites NEW Players Players Retired Players Transfers MVPs EVPs Top20 Prospects Player explorer NEW Hall of Fame Stats Stats overview Top players Top teams Maps Fantasy Fantasy Overview Group Stage - ESL Pro League Season 24 Forum Counter-Strike Fantasy Betting Hardware & Tweaks Bugs & Suggestions Media HLTV Confirmed Galleries Betting Betting US Betting Canada Betting UK Betting India Betting Brazil Betting Sweden Betting Denmark Betting Oth"
+}
