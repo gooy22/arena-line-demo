@@ -1,7 +1,9 @@
-v7 top150 opponent-adjusted full rebuild
-source_maps=41665
-asof_rule=snapshot_date<=D-1
-models=random_forest,extra_trees,hist_gb,xgboost
-quality_model=top150_dedicated
-features=opponent_adjusted,elo_residual,strength_of_schedule,roster_age
-trigger=2026-09-30T17:04Z
+v6 merged roster-aware + opponent-adjusted + VRS-details rebuild
+raw_unique_maps=41665
+asof=snapshot_date<=D-1
+roster_hash_identity=true
+vrs_detail_strength=true
+player_distribution=true
+snapshot_freshness=true
+models=rf,extra_trees,hist_gb,xgboost
+trigger=2026-09-30T17:05Z
