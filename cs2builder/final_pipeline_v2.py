@@ -192,50 +192,90 @@ def train_models(features,outdir):
     dates=np.array(sorted(df.date.unique()));cut=max(1,int(len(dates)*.8))
     tr=df[df.date.isin(set(dates[:cut]))];ho=df[df.date.isin(set(dates[cut:]))]
     td=np.array(sorted(tr.date.unique()));tss=TimeSeriesSplit(n_splits=5)
-    reports={};thresholds={}
+    splits=list(tss.split(td))
+    reports={};thresholds={};oof_preds={};oof_y=None;oof_vrs=None;oof_elo=None
     for name,clf in models.items():
-        yy=[];pp=[];folds=[]
-        for fi,(ti,vi) in enumerate(tss.split(td),1):
+        yy=[];pp=[];folds=[];vv=[];ee=[]
+        for fi,(ti,vi) in enumerate(splits,1):
             a=tr[tr.date.isin(set(td[ti]))];b=tr[tr.date.isin(set(td[vi]))]
             pipe=Pipeline([("prep",clone(prep)),("model",clone(clf))]);pipe.fit(a[feat],a.target.astype(int))
             p=pipe.predict_proba(b[feat])[:,1];q=metrics(b.target.astype(int).values,p,.5);folds.append(q)
             yy.extend(b.target.astype(int));pp.extend(p)
+            if name=="random_forest":
+                bv=b["vrs_prob_a"].fillna(.5).clip(.001,.999).to_numpy()
+                be=b["elo_prob_a"].fillna(.5).clip(.001,.999).to_numpy()
+                vv.extend(bv.tolist());ee.extend(be.tolist())
             print("MODEL_CV",name,fi,json.dumps(q),flush=True)
         yy=np.array(yy);pp=np.array(pp);best=.5;ba=-1
         for th in np.linspace(.40,.60,41):
             ac=accuracy_score(yy,(pp>=th).astype(int))
             if ac>ba:ba=ac;best=float(th)
         thresholds[name]=best
+        oof_preds[name]=pp.copy()
+        if oof_y is None:
+            oof_y=yy.copy();oof_vrs=np.asarray(vv);oof_elo=np.asarray(ee)
         reports[name]={"folds":folds,"pooled":metrics(yy,pp,best),
                        "accuracy_mean":float(np.mean([x["accuracy"] for x in folds])),
                        "auc_mean":float(np.mean([x["roc_auc"] for x in folds if x["roc_auc"] is not None]))}
+
+    # Leakage-safe OOF convex blend. Weights are selected only on temporal CV predictions.
+    blend_best=None
+    rf=oof_preds["random_forest"]; xg=oof_preds["xgboost"]
+    for wrf in np.arange(.4,.91,.1):
+        for wxg in np.arange(0,.41,.1):
+            for wvrs in np.arange(0,.31,.1):
+                welo=1.0-wrf-wxg-wvrs
+                if welo < -1e-9 or welo > .4+1e-9: continue
+                bp=wrf*rf+wxg*xg+wvrs*oof_vrs+welo*oof_elo
+                for th in np.linspace(.46,.54,17):
+                    mm=metrics(oof_y,bp,float(th))
+                    score=(mm["accuracy"],mm["roc_auc"],-mm["brier"])
+                    if blend_best is None or score>blend_best["score"]:
+                        blend_best={"score":score,"weights":{"rf":float(wrf),"xgb":float(wxg),"vrs":float(wvrs),"elo":float(welo)},
+                                    "threshold":float(th),"metrics":mm}
+    print("OOF_BLEND "+json.dumps(blend_best),flush=True)
     best=max(reports,key=lambda n:(reports[n]["pooled"]["accuracy"],-reports[n]["pooled"]["brier"]))
-    ev=Pipeline([("prep",clone(prep)),("model",clone(models[best]))]);ev.fit(tr[feat],tr.target.astype(int))
-    hp=ev.predict_proba(ho[feat])[:,1];hold=metrics(ho.target.astype(int).values,hp,thresholds[best])
+    fitted={}
+    for name,clf in models.items():
+        ep=Pipeline([("prep",clone(prep)),("model",clone(clf))]);ep.fit(tr[feat],tr.target.astype(int))
+        fitted[name]=ep
+    hp=fitted[best].predict_proba(ho[feat])[:,1];hold=metrics(ho.target.astype(int).values,hp,thresholds[best])
+    bw=blend_best["weights"]
+    hold_rf=fitted["random_forest"].predict_proba(ho[feat])[:,1]
+    hold_xg=fitted["xgboost"].predict_proba(ho[feat])[:,1]
+    hold_vrs=ho["vrs_prob_a"].fillna(.5).clip(.001,.999).to_numpy()
+    hold_elo=ho["elo_prob_a"].fillna(.5).clip(.001,.999).to_numpy()
+    blend_hp=bw["rf"]*hold_rf+bw["xgb"]*hold_xg+bw["vrs"]*hold_vrs+bw["elo"]*hold_elo
+    blend_hold=metrics(ho.target.astype(int).values,blend_hp,blend_best["threshold"])
+    print("BLEND_HOLDOUT",json.dumps(blend_hold),flush=True)
     qmask=(
         (ho["ranking_available_a"]>=1.0)&(ho["ranking_available_b"]>=1.0)&
         ho["rank_a"].notna()&ho["rank_b"].notna()&(ho["rank_a"]<=150)&(ho["rank_b"]<=150)
     )
     qh=ho[qmask].copy(); qhp=hp[np.asarray(qmask)]
     quality_hold=metrics(qh.target.astype(int).values,qhp,thresholds[best]) if len(qh) else None
+    quality_blend_hold=metrics(qh.target.astype(int).values,blend_hp[np.asarray(qmask)],blend_best["threshold"]) if len(qh) else None
     valid_vrs=ho["points_a"].notna()&ho["points_b"].notna()
     vh=ho[valid_vrs]
     pdiff=(vh["points_a"].astype(float)-vh["points_b"].astype(float)).clip(-2000,2000).to_numpy()
     vrs_prob=1.0/(1.0+np.exp(-pdiff/260.0))
     vrs_hold=metrics(vh.target.astype(int).values,vrs_prob,.5) if len(vh) else None
     print("QUALITY_HOLDOUT",json.dumps(quality_hold),flush=True)
+    print("QUALITY_BLEND_HOLDOUT",json.dumps(quality_blend_hold),flush=True)
     print("VRS_BASELINE_HOLDOUT",json.dumps(vrs_hold),flush=True)
     print("FINAL_HOLDOUT",json.dumps({"model":best,**hold}),flush=True)
     prod=Pipeline([("prep",clone(prep)),("model",clone(models[best]))]);prod.fit(df[feat],df.target.astype(int))
     joblib.dump({"model":prod,"threshold":thresholds[best],"feature_columns":feat,"categorical_columns":cats,
-                 "model_name":best},Path(outdir)/"saved_model.joblib",compress=9)
+                 "model_name":best,"diagnostic_blend":{"weights":bw,"threshold":blend_best["threshold"],
+                 "oof_metrics":blend_best["metrics"],"holdout_metrics":blend_hold}},Path(outdir)/"saved_model.joblib",compress=9)
     report={"selected_model":best,"all_samples_total":len(all_df),"samples_total":len(df),
             "quality_filter":"diagnostic only: both ASOF VRS ranks <=150",
             "train_samples":len(tr),"holdout_samples":len(ho),
             "train_date_min":tr.date.min(),"train_date_max":tr.date.max(),
             "holdout_date_min":ho.date.min(),"holdout_date_max":ho.date.max(),
             "models":reports,"holdout":hold,"quality_holdout":quality_hold,
-            "vrs_baseline_holdout":vrs_hold,"feature_count":len(feat)}
+            "quality_blend_holdout":quality_blend_hold,"vrs_baseline_holdout":vrs_hold,
+            "oof_blend":blend_best,"blend_holdout":blend_hold,"feature_count":len(feat)}
     Path(outdir,"saved_model_metadata.json").write_text(json.dumps(report,indent=2),encoding="utf-8")
     return report
 
