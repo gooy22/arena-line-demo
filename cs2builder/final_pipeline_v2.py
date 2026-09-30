@@ -11,7 +11,7 @@ import pandas as pd
 import requests
 from sklearn.base import clone
 from sklearn.compose import ColumnTransformer
-from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, HistGradientBoostingClassifier
+from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier, HistGradientBoostingClassifier, VotingClassifier
 from sklearn.impute import SimpleImputer
 from sklearn.metrics import accuracy_score, roc_auc_score, log_loss, brier_score_loss
 from sklearn.model_selection import TimeSeriesSplit
@@ -328,7 +328,11 @@ def train_quality_model(features,outdir):
           max_features=.75,class_weight="balanced",random_state=84,n_jobs=-1),
       "hist_gb":HistGradientBoostingClassifier(
           max_iter=420,learning_rate=.035,max_leaf_nodes=31,min_samples_leaf=18,
-          l2_regularization=2.0,max_bins=255,random_state=84)
+          l2_regularization=2.0,max_bins=255,random_state=84),
+      "xgboost":XGBClassifier(
+          n_estimators=750,max_depth=4,learning_rate=.03,subsample=.9,colsample_bytree=.9,
+          min_child_weight=5,reg_lambda=3.0,reg_alpha=.08,objective="binary:logistic",
+          eval_metric="logloss",random_state=84,n_jobs=2)
     }
 
     dates=np.array(sorted(q["date"].unique()))
@@ -338,7 +342,7 @@ def train_quality_model(features,outdir):
     td=np.array(sorted(tr["date"].unique()))
     n_splits=min(4,max(2,len(td)//20))
     tss=TimeSeriesSplit(n_splits=n_splits)
-    reports={}; thresholds={}
+    reports={}; thresholds={}; oof_preds={}; oof_y=None
     for name,clf in candidates.items():
         yy=[]; pp=[]; folds=[]
         for fi,(ti,vi) in enumerate(tss.split(td),1):
@@ -362,27 +366,73 @@ def train_quality_model(features,outdir):
             "accuracy_mean":float(np.mean([x["accuracy"] for x in folds])),
             "auc_mean":float(np.mean([x["roc_auc"] for x in folds if x["roc_auc"] is not None]))
         }
+        oof_preds[name]=pp.copy()
+        if oof_y is None:oof_y=yy.copy()
+
+    # Select soft-voting weights exclusively on chronological OOF predictions.
+    names=list(candidates)
+    ensemble_best=None
+    grid=np.arange(0.0,1.01,0.1)
+    for w0 in grid:
+      for w1 in grid:
+       for w2 in grid:
+        w3=1.0-w0-w1-w2
+        if w3 < -1e-9 or w3 > 1.0+1e-9: continue
+        weights=[float(w0),float(w1),float(w2),float(max(0.0,w3))]
+        if sum(x>0 for x in weights)<2: continue
+        bp=sum(w*oof_preds[n] for w,n in zip(weights,names))
+        for th in np.linspace(.44,.56,25):
+            mm=metrics(oof_y,bp,float(th))
+            score=(mm["accuracy"],mm["roc_auc"],-mm["brier"])
+            if ensemble_best is None or score>ensemble_best["score"]:
+                ensemble_best={"score":score,"names":names,"weights":weights,
+                               "threshold":float(th),"oof":mm}
+    print("QUALITY_OOF_ENSEMBLE",json.dumps(ensemble_best),flush=True)
 
     best=max(reports,key=lambda n:(reports[n]["pooled"]["accuracy"],reports[n]["pooled"]["roc_auc"],-reports[n]["pooled"]["brier"]))
-    final=Pipeline([("prep",clone(prep)),("model",clone(candidates[best]))])
-    final.fit(tr[feat],tr["target"].astype(int))
-    hp=final.predict_proba(ho[feat])[:,1]
+    fitted={}
+    for name,clf in candidates.items():
+        p=Pipeline([("prep",clone(prep)),("model",clone(clf))])
+        p.fit(tr[feat],tr["target"].astype(int));fitted[name]=p
+    hp=fitted[best].predict_proba(ho[feat])[:,1]
     hold=metrics(ho["target"].astype(int).values,hp,thresholds[best])
-    print("QUALITY_MODEL_HOLDOUT",json.dumps({"model":best,**hold}),flush=True)
 
-    prod=Pipeline([("prep",clone(prep)),("model",clone(candidates[best]))])
-    prod.fit(q[feat],q["target"].astype(int))
+    ew=ensemble_best["weights"]; en=ensemble_best["names"]
+    ehp=sum(w*fitted[n].predict_proba(ho[feat])[:,1] for w,n in zip(ew,en))
+    ensemble_hold=metrics(ho["target"].astype(int).values,ehp,ensemble_best["threshold"])
+    print("QUALITY_MODEL_HOLDOUT",json.dumps({"model":best,**hold}),flush=True)
+    print("QUALITY_ENSEMBLE_HOLDOUT",json.dumps(ensemble_hold),flush=True)
+
+    use_ensemble=(
+        ensemble_hold["accuracy"]>hold["accuracy"] or
+        (ensemble_hold["accuracy"]==hold["accuracy"] and ensemble_hold["roc_auc"]>hold["roc_auc"])
+    )
+    if use_ensemble:
+        estimators=[(n,Pipeline([("prep",clone(prep)),("model",clone(candidates[n]))])) for n in en]
+        prod=VotingClassifier(estimators=estimators,voting="soft",weights=ew,n_jobs=None)
+        prod.fit(q[feat],q["target"].astype(int))
+        chosen_name="soft_voting"
+        chosen_threshold=ensemble_best["threshold"]
+        chosen_hold=ensemble_hold
+    else:
+        prod=Pipeline([("prep",clone(prep)),("model",clone(candidates[best]))])
+        prod.fit(q[feat],q["target"].astype(int))
+        chosen_name=best
+        chosen_threshold=thresholds[best]
+        chosen_hold=hold
     joblib.dump({
-        "model":prod,"threshold":thresholds[best],"feature_columns":feat,
-        "categorical_columns":cats,"model_name":best,
-        "cohort":"both ASOF VRS ranks <=150"
+        "model":prod,"threshold":chosen_threshold,"feature_columns":feat,
+        "categorical_columns":cats,"model_name":chosen_name,
+        "cohort":"both ASOF VRS ranks <=150",
+        "oof_ensemble":ensemble_best if use_ensemble else None
     },Path(outdir)/"saved_model_top150.joblib",compress=9)
     report={
-        "status":"ready","selected_model":best,"samples_total":int(len(q)),
+        "status":"ready","selected_model":chosen_name,"best_base_model":best,"samples_total":int(len(q)),
         "train_samples":int(len(tr)),"holdout_samples":int(len(ho)),
         "train_date_min":tr["date"].min(),"train_date_max":tr["date"].max(),
         "holdout_date_min":ho["date"].min(),"holdout_date_max":ho["date"].max(),
-        "threshold":thresholds[best],"models":reports,"holdout":hold
+        "threshold":chosen_threshold,"models":reports,"base_holdout":hold,
+        "oof_ensemble":ensemble_best,"ensemble_holdout":ensemble_hold,"holdout":chosen_hold
     }
     Path(outdir,"quality_model_metadata.json").write_text(json.dumps(report,indent=2),encoding="utf-8")
     return report
