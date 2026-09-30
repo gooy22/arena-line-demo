@@ -46,7 +46,34 @@ def _player_features(roster,player_idx,cutoff):
 def build_features(matches,ranking,rosters,players,min_history=12):
     m=matches.copy();m["date"]=pd.to_datetime(m["date"]).dt.normalize()
     m=m.sort_values(["date","mapstatsid"]).reset_index(drop=True)
-    ri=_idx(ranking,["team_id"]); roi=_idx(rosters,["team_id"]); pi=_idx(players,["player_id"])
+    # Build deterministic active-roster snapshots and a strict (team_id, roster_hash)
+    # ranking index. Valve VRS can carry several roster variants for one org/team_id.
+    rw=rosters.copy()
+    rw["snapshot_date"]=pd.to_datetime(rw["snapshot_date"]).dt.normalize()
+    rw["_has_hash"]=rw["roster_hash"].notna().astype(int)
+    good_rw=rw[rw["roster_hash"].notna()].copy()
+    if len(good_rw):
+        first=(good_rw.groupby(["team_id","roster_hash"],dropna=False)["snapshot_date"]
+               .min().rename("_variant_first_seen").reset_index())
+        rw=rw.merge(first,on=["team_id","roster_hash"],how="left")
+    else:
+        rw["_variant_first_seen"]=pd.NaT
+    rw["_variant_first_seen"]=rw["_variant_first_seen"].fillna(pd.Timestamp("1900-01-01"))
+    if "players_resolved" not in rw.columns: rw["players_resolved"]=0
+    active_rosters=(rw.sort_values(
+        ["snapshot_date","team_id","_has_hash","_variant_first_seen","players_resolved"],
+        ascending=[True,True,False,False,False])
+        .drop_duplicates(["snapshot_date","team_id"],keep="first"))
+    roi=_idx(active_rosters,["team_id"])
+
+    rk=ranking.copy()
+    rk["snapshot_date"]=pd.to_datetime(rk["snapshot_date"]).dt.normalize()
+    rk_team=(rk.sort_values(["snapshot_date","team_id","points","rank"],
+                            ascending=[True,True,False,True])
+             .drop_duplicates(["snapshot_date","team_id"],keep="first"))
+    ri=_idx(rk_team,["team_id"])
+    riv=_idx(rk[rk["roster_hash"].notna()],["team_id","roster_hash"])
+    pi=_idx(players,["player_id"])
     recent=defaultdict(lambda:deque(maxlen=30));rdiff=defaultdict(lambda:deque(maxlen=30))
     map_recent=defaultdict(lambda:deque(maxlen=30));elo=defaultdict(lambda:1500.0);melo=defaultdict(lambda:1500.0)
     h2h=defaultdict(lambda:deque(maxlen=20));last={};n=defaultdict(int)
@@ -54,18 +81,34 @@ def build_features(matches,ranking,rosters,players,min_history=12):
     opp_vrs=defaultdict(lambda:deque(maxlen=30))
     elo_resid=defaultdict(lambda:deque(maxlen=30))
     vrs_resid=defaultdict(lambda:deque(maxlen=30))
+    roster_recent=defaultdict(lambda:deque(maxlen=30))
+    roster_margin=defaultdict(lambda:deque(maxlen=30))
+    roster_map_recent=defaultdict(lambda:deque(maxlen=30))
+    roster_elo=defaultdict(lambda:1500.0)
+    roster_map_elo=defaultdict(lambda:1500.0)
+    roster_n=defaultdict(int); roster_last={}; roster_first={}
     rows=[]
     for day,dg in m.groupby("date",sort=True):
         cutoff=day-pd.Timedelta(days=1)
+        day_meta={}
         for r in dg.itertuples(index=False):
             a0,b0=int(r.team_a_id),int(r.team_b_id)
             a=int(getattr(r,"team_a_entity_id",a0) or a0);b=int(getattr(r,"team_b_entity_id",b0) or b0)
             mp=str(r.map_name)
-            ra=_asof(ri,a0,cutoff);rb=_asof(ri,b0,cutoff)
             roa=_asof(roi,a0,cutoff);rob=_asof(roi,b0,cutoff)
+            ha=roa.get("roster_hash") if roa and roa.get("roster_hash") and not pd.isna(roa.get("roster_hash")) else None
+            hb=rob.get("roster_hash") if rob and rob.get("roster_hash") and not pd.isna(rob.get("roster_hash")) else None
+            rav=_asof(riv,(a0,ha),cutoff) if ha else None
+            rbv=_asof(riv,(b0,hb),cutoff) if hb else None
+            ra=rav or _asof(ri,a0,cutoff);rb=rbv or _asof(ri,b0,cutoff)
+            rka=("roster",str(ha)) if ha else ("entity",a)
+            rkb=("roster",str(hb)) if hb else ("entity",b)
             pa=_player_features(roa,pi,cutoff);pb=_player_features(rob,pi,cutoff)
             wa=list(recent[a]);wb=list(recent[b]);ma=list(map_recent[(a,mp)]);mb=list(map_recent[(b,mp)])
             rda=list(rdiff[a]);rdb=list(rdiff[b])
+            rwa=list(roster_recent[rka]);rwb=list(roster_recent[rkb])
+            rma2=list(roster_map_recent[(rka,mp)]);rmb2=list(roster_map_recent[(rkb,mp)])
+            rmga=list(roster_margin[rka]);rmgb=list(roster_margin[rkb])
             def wr_last(q,k):
                 z=q[-k:] if q else []
                 return float(np.mean(z)) if z else .5
@@ -81,6 +124,12 @@ def build_features(matches,ranking,rosters,players,min_history=12):
             y=int(r.winner_team_id==a0)
             elo_pa=1/(1+10**((elo[b]-elo[a])/400))
             vrs_pa=(1.0/(1.0+np.exp(-float((ra.get("points")-rb.get("points")))/260.0))) if ra and rb else .5
+            roster_elo_pa=1/(1+10**((roster_elo[rkb]-roster_elo[rka])/400))
+            roster_map_elo_pa=1/(1+10**((roster_map_elo[(rkb,mp)]-roster_map_elo[(rka,mp)])/400))
+            roster_days_a=(day-roster_last[rka]).days if rka in roster_last else np.nan
+            roster_days_b=(day-roster_last[rkb]).days if rkb in roster_last else np.nan
+            roster_age_a=(day-roster_first[rka]).days if rka in roster_first else 0
+            roster_age_b=(day-roster_first[rkb]).days if rkb in roster_first else 0
             oea=list(opp_elo[a]);oeb=list(opp_elo[b])
             ova=list(opp_vrs[a]);ovb=list(opp_vrs[b])
             era=list(elo_resid[a]);erb=list(elo_resid[b])
@@ -100,6 +149,9 @@ def build_features(matches,ranking,rosters,players,min_history=12):
               "points_a":ra.get("points") if ra else np.nan,"points_b":rb.get("points") if rb else np.nan,
               "points_diff":(ra.get("points")-rb.get("points")) if ra and rb else np.nan,
               "ranking_available_a":float(ra is not None),"ranking_available_b":float(rb is not None),
+              "ranking_variant_match_a":float(rav is not None),"ranking_variant_match_b":float(rbv is not None),
+              "points_log_ratio":(np.log1p(float(ra.get("points")))-np.log1p(float(rb.get("points")))) if ra and rb else np.nan,
+              "rank_log_diff":(np.log1p(float(rb.get("rank")))-np.log1p(float(ra.get("rank")))) if ra and rb else np.nan,
               "recent_matches_a":len(wa),"recent_matches_b":len(wb),
               "recent_wr_a":float(np.mean(wa)) if wa else .5,"recent_wr_b":float(np.mean(wb)) if wb else .5,
               "recent_wr_diff":(float(np.mean(wa)) if wa else .5)-(float(np.mean(wb)) if wb else .5),
@@ -142,6 +194,27 @@ def build_features(matches,ranking,rosters,players,min_history=12):
               "roster_available_a":float(roa is not None and bool(roa.get("roster_hash"))),
               "roster_available_b":float(rob is not None and bool(rob.get("roster_hash"))),
               "history_n_a":n[a],"history_n_b":n[b],
+              "roster_history_n_a":roster_n[rka],"roster_history_n_b":roster_n[rkb],
+              "roster_recent_wr_a":float(np.mean(rwa)) if rwa else .5,
+              "roster_recent_wr_b":float(np.mean(rwb)) if rwb else .5,
+              "roster_recent_wr_diff":(float(np.mean(rwa)) if rwa else .5)-(float(np.mean(rwb)) if rwb else .5),
+              "roster_wr_5_a":wr_last(rwa,5),"roster_wr_5_b":wr_last(rwb,5),"roster_wr_5_diff":wr_last(rwa,5)-wr_last(rwb,5),
+              "roster_wr_10_a":wr_last(rwa,10),"roster_wr_10_b":wr_last(rwb,10),"roster_wr_10_diff":wr_last(rwa,10)-wr_last(rwb,10),
+              "roster_map_played_a":len(rma2),"roster_map_played_b":len(rmb2),
+              "roster_map_wr_a":float(np.mean(rma2)) if rma2 else .5,
+              "roster_map_wr_b":float(np.mean(rmb2)) if rmb2 else .5,
+              "roster_map_wr_diff":(float(np.mean(rma2)) if rma2 else .5)-(float(np.mean(rmb2)) if rmb2 else .5),
+              "roster_margin_a":float(np.mean(rmga)) if rmga else 0.0,
+              "roster_margin_b":float(np.mean(rmgb)) if rmgb else 0.0,
+              "roster_margin_diff":(float(np.mean(rmga)) if rmga else 0.0)-(float(np.mean(rmgb)) if rmgb else 0.0),
+              "roster_elo_a":roster_elo[rka],"roster_elo_b":roster_elo[rkb],"roster_elo_diff":roster_elo[rka]-roster_elo[rkb],
+              "roster_elo_prob_a":roster_elo_pa,
+              "roster_map_elo_a":roster_map_elo[(rka,mp)],"roster_map_elo_b":roster_map_elo[(rkb,mp)],
+              "roster_map_elo_diff":roster_map_elo[(rka,mp)]-roster_map_elo[(rkb,mp)],
+              "roster_map_elo_prob_a":roster_map_elo_pa,
+              "roster_vrs_blend_a":0.5*roster_elo_pa+0.5*vrs_pa,
+              "roster_days_since_a":roster_days_a,"roster_days_since_b":roster_days_b,
+              "roster_age_days_a":roster_age_a,"roster_age_days_b":roster_age_b,
             }
             for k,v in pa.items():f[k+"_a"]=v
             for k,v in pb.items():f[k+"_b"]=v
@@ -169,4 +242,23 @@ def build_features(matches,ranking,rosters,players,min_history=12):
             xa,xb=melo[(a,mp)],melo[(b,mp)];pm=1/(1+10**((xb-xa)/400));mk=28
             melo[(a,mp)]=xa+mk*(y-pm);melo[(b,mp)]=xb+mk*((1-y)-(1-pm))
             hk=tuple(sorted((a,b)));h2h[hk].append(y if hk[0]==a else 1-y)
+
+            uroa=_asof(roi,a0,cutoff);urob=_asof(roi,b0,cutoff)
+            uha=uroa.get("roster_hash") if uroa and uroa.get("roster_hash") and not pd.isna(uroa.get("roster_hash")) else None
+            uhb=urob.get("roster_hash") if urob and urob.get("roster_hash") and not pd.isna(urob.get("roster_hash")) else None
+            urka=("roster",str(uha)) if uha else ("entity",a)
+            urkb=("roster",str(uhb)) if uhb else ("entity",b)
+            if urka not in roster_first:roster_first[urka]=day
+            if urkb not in roster_first:roster_first[urkb]=day
+            roster_recent[urka].append(y);roster_recent[urkb].append(1-y)
+            roster_margin[urka].append(sd);roster_margin[urkb].append(-sd)
+            roster_map_recent[(urka,mp)].append(y);roster_map_recent[(urkb,mp)].append(1-y)
+            roster_n[urka]+=1;roster_n[urkb]+=1;roster_last[urka]=day;roster_last[urkb]=day
+            rea,reb=roster_elo[urka],roster_elo[urkb]
+            rp=1/(1+10**((reb-rea)/400));rk=28
+            roster_elo[urka]=rea+rk*(y-rp);roster_elo[urkb]=reb+rk*((1-y)-(1-rp))
+            rmea,rmeb=roster_map_elo[(urka,mp)],roster_map_elo[(urkb,mp)]
+            rmp=1/(1+10**((rmeb-rmea)/400));rmk=30
+            roster_map_elo[(urka,mp)]=rmea+rmk*(y-rmp)
+            roster_map_elo[(urkb,mp)]=rmeb+rmk*((1-y)-(1-rmp))
     return pd.DataFrame(rows)
