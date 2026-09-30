@@ -41,7 +41,7 @@ def fetch_player_snapshots(snapshot_dates,outdir):
     rows=[]; errors=[]
     for ix,sd in enumerate(sorted(set(snapshot_dates)),1):
         end=(pd.Timestamp(sd)-pd.Timedelta(days=1)).date()
-        start=end-pd.Timedelta(days=89)
+        start=(pd.Timestamp(end)-pd.Timedelta(days=89)).date()
         off=0; got_date=0
         while True:
             try:
