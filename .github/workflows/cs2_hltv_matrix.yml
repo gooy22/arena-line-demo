@@ -1,0 +1,105 @@
+name: CS2 HLTV matrix corpus
+on:
+  push:
+    branches: [cs2-dataset-builder]
+    paths:
+      - ".github/workflows/cs2_hltv_matrix.yml"
+      - "cs2builder/hltv_chunk.py"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cs2-hltv-matrix-corpus
+  cancel-in-progress: true
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        chunk:
+          - {name: "2025q1", start: "2025-01", end: "2025-03"}
+          - {name: "2025q2", start: "2025-04", end: "2025-06"}
+          - {name: "2025q3", start: "2025-07", end: "2025-09"}
+          - {name: "2025q4", start: "2025-10", end: "2025-12"}
+          - {name: "2026q1", start: "2026-01", end: "2026-03"}
+          - {name: "2026q2", start: "2026-04", end: "2026-06"}
+          - {name: "2026q3", start: "2026-07", end: "2026-09"}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cs2-dataset-builder
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install beautifulsoup4 "scrapling[fetchers]>=0.4.9"
+      - run: patchright install --with-deps chromium
+      - name: Crawl chunk
+        run: |
+          python -u cs2builder/hltv_chunk.py             --start "${{ matrix.chunk.start }}"             --end "${{ matrix.chunk.end }}"             --out "cs2builder/chunks/${{ matrix.chunk.name }}.csv"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: "hltv-${{ matrix.chunk.name }}"
+          path: cs2builder/chunks/
+          retention-days: 14
+
+  merge:
+    needs: crawl
+    if: always() && needs.crawl.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cs2-dataset-builder
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: hltv-*
+          path: /tmp/hltv-chunks
+          merge-multiple: true
+      - name: Merge and validate
+        run: |
+          python - <<'PY'
+          import csv,json
+          from pathlib import Path
+          rows={}
+          files=sorted(Path("/tmp/hltv-chunks").glob("*.csv"))
+          summaries=[]
+          for f in files:
+              with f.open(encoding="utf-8") as h:
+                  for r in csv.DictReader(h):
+                      rows[int(r["mapstatsid"])]=r
+              j=f.with_suffix(".json")
+              if j.exists(): summaries.append(json.loads(j.read_text()))
+          vals=sorted(rows.values(),key=lambda r:(r["date"],int(r["mapstatsid"])))
+          out=Path("cs2builder/raw_artifacts");out.mkdir(parents=True,exist_ok=True)
+          p=out/"hltv_maps_2025_2026.csv"
+          if vals:
+              with p.open("w",newline="",encoding="utf-8") as h:
+                  w=csv.DictWriter(h,fieldnames=list(vals[0].keys()));w.writeheader();w.writerows(vals)
+          teams={int(r["team_a_id"]) for r in vals}|{int(r["team_b_id"]) for r in vals}
+          s={"unique_maps":len(vals),"unique_teams":len(teams),"chunks":len(files),
+             "date_min":vals[0]["date"] if vals else None,"date_max":vals[-1]["date"] if vals else None,
+             "target_10000_met":len(vals)>=10000}
+          (out/"hltv_summary.json").write_text(json.dumps(s,indent=2))
+          print("MATRIX_CORPUS_SUMMARY",json.dumps(s))
+          if len(vals)<8000: raise SystemExit("corpus_below_minimum_8000")
+          PY
+      - name: Commit raw corpus
+        run: |
+          git config user.name "cs2-dataset-builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add -f cs2builder/raw_artifacts/
+          git diff --cached --quiet || git commit -m "cs2 data: publish merged HLTV 2025-2026 corpus"
+          git pull --rebase origin cs2-dataset-builder
+          git push origin HEAD:cs2-dataset-builder
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cs2-hltv-matrix-corpus
+          path: cs2builder/raw_artifacts/
+          retention-days: 14
