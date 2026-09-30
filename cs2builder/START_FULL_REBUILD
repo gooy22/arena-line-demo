@@ -1,3 +1,5 @@
-2026-09-30T19:53:00+03:00
-corpus=41665
-plan=opponent-adjusted-oof-blend-v4
+v5 roster-aware full rebuild
+source_maps=41665
+asof_rule=snapshot_date<=D-1
+models=random_forest,extra_trees,hist_gb,xgboost
+trigger=2026-09-30T16:54Z
