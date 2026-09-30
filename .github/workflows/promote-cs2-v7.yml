@@ -1,0 +1,96 @@
+name: Promote CS2 v7 Production Artifacts
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [cs2-dataset-builder]
+    paths:
+      - ".github/workflows/promote-cs2-v7.yml"
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: cs2-v7-promote
+  cancel-in-progress: true
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cs2-dataset-builder
+          fetch-depth: 0
+
+      - name: Download completed v7 rebuild artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euxo pipefail
+          rm -rf /tmp/cs2-v7
+          mkdir -p /tmp/cs2-v7
+          gh run download 36749421523 \
+            --repo "$GITHUB_REPOSITORY" \
+            --name cs2-full-rebuild \
+            --dir /tmp/cs2-v7
+          find /tmp/cs2-v7 -maxdepth 2 -type f -printf '%p %s\n' | sort
+
+      - name: Promote production-only files
+        run: |
+          set -euxo pipefail
+          src=/tmp/cs2-v7/final_artifacts
+          dst=cs2builder/final_artifacts
+          test -f "$src/saved_model.joblib"
+          test -f "$src/matches.csv"
+          mkdir -p "$dst"
+
+          for f in \
+            saved_model.joblib \
+            saved_model_metadata.json \
+            build_summary.json \
+            matches.csv \
+            ranking_snapshots.csv \
+            roster_snapshots.csv \
+            player_snapshots.csv \
+            coverage_top150.csv \
+            team_aliases.csv \
+            team_map_snapshots.csv \
+            ui_teams.json \
+            player_snapshot_errors.json
+          do
+            cp "$src/$f" "$dst/$f"
+          done
+
+          # Training-only artifacts must never enter the production git path.
+          rm -f "$dst/training_features.csv" "$dst/saved_model_top150.joblib" "$dst/quality_model_metadata.json"
+
+          python - <<'PY'
+          import json, joblib
+          from pathlib import Path
+          p=Path("cs2builder/final_artifacts")
+          model=joblib.load(p/"saved_model.joblib")
+          summary=json.loads((p/"build_summary.json").read_text())
+          assert len(model["feature_columns"]) == 253, len(model["feature_columns"])
+          assert summary["unique_map_rows"] == 41665, summary["unique_map_rows"]
+          print("PROMOTE_CHECK", {
+              "features": len(model["feature_columns"]),
+              "model": model["model_name"],
+              "holdout_accuracy": summary["model"]["holdout"]["accuracy"],
+              "blend_holdout_accuracy": summary["model"]["blend_holdout"]["accuracy"],
+          })
+          PY
+
+      - name: Commit production artifacts
+        run: |
+          set -euxo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A cs2builder/final_artifacts
+          if git diff --cached --quiet; then
+            echo "No production artifact changes"
+            exit 0
+          fi
+          git commit -m "cs2 v7: promote production model and leakage-safe datasets"
+          git push origin HEAD:cs2-dataset-builder
