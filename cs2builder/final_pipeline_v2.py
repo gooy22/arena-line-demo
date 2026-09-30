@@ -299,6 +299,95 @@ def train_models(features,outdir):
     Path(outdir,"saved_model_metadata.json").write_text(json.dumps(report,indent=2),encoding="utf-8")
     return report
 
+def train_quality_model(features,outdir):
+    """Train a dedicated leakage-safe model only on maps where both teams are ASOF VRS top-150."""
+    meta={"date","mapstatsid","team_a_id","team_b_id","target"}
+    feat=[c for c in features.columns if c not in meta]
+    cats=["map_name"]; nums=[c for c in feat if c not in cats]
+    q=features[
+        (features["ranking_available_a"]>=1.0)&(features["ranking_available_b"]>=1.0)&
+        features["rank_a"].notna()&features["rank_b"].notna()&
+        (features["rank_a"]<=150)&(features["rank_b"]<=150)
+    ].sort_values(["date","mapstatsid"]).reset_index(drop=True)
+    if len(q)<1500 or q["date"].nunique()<30:
+        report={"status":"skipped","samples_total":int(len(q)),"reason":"too_few_quality_samples"}
+        Path(outdir,"quality_model_metadata.json").write_text(json.dumps(report,indent=2),encoding="utf-8")
+        return report
+
+    prep=ColumnTransformer([
+      ("num",SimpleImputer(strategy="median",add_indicator=True,keep_empty_features=True),nums),
+      ("cat",Pipeline([("imp",SimpleImputer(strategy="most_frequent")),
+                       ("oh",OneHotEncoder(handle_unknown="ignore",sparse_output=False))]),cats)
+    ])
+    candidates={
+      "random_forest":RandomForestClassifier(
+          n_estimators=900,max_depth=18,min_samples_leaf=3,min_samples_split=6,
+          max_features=.55,class_weight="balanced_subsample",random_state=84,n_jobs=-1),
+      "extra_trees":ExtraTreesClassifier(
+          n_estimators=1100,max_depth=22,min_samples_leaf=2,min_samples_split=5,
+          max_features=.75,class_weight="balanced",random_state=84,n_jobs=-1),
+      "hist_gb":HistGradientBoostingClassifier(
+          max_iter=420,learning_rate=.035,max_leaf_nodes=31,min_samples_leaf=18,
+          l2_regularization=2.0,max_bins=255,random_state=84)
+    }
+
+    dates=np.array(sorted(q["date"].unique()))
+    cut=max(1,int(len(dates)*.80))
+    tr=q[q["date"].isin(set(dates[:cut]))].copy()
+    ho=q[q["date"].isin(set(dates[cut:]))].copy()
+    td=np.array(sorted(tr["date"].unique()))
+    n_splits=min(4,max(2,len(td)//20))
+    tss=TimeSeriesSplit(n_splits=n_splits)
+    reports={}; thresholds={}
+    for name,clf in candidates.items():
+        yy=[]; pp=[]; folds=[]
+        for fi,(ti,vi) in enumerate(tss.split(td),1):
+            a=tr[tr["date"].isin(set(td[ti]))]
+            b=tr[tr["date"].isin(set(td[vi]))]
+            pipe=Pipeline([("prep",clone(prep)),("model",clone(clf))])
+            pipe.fit(a[feat],a["target"].astype(int))
+            p=pipe.predict_proba(b[feat])[:,1]
+            qmet=metrics(b["target"].astype(int).values,p,.5)
+            folds.append(qmet); yy.extend(b["target"].astype(int)); pp.extend(p)
+            print("QUALITY_MODEL_CV",name,fi,json.dumps(qmet),flush=True)
+        yy=np.asarray(yy); pp=np.asarray(pp)
+        best_thr=.5; best_acc=-1
+        for th in np.linspace(.42,.58,33):
+            ac=accuracy_score(yy,(pp>=th).astype(int))
+            if ac>best_acc: best_acc=ac; best_thr=float(th)
+        thresholds[name]=best_thr
+        reports[name]={
+            "folds":folds,
+            "pooled":metrics(yy,pp,best_thr),
+            "accuracy_mean":float(np.mean([x["accuracy"] for x in folds])),
+            "auc_mean":float(np.mean([x["roc_auc"] for x in folds if x["roc_auc"] is not None]))
+        }
+
+    best=max(reports,key=lambda n:(reports[n]["pooled"]["accuracy"],reports[n]["pooled"]["roc_auc"],-reports[n]["pooled"]["brier"]))
+    final=Pipeline([("prep",clone(prep)),("model",clone(candidates[best]))])
+    final.fit(tr[feat],tr["target"].astype(int))
+    hp=final.predict_proba(ho[feat])[:,1]
+    hold=metrics(ho["target"].astype(int).values,hp,thresholds[best])
+    print("QUALITY_MODEL_HOLDOUT",json.dumps({"model":best,**hold}),flush=True)
+
+    prod=Pipeline([("prep",clone(prep)),("model",clone(candidates[best]))])
+    prod.fit(q[feat],q["target"].astype(int))
+    joblib.dump({
+        "model":prod,"threshold":thresholds[best],"feature_columns":feat,
+        "categorical_columns":cats,"model_name":best,
+        "cohort":"both ASOF VRS ranks <=150"
+    },Path(outdir)/"saved_model_top150.joblib",compress=9)
+    report={
+        "status":"ready","selected_model":best,"samples_total":int(len(q)),
+        "train_samples":int(len(tr)),"holdout_samples":int(len(ho)),
+        "train_date_min":tr["date"].min(),"train_date_max":tr["date"].max(),
+        "holdout_date_min":ho["date"].min(),"holdout_date_max":ho["date"].max(),
+        "threshold":thresholds[best],"models":reports,"holdout":hold
+    }
+    Path(outdir,"quality_model_metadata.json").write_text(json.dumps(report,indent=2),encoding="utf-8")
+    return report
+
+
 def main(raw,vrsdir,outdir):
     out=Path(outdir);out.mkdir(parents=True,exist_ok=True)
     maps=orient_maps(pd.read_csv(raw))
@@ -314,6 +403,7 @@ def main(raw,vrsdir,outdir):
     features=build_features(maps,ranking,rosters,players,min_history=12)
     if len(features)<1000:raise RuntimeError(f"too_few_training_samples:{len(features)}")
     model=train_models(features,out)
+    quality_model=train_quality_model(features,out)
     maps.to_csv(out/"matches.csv",index=False);ranking.to_csv(out/"ranking_snapshots.csv",index=False)
     rosters.to_csv(out/"roster_snapshots.csv",index=False);players.to_csv(out/"player_snapshots.csv",index=False)
     teammap.to_csv(out/"team_map_snapshots.csv",index=False);aliases.to_csv(out/"team_aliases.csv",index=False)
@@ -325,7 +415,7 @@ def main(raw,vrsdir,outdir):
              "ranking_snapshot_rows":len(ranking),"roster_snapshot_rows":len(rosters),"player_snapshot_rows":len(players),
              "team_map_snapshot_rows":len(teammap),"cross_id_roster_aliases":int(aliases.cross_team_id.sum()) if len(aliases) else 0,
              "top150_status":coverage.status.value_counts().to_dict(),"ui_eligible_12plus":int(coverage.ui_eligible.sum()),
-             "model":model,"leakage_guard":"All external snapshots are selected with snapshot_date <= D-1. Same-day form/Elo/map state updates only after all maps on D are featurized.",
+             "model":model,"quality_model":quality_model,"leakage_guard":"All external snapshots are selected with snapshot_date <= D-1. Same-day form/Elo/map state updates only after all maps on D are featurized.",
              "side_note":"HLTV results corpus has no side-round split; CT/T fields are null and side_data_available=0, never fabricated."}
     Path(out,"build_summary.json").write_text(json.dumps(summary,indent=2),encoding="utf-8")
     print("FINAL_BUILD_SUMMARY",json.dumps(summary),flush=True)
