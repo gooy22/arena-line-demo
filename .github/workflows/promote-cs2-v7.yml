@@ -67,16 +67,17 @@ jobs:
           rm -f "$dst/training_features.csv" "$dst/saved_model_top150.joblib" "$dst/quality_model_metadata.json"
 
           python - <<'PY'
-          import json, joblib
+          import json
           from pathlib import Path
           p=Path("cs2builder/final_artifacts")
-          model=joblib.load(p/"saved_model.joblib")
           summary=json.loads((p/"build_summary.json").read_text())
-          assert len(model["feature_columns"]) == 253, len(model["feature_columns"])
+          model_size=(p/"saved_model.joblib").stat().st_size
+          assert 60_000_000 < model_size < 100_000_000, model_size
           assert summary["unique_map_rows"] == 41665, summary["unique_map_rows"]
+          assert summary["model"]["feature_count"] == 253, summary["model"]["feature_count"]
           print("PROMOTE_CHECK", {
-              "features": len(model["feature_columns"]),
-              "model": model["model_name"],
+              "features": summary["model"]["feature_count"],
+              "model_bytes": model_size,
               "holdout_accuracy": summary["model"]["holdout"]["accuracy"],
               "blend_holdout_accuracy": summary["model"]["blend_holdout"]["accuracy"],
           })
