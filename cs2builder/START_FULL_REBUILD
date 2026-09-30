@@ -1,5 +1,6 @@
-v5 roster-aware full rebuild
+v6 top150-quality full rebuild
 source_maps=41665
 asof_rule=snapshot_date<=D-1
 models=random_forest,extra_trees,hist_gb,xgboost
-trigger=2026-09-30T16:54Z
+quality_model=top150_dedicated
+trigger=2026-09-30T17:02Z
