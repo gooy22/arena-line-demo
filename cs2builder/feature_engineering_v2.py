@@ -50,6 +50,10 @@ def build_features(matches,ranking,rosters,players,min_history=12):
     recent=defaultdict(lambda:deque(maxlen=30));rdiff=defaultdict(lambda:deque(maxlen=30))
     map_recent=defaultdict(lambda:deque(maxlen=30));elo=defaultdict(lambda:1500.0);melo=defaultdict(lambda:1500.0)
     h2h=defaultdict(lambda:deque(maxlen=20));last={};n=defaultdict(int)
+    opp_elo=defaultdict(lambda:deque(maxlen=30))
+    opp_vrs=defaultdict(lambda:deque(maxlen=30))
+    elo_resid=defaultdict(lambda:deque(maxlen=30))
+    vrs_resid=defaultdict(lambda:deque(maxlen=30))
     rows=[]
     for day,dg in m.groupby("date",sort=True):
         cutoff=day-pd.Timedelta(days=1)
@@ -75,6 +79,19 @@ def build_features(matches,ranking,rosters,players,min_history=12):
             cb=max(0,len({x.get("roster_hash") for x in bh if x.get("roster_hash")})-1)
             da=(day-last[a]).days if a in last else np.nan; db=(day-last[b]).days if b in last else np.nan
             y=int(r.winner_team_id==a0)
+            elo_pa=1/(1+10**((elo[b]-elo[a])/400))
+            vrs_pa=(1.0/(1.0+np.exp(-float((ra.get("points")-rb.get("points")))/260.0))) if ra and rb else .5
+            oea=list(opp_elo[a]);oeb=list(opp_elo[b])
+            ova=list(opp_vrs[a]);ovb=list(opp_vrs[b])
+            era=list(elo_resid[a]);erb=list(elo_resid[b])
+            vra=list(vrs_resid[a]);vrb=list(vrs_resid[b])
+            day_meta[int(r.mapstatsid)]={
+                "a":a,"b":b,"a0":a0,"b0":b0,"y":y,
+                "elo_pa":elo_pa,"vrs_pa":vrs_pa,
+                "elo_a":float(elo[a]),"elo_b":float(elo[b]),
+                "points_a":float(ra.get("points")) if ra else np.nan,
+                "points_b":float(rb.get("points")) if rb else np.nan,
+            }
             f={
               "date":day.strftime("%Y-%m-%d"),"mapstatsid":int(r.mapstatsid),"map_name":mp,
               "team_a_id":a0,"team_b_id":b0,"target":y,
@@ -102,10 +119,22 @@ def build_features(matches,ranking,rosters,players,min_history=12):
               "map_wr_10_a":wr_last(ma,10),"map_wr_10_b":wr_last(mb,10),"map_wr_10_diff":wr_last(ma,10)-wr_last(mb,10),
               "map_wr_20_a":wr_last(ma,20),"map_wr_20_b":wr_last(mb,20),"map_wr_20_diff":wr_last(ma,20)-wr_last(mb,20),
               "elo_a":elo[a],"elo_b":elo[b],"elo_diff":elo[a]-elo[b],
-              "elo_prob_a":1/(1+10**((elo[b]-elo[a])/400)),
+              "elo_prob_a":elo_pa,
+              "opp_elo_5_a":avg_last(oea,5),"opp_elo_5_b":avg_last(oeb,5),"opp_elo_5_diff":avg_last(oea,5)-avg_last(oeb,5),
+              "opp_elo_10_a":avg_last(oea,10),"opp_elo_10_b":avg_last(oeb,10),"opp_elo_10_diff":avg_last(oea,10)-avg_last(oeb,10),
+              "opp_elo_20_a":avg_last(oea,20),"opp_elo_20_b":avg_last(oeb,20),"opp_elo_20_diff":avg_last(oea,20)-avg_last(oeb,20),
+              "elo_resid_5_a":avg_last(era,5),"elo_resid_5_b":avg_last(erb,5),"elo_resid_5_diff":avg_last(era,5)-avg_last(erb,5),
+              "elo_resid_10_a":avg_last(era,10),"elo_resid_10_b":avg_last(erb,10),"elo_resid_10_diff":avg_last(era,10)-avg_last(erb,10),
+              "elo_resid_20_a":avg_last(era,20),"elo_resid_20_b":avg_last(erb,20),"elo_resid_20_diff":avg_last(era,20)-avg_last(erb,20),
               "map_elo_a":melo[(a,mp)],"map_elo_b":melo[(b,mp)],"map_elo_diff":melo[(a,mp)]-melo[(b,mp)],
               "map_elo_prob_a":1/(1+10**((melo[(b,mp)]-melo[(a,mp)])/400)),
-              "vrs_prob_a":(1.0/(1.0+np.exp(-float((ra.get("points")-rb.get("points")))/260.0))) if ra and rb else .5,
+              "vrs_prob_a":vrs_pa,
+              "opp_vrs_5_a":avg_last(ova,5),"opp_vrs_5_b":avg_last(ovb,5),"opp_vrs_5_diff":avg_last(ova,5)-avg_last(ovb,5),
+              "opp_vrs_10_a":avg_last(ova,10),"opp_vrs_10_b":avg_last(ovb,10),"opp_vrs_10_diff":avg_last(ova,10)-avg_last(ovb,10),
+              "opp_vrs_20_a":avg_last(ova,20),"opp_vrs_20_b":avg_last(ovb,20),"opp_vrs_20_diff":avg_last(ova,20)-avg_last(ovb,20),
+              "vrs_resid_5_a":avg_last(vra,5),"vrs_resid_5_b":avg_last(vrb,5),"vrs_resid_5_diff":avg_last(vra,5)-avg_last(vrb,5),
+              "vrs_resid_10_a":avg_last(vra,10),"vrs_resid_10_b":avg_last(vrb,10),"vrs_resid_10_diff":avg_last(vra,10)-avg_last(vrb,10),
+              "vrs_resid_20_a":avg_last(vra,20),"vrs_resid_20_b":avg_last(vrb,20),"vrs_resid_20_diff":avg_last(vra,20)-avg_last(vrb,20),
               "rank_strength_diff":((1.0/max(1,float(ra.get("rank"))))-(1.0/max(1,float(rb.get("rank"))))) if ra and rb else 0.0,
               "h2h_wr_a":float(hwa),"days_since_a":da,"days_since_b":db,
               "days_since_diff":(da-db) if not pd.isna(da) and not pd.isna(db) else np.nan,
@@ -125,6 +154,13 @@ def build_features(matches,ranking,rosters,players,min_history=12):
             a0,b0=int(r.team_a_id),int(r.team_b_id)
             a=int(getattr(r,"team_a_entity_id",a0) or a0);b=int(getattr(r,"team_b_entity_id",b0) or b0)
             mp=str(r.map_name); y=int(r.winner_team_id==a0)
+            meta=day_meta[int(r.mapstatsid)]
+            opp_elo[a].append(meta["elo_b"]);opp_elo[b].append(meta["elo_a"])
+            elo_resid[a].append(float(y)-meta["elo_pa"]);elo_resid[b].append(float(1-y)-(1-meta["elo_pa"]))
+            if not pd.isna(meta["points_b"]): opp_vrs[a].append(meta["points_b"])
+            if not pd.isna(meta["points_a"]): opp_vrs[b].append(meta["points_a"])
+            if not pd.isna(meta["points_a"]) and not pd.isna(meta["points_b"]):
+                vrs_resid[a].append(float(y)-meta["vrs_pa"]);vrs_resid[b].append(float(1-y)-(1-meta["vrs_pa"]))
             recent[a].append(y);recent[b].append(1-y);map_recent[(a,mp)].append(y);map_recent[(b,mp)].append(1-y)
             sd=float(r.team_a_score-r.team_b_score);rdiff[a].append(sd);rdiff[b].append(-sd)
             n[a]+=1;n[b]+=1;last[a]=day;last[b]=day
