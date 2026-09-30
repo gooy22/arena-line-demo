@@ -4,6 +4,7 @@ on:
     branches: [cs2-dataset-builder]
     paths:
       - ".github/workflows/cs2_vrs_smoke.yml"
+      - "cs2builder/vrs_snapshots.py"
   workflow_dispatch:
 jobs:
   vrs:
