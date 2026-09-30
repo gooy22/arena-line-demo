@@ -168,13 +168,29 @@ def train_models(features,outdir):
                        ("oh",OneHotEncoder(handle_unknown="ignore",sparse_output=False))]),cats)
     ])
     models={
-      "random_forest":RandomForestClassifier(n_estimators=900,max_depth=18,min_samples_leaf=3,min_samples_split=6,
+      "random_forest":RandomForestClassifier(n_estimators=650,max_depth=16,min_samples_leaf=4,min_samples_split=8,
           max_features="sqrt",class_weight="balanced_subsample",random_state=42,n_jobs=-1),
-      "xgboost":XGBClassifier(n_estimators=900,max_depth=5,learning_rate=.025,subsample=.88,colsample_bytree=.88,
+      "xgboost":XGBClassifier(n_estimators=800,max_depth=5,learning_rate=.03,subsample=.88,colsample_bytree=.88,
           min_child_weight=4,reg_lambda=2.5,reg_alpha=.05,objective="binary:logistic",eval_metric="logloss",
           random_state=42,n_jobs=2)
     }
-    df=features.sort_values(["date","mapstatsid"]).reset_index(drop=True)
+    all_df=features.sort_values(["date","mapstatsid"]).reset_index(drop=True)
+    quality_mask=(
+        (all_df["ranking_available_a"]>=1.0) &
+        (all_df["ranking_available_b"]>=1.0) &
+        (all_df["rank_a"].notna()) & (all_df["rank_b"].notna()) &
+        (all_df["rank_a"]<=150) & (all_df["rank_b"]<=150) &
+        (all_df["history_n_a"]>=12) & (all_df["history_n_b"]>=12)
+    )
+    df=all_df[quality_mask].copy().reset_index(drop=True)
+    if len(df)<5000:
+        raise RuntimeError(f"quality_cohort_too_small:{len(df)}")
+    print("QUALITY_COHORT "+json.dumps({
+        "all_samples":int(len(all_df)),"quality_samples":int(len(df)),
+        "quality_share":float(len(df)/max(1,len(all_df))),
+        "rank_rule":"both ASOF VRS ranks <=150",
+        "history_rule":"both teams >=12 prior maps"
+    }),flush=True)
     dates=np.array(sorted(df.date.unique()));cut=max(1,int(len(dates)*.8))
     tr=df[df.date.isin(set(dates[:cut]))];ho=df[df.date.isin(set(dates[cut:]))]
     td=np.array(sorted(tr.date.unique()));tss=TimeSeriesSplit(n_splits=5)
@@ -198,14 +214,21 @@ def train_models(features,outdir):
     best=max(reports,key=lambda n:(reports[n]["pooled"]["accuracy"],-reports[n]["pooled"]["brier"]))
     ev=Pipeline([("prep",clone(prep)),("model",clone(models[best]))]);ev.fit(tr[feat],tr.target.astype(int))
     hp=ev.predict_proba(ho[feat])[:,1];hold=metrics(ho.target.astype(int).values,hp,thresholds[best])
+    # Independent VRS-only diagnostic baseline on the exact same chronological holdout.
+    pdiff=(ho["points_a"].astype(float)-ho["points_b"].astype(float)).clip(-2000,2000).to_numpy()
+    vrs_prob=1.0/(1.0+np.exp(-pdiff/260.0))
+    vrs_hold=metrics(ho.target.astype(int).values,vrs_prob,.5)
+    print("VRS_BASELINE_HOLDOUT",json.dumps(vrs_hold),flush=True)
     print("FINAL_HOLDOUT",json.dumps({"model":best,**hold}),flush=True)
     prod=Pipeline([("prep",clone(prep)),("model",clone(models[best]))]);prod.fit(df[feat],df.target.astype(int))
     joblib.dump({"model":prod,"threshold":thresholds[best],"feature_columns":feat,"categorical_columns":cats,
-                 "model_name":best},Path(outdir)/"saved_model.joblib",compress=3)
-    report={"selected_model":best,"samples_total":len(df),"train_samples":len(tr),"holdout_samples":len(ho),
+                 "model_name":best},Path(outdir)/"saved_model.joblib",compress=9)
+    report={"selected_model":best,"all_samples_total":len(all_df),"samples_total":len(df),
+            "quality_filter":"both ASOF VRS ranks <=150 and both teams >=12 prior maps",
+            "train_samples":len(tr),"holdout_samples":len(ho),
             "train_date_min":tr.date.min(),"train_date_max":tr.date.max(),
             "holdout_date_min":ho.date.min(),"holdout_date_max":ho.date.max(),
-            "models":reports,"holdout":hold,"feature_count":len(feat)}
+            "models":reports,"holdout":hold,"vrs_baseline_holdout":vrs_hold,"feature_count":len(feat)}
     Path(outdir,"saved_model_metadata.json").write_text(json.dumps(report,indent=2),encoding="utf-8")
     return report
 
