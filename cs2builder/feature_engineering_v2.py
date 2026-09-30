@@ -31,16 +31,20 @@ def _asof_hist(idx,key,cutoff,days=90):
 def _player_features(roster,player_idx,cutoff):
     names=["rating","kd","adr","kast","kpr","dpr","maps"]
     vals={k:[] for k in names}
+    snapshot_ages=[]
     empty={f"player_{k}":np.nan for k in names}
     for k in ["rating","kd","adr","maps"]:
         empty |= {f"player_{k}_min":np.nan,f"player_{k}_max":np.nan,f"player_{k}_std":np.nan}
     empty |= {"player_rating_top2":np.nan,"player_rating_bottom2":np.nan,
-              "player_rating_spread":np.nan,"player_coverage":0.0}
+              "player_rating_spread":np.nan,"player_snapshot_age_mean":np.nan,
+              "player_snapshot_age_max":np.nan,"player_coverage":0.0}
     if not roster:return empty
     ids=[int(x) for x in str(roster.get("player_ids","")).split(";") if x.strip().isdigit()]
     for pid in ids:
         r=_asof(player_idx,pid,cutoff)
         if not r:continue
+        if r.get("snapshot_date") is not None:
+            snapshot_ages.append(max(0,(cutoff-pd.Timestamp(r["snapshot_date"]).normalize()).days))
         for k in names:
             v=r.get(k)
             if v is not None and not pd.isna(v):vals[k].append(float(v))
@@ -54,6 +58,8 @@ def _player_features(roster,player_idx,cutoff):
     out["player_rating_top2"]=float(np.mean(rs[:2])) if rs else np.nan
     out["player_rating_bottom2"]=float(np.mean(rs[-2:])) if rs else np.nan
     out["player_rating_spread"]=(float(rs[0]-rs[-1]) if len(rs)>=2 else 0.0 if len(rs)==1 else np.nan)
+    out["player_snapshot_age_mean"]=float(np.mean(snapshot_ages)) if snapshot_ages else np.nan
+    out["player_snapshot_age_max"]=float(np.max(snapshot_ages)) if snapshot_ages else np.nan
     out["player_coverage"]=len(vals["rating"])/max(1,len(ids))
     return out
 
@@ -144,6 +150,10 @@ def build_features(matches,ranking,rosters,players,min_history=12):
             roster_days_b=(day-roster_last[rkb]).days if rkb in roster_last else np.nan
             roster_age_a=(day-roster_first[rka]).days if rka in roster_first else 0
             roster_age_b=(day-roster_first[rkb]).days if rkb in roster_first else 0
+            rank_snapshot_age_a=(day-pd.Timestamp(ra["snapshot_date"]).normalize()).days if ra else np.nan
+            rank_snapshot_age_b=(day-pd.Timestamp(rb["snapshot_date"]).normalize()).days if rb else np.nan
+            roster_snapshot_age_a=(day-pd.Timestamp(roa["snapshot_date"]).normalize()).days if roa else np.nan
+            roster_snapshot_age_b=(day-pd.Timestamp(rob["snapshot_date"]).normalize()).days if rob else np.nan
             oea=list(opp_elo[a]);oeb=list(opp_elo[b])
             ova=list(opp_vrs[a]);ovb=list(opp_vrs[b])
             era=list(elo_resid[a]);erb=list(elo_resid[b])
@@ -164,6 +174,9 @@ def build_features(matches,ranking,rosters,players,min_history=12):
               "points_diff":(ra.get("points")-rb.get("points")) if ra and rb else np.nan,
               "ranking_available_a":float(ra is not None),"ranking_available_b":float(rb is not None),
               "ranking_variant_match_a":float(rav is not None),"ranking_variant_match_b":float(rbv is not None),
+              "rank_snapshot_age_a":rank_snapshot_age_a,"rank_snapshot_age_b":rank_snapshot_age_b,
+              "rank_snapshot_age_diff":(rank_snapshot_age_a-rank_snapshot_age_b) if not pd.isna(rank_snapshot_age_a) and not pd.isna(rank_snapshot_age_b) else np.nan,
+              "roster_snapshot_age_a":roster_snapshot_age_a,"roster_snapshot_age_b":roster_snapshot_age_b,
               "points_log_ratio":(np.log1p(float(ra.get("points")))-np.log1p(float(rb.get("points")))) if ra and rb else np.nan,
               "rank_log_diff":(np.log1p(float(rb.get("rank")))-np.log1p(float(ra.get("rank")))) if ra and rb else np.nan,
               "recent_matches_a":len(wa),"recent_matches_b":len(wb),
@@ -235,7 +248,7 @@ def build_features(matches,ranking,rosters,players,min_history=12):
             for k in ["rating","kd","adr","kast","kpr","dpr","maps",
                       "rating_min","rating_max","rating_std","rating_top2","rating_bottom2","rating_spread",
                       "kd_min","kd_max","kd_std","adr_min","adr_max","adr_std",
-                      "maps_min","maps_max","maps_std"]:
+                      "maps_min","maps_max","maps_std","snapshot_age_mean","snapshot_age_max"]:
                 va=f.get("player_"+k+"_a",np.nan);vb=f.get("player_"+k+"_b",np.nan)
                 f["player_"+k+"_diff"]=va-vb if not pd.isna(va) and not pd.isna(vb) else np.nan
             if n[a]>=min_history and n[b]>=min_history:rows.append(f)
