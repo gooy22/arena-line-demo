@@ -99,6 +99,19 @@ def build_entity_aliases(rosters):
 def enrich_entities(matches,rosters,hash_to_entity):
     rr=rosters.copy();rr=rr[rr["team_id"].notna()].copy()
     rr["team_id"]=rr["team_id"].astype(int);rr["snapshot_date"]=pd.to_datetime(rr["snapshot_date"]).dt.normalize()
+    rr["_has_hash"]=rr["roster_hash"].notna().astype(int)
+    good=rr[rr["roster_hash"].notna()].copy()
+    if len(good):
+        first=(good.groupby(["team_id","roster_hash"],dropna=False)["snapshot_date"]
+               .min().rename("_variant_first_seen").reset_index())
+        rr=rr.merge(first,on=["team_id","roster_hash"],how="left")
+    else:
+        rr["_variant_first_seen"]=pd.NaT
+    rr["_variant_first_seen"]=rr["_variant_first_seen"].fillna(pd.Timestamp("1900-01-01"))
+    if "players_resolved" not in rr.columns: rr["players_resolved"]=0
+    rr=(rr.sort_values(["snapshot_date","team_id","_has_hash","_variant_first_seen","players_resolved"],
+                       ascending=[True,True,False,False,False])
+          .drop_duplicates(["snapshot_date","team_id"],keep="first"))
     idx={}
     for tid,g in rr.sort_values("snapshot_date").groupby("team_id"):
         idx[int(tid)]=(g["snapshot_date"].tolist(),g.to_dict("records"))
@@ -109,7 +122,7 @@ def enrich_entities(matches,rosters,hash_to_entity):
         p=bisect_right(dates,cut)-1
         if p<0:return None,int(tid)
         h=rows[p].get("roster_hash")
-        return h,hash_to_entity.get(h,int(tid)) if h else int(tid)
+        return h,hash_to_entity.get(h,int(tid)) if h and not pd.isna(h) else int(tid)
     ah=[];bh=[];ae=[];be=[]
     for r in matches.itertuples(index=False):
         x,y=one(r.team_a_id,r.date);u,v=one(r.team_b_id,r.date)
@@ -140,7 +153,10 @@ def make_team_map_snapshots(matches,window=30):
 
 def build_coverage(matches,ranking,rosters,players):
     latest=ranking["snapshot_date"].max()
-    top=ranking[ranking["snapshot_date"]==latest].sort_values("rank").head(150).copy()
+    top=(ranking[(ranking["snapshot_date"]==latest) & ranking["team_id"].notna()]
+         .sort_values(["rank","points"],ascending=[True,False])
+         .drop_duplicates(["team_id"],keep="first")
+         .head(150).copy())
     counts=Counter()
     for r in matches.itertuples(index=False):
         counts[int(r.team_a_id)]+=1;counts[int(r.team_b_id)]+=1
