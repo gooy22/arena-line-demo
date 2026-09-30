@@ -62,6 +62,12 @@ def build_features(matches,ranking,rosters,players,min_history=12):
             pa=_player_features(roa,pi,cutoff);pb=_player_features(rob,pi,cutoff)
             wa=list(recent[a]);wb=list(recent[b]);ma=list(map_recent[(a,mp)]);mb=list(map_recent[(b,mp)])
             rda=list(rdiff[a]);rdb=list(rdiff[b])
+            def wr_last(q,k):
+                z=q[-k:] if q else []
+                return float(np.mean(z)) if z else .5
+            def avg_last(q,k):
+                z=q[-k:] if q else []
+                return float(np.mean(z)) if z else 0.0
             hk=tuple(sorted((a,b))); hh=list(h2h[hk])
             hwa=(np.mean(hh) if hh else .5) if hk[0]==a else (1-np.mean(hh) if hh else .5)
             ah=_asof_hist(roi,a0,cutoff);bh=_asof_hist(roi,b0,cutoff)
@@ -80,14 +86,27 @@ def build_features(matches,ranking,rosters,players,min_history=12):
               "recent_matches_a":len(wa),"recent_matches_b":len(wb),
               "recent_wr_a":float(np.mean(wa)) if wa else .5,"recent_wr_b":float(np.mean(wb)) if wb else .5,
               "recent_wr_diff":(float(np.mean(wa)) if wa else .5)-(float(np.mean(wb)) if wb else .5),
+              "recent_wr_5_a":wr_last(wa,5),"recent_wr_5_b":wr_last(wb,5),"recent_wr_5_diff":wr_last(wa,5)-wr_last(wb,5),
+              "recent_wr_10_a":wr_last(wa,10),"recent_wr_10_b":wr_last(wb,10),"recent_wr_10_diff":wr_last(wa,10)-wr_last(wb,10),
+              "recent_wr_20_a":wr_last(wa,20),"recent_wr_20_b":wr_last(wb,20),"recent_wr_20_diff":wr_last(wa,20)-wr_last(wb,20),
               "recent_round_diff_a":float(np.mean(rda)) if rda else 0.0,
               "recent_round_diff_b":float(np.mean(rdb)) if rdb else 0.0,
               "recent_round_diff_delta":(float(np.mean(rda)) if rda else 0.0)-(float(np.mean(rdb)) if rdb else 0.0),
+              "margin_5_a":avg_last(rda,5),"margin_5_b":avg_last(rdb,5),"margin_5_diff":avg_last(rda,5)-avg_last(rdb,5),
+              "margin_10_a":avg_last(rda,10),"margin_10_b":avg_last(rdb,10),"margin_10_diff":avg_last(rda,10)-avg_last(rdb,10),
+              "margin_20_a":avg_last(rda,20),"margin_20_b":avg_last(rdb,20),"margin_20_diff":avg_last(rda,20)-avg_last(rdb,20),
               "map_played_a":len(ma),"map_played_b":len(mb),
               "map_wr_a":float(np.mean(ma)) if ma else .5,"map_wr_b":float(np.mean(mb)) if mb else .5,
               "map_wr_diff":(float(np.mean(ma)) if ma else .5)-(float(np.mean(mb)) if mb else .5),
+              "map_wr_5_a":wr_last(ma,5),"map_wr_5_b":wr_last(mb,5),"map_wr_5_diff":wr_last(ma,5)-wr_last(mb,5),
+              "map_wr_10_a":wr_last(ma,10),"map_wr_10_b":wr_last(mb,10),"map_wr_10_diff":wr_last(ma,10)-wr_last(mb,10),
+              "map_wr_20_a":wr_last(ma,20),"map_wr_20_b":wr_last(mb,20),"map_wr_20_diff":wr_last(ma,20)-wr_last(mb,20),
               "elo_a":elo[a],"elo_b":elo[b],"elo_diff":elo[a]-elo[b],
+              "elo_prob_a":1/(1+10**((elo[b]-elo[a])/400)),
               "map_elo_a":melo[(a,mp)],"map_elo_b":melo[(b,mp)],"map_elo_diff":melo[(a,mp)]-melo[(b,mp)],
+              "map_elo_prob_a":1/(1+10**((melo[(b,mp)]-melo[(a,mp)])/400)),
+              "vrs_prob_a":(1.0/(1.0+np.exp(-float((ra.get("points")-rb.get("points")))/260.0))) if ra and rb else .5,
+              "rank_strength_diff":((1.0/max(1,float(ra.get("rank"))))-(1.0/max(1,float(rb.get("rank"))))) if ra and rb else 0.0,
               "h2h_wr_a":float(hwa),"days_since_a":da,"days_since_b":db,
               "days_since_diff":(da-db) if not pd.isna(da) and not pd.isna(db) else np.nan,
               "lineup_changes_90d_a":ca,"lineup_changes_90d_b":cb,
