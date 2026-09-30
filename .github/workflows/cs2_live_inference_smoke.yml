@@ -1,0 +1,59 @@
+name: CS2 v7 live inference smoke
+
+on:
+  push:
+    branches: [cs2-dataset-builder]
+    paths:
+      - ".github/workflows/cs2_live_inference_smoke.yml"
+      - "cs2builder/live_inference_v7.py"
+      - "cs2builder/requirements-inference.txt"
+      - "cs2builder/feature_engineering_v2.py"
+      - "cs2builder/final_artifacts/saved_model.joblib"
+      - "cs2builder/final_artifacts/matches.csv"
+      - "cs2builder/final_artifacts/ranking_snapshots.csv"
+      - "cs2builder/final_artifacts/roster_snapshots.csv"
+      - "cs2builder/final_artifacts/player_snapshots.csv"
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cs2-dataset-builder
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: cs2builder/requirements-inference.txt
+      - name: Install
+        run: pip install -r cs2builder/requirements-inference.txt
+      - name: Compile
+        run: python -m py_compile cs2builder/live_inference_v7.py cs2builder/feature_engineering_v2.py
+      - name: Build live profiles and verify parity
+        run: |
+          cd cs2builder
+          python - <<'PY'
+          import json
+          import live_inference_v7 as live
+          live._bootstrap()
+          print("STATE", json.dumps({
+              "phase": live.state["phase"],
+              "ready": live.state["ready"],
+              "error": live.state["error"],
+              "teams": len(live.state["teams"]),
+              "profiles": len(live.state["profiles"]),
+              "prediction_date": live.state["prediction_date"],
+              "parity": live.state["parity"],
+          }, default=str))
+          assert live.state["ready"], live.state["error"]
+          assert all(x["mismatch_count"] == 0 for x in live.state["parity"])
+          t1,t2=live.state["teams"][:2]
+          mp=next(iter(live.MAP_TO_INTERNAL))
+          df=live._combine(live.state["team_name_to_id"][t1],live.state["team_name_to_id"][t2],live.MAP_TO_INTERNAL[mp])
+          artifact=live.state["artifact"]
+          p=artifact["model"].predict_proba(df)[0]
+          print("SMOKE_PREDICT", json.dumps({"team1":t1,"team2":t2,"map":mp,"probabilities":[float(x) for x in p],"features":len(df.columns)}))
+          PY
