@@ -13,7 +13,8 @@ def inspect_html(html,status,transport):
         "transport":transport,"status":status,"bytes":len(html.encode("utf-8","ignore")),
         "title":soup.title.get_text(" ",strip=True) if soup.title else "",
         "cloudflare":("Just a moment" in txt or "Performing security verification" in txt),
-        "stats_rows":len(rows),"text_head":txt[:600]
+        "stats_rows":len(rows),"text_head":txt[:600],
+        "first_row_html":str(rows[1] if len(rows)>1 else rows[0])[:12000] if rows else ""
     })
     return not out["cloudflare"] and len(rows)>=10
 
