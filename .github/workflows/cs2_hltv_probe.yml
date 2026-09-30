@@ -5,6 +5,11 @@ on:
     paths:
       - ".github/workflows/cs2_hltv_probe.yml"
       - "cs2builder/gha_probe.py"
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/cs2_hltv_probe.yml"
+      - "cs2builder/gha_probe.py"
 
 permissions:
   contents: write
