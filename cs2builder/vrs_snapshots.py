@@ -53,6 +53,31 @@ def roster_hash(ids):
     if len(ids)!=5: return None
     return hashlib.sha1(";".join(map(str,ids)).encode()).hexdigest()[:20]
 
+def parse_vrs_detail(path):
+    out={
+      "starting_rank_value":None,"h2h_adjustment":None,
+      "bounty_offered":None,"bounty_collected":None,
+      "opponent_network":None,"lan_wins":None,"vrs_matches_played":None,
+    }
+    if path is None or not Path(path).exists(): return out
+    text=Path(path).read_text(encoding="utf-8")
+    pats={
+      "starting_rank_value":r"Starting Rank Value \(([+-]?[0-9.]+)\)",
+      "h2h_adjustment":r"Head To Head Adjustments \(([+-]?[0-9.]+)\)",
+      "bounty_offered":r"- Bounty Offered:\s*([0-9.]+)",
+      "bounty_collected":r"- Bounty Collected:\s*([0-9.]+)",
+      "opponent_network":r"- Opponent Network:\s*([0-9.]+)",
+      "lan_wins":r"- LAN Wins:\s*([0-9.]+)",
+    }
+    for k,pat in pats.items():
+        m=re.search(pat,text)
+        if m:
+            try: out[k]=float(m.group(1))
+            except Exception: pass
+    played=[int(x) for x in re.findall(r"^\|\s*(\d+)\s*\|\s*\d+\s*\|\s*\d{4}-\d{2}-\d{2}\s*\|",text,re.M)]
+    if played: out["vrs_matches_played"]=max(played)
+    return out
+
 def build_team_name_index(maps):
     c=defaultdict(Counter)
     for r in maps.itertuples(index=False):
@@ -71,6 +96,12 @@ def parse_standings(root,maps,out):
             if not dm: continue
             date=f"{dm.group(1)}-{dm.group(2)}-{dm.group(3)}"
             if date>"2026-09-30": continue
+            detail_dir=d/"details"/date.replace("-","_")
+            detail_by_rank={}
+            if detail_dir.exists():
+                for q in detail_dir.glob("*.md"):
+                    mm=re.match(r"^(\d{4})--",q.name)
+                    if mm: detail_by_rank[int(mm.group(1))]=q
             for line in p.read_text(encoding="utf-8").splitlines():
                 m=ROW_RE.match(line)
                 if not m: continue
@@ -84,7 +115,9 @@ def parse_standings(root,maps,out):
                     if len(cand)==1: pids.append(cand[0][0])
                     else: amb.append({"name":name,"candidates":cand})
                 rh=roster_hash(pids)
-                ranking.append({"snapshot_date":date,"team_id":tid,"team_name":team,"rank":rank,"points":points,"roster_hash":rh})
+                strength=parse_vrs_detail(detail_by_rank.get(rank))
+                ranking.append({"snapshot_date":date,"team_id":tid,"team_name":team,"rank":rank,"points":points,
+                                "roster_hash":rh,**strength})
                 rosters.append({
                     "snapshot_date":date,"team_id":tid,"team_name":team,
                     "player_ids":";".join(map(str,sorted(pids))) if pids else "",
@@ -114,7 +147,8 @@ def parse_standings(root,maps,out):
       "team_id_resolved_rows":int(rodf["team_id"].notna().sum()),
       "unresolved_rows":len(unresolved),
       "unique_roster_hashes":int(rodf["roster_hash"].nunique()),
-      "cross_name_roster_hashes":int(sum(1 for _,g in good.groupby("roster_hash") if g["team_name"].nunique()>1))
+      "cross_name_roster_hashes":int(sum(1 for _,g in good.groupby("roster_hash") if g["team_name"].nunique()>1)),
+      "detail_strength_rows":int(rdf["starting_rank_value"].notna().sum()) if "starting_rank_value" in rdf.columns else 0
     }
     (out/"vrs_summary.json").write_text(json.dumps(summary,indent=2),encoding="utf-8")
     print("VRS_SUMMARY "+json.dumps(summary),flush=True)
