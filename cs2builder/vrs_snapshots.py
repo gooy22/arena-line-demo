@@ -1,5 +1,5 @@
 from __future__ import annotations
-import argparse, hashlib, json, re, unicodedata
+import argparse, csv, hashlib, io, json, re, unicodedata
 from collections import defaultdict, Counter
 from pathlib import Path
 
@@ -28,6 +28,24 @@ def fetch_all_players():
         if off>20000: break
     by=defaultdict(list)
     for x in rows: by[norm(x["name"])].append((int(x["id"]),x["name"]))
+
+    # Identity-only fallback from a public HLTV-derived player directory.
+    # Player IDs are stable identifiers; no performance values are consumed here.
+    fallback_added=0
+    try:
+        u="https://raw.githubusercontent.com/StrandedPond/hltv_scraper/main/hltv_cs2_player_stats_scrapling.csv"
+        rr=s.get(u,timeout=30);rr.raise_for_status()
+        for x in csv.DictReader(io.StringIO(rr.text)):
+            name=(x.get("Player") or "").strip(); url=x.get("Profile URL") or ""
+            mm=re.search(r"/stats/players/(\d+)/",url)
+            key=norm(name)
+            if not key or not mm or key in by:
+                continue
+            pid=int(mm.group(1))
+            by[key].append((pid,name));fallback_added+=1
+        print(f"PLAYER_DIRECTORY_FALLBACK added={fallback_added} total_names={len(by)}",flush=True)
+    except Exception as e:
+        print(f"PLAYER_DIRECTORY_FALLBACK_ERROR {e!r}",flush=True)
     return rows,by
 
 def roster_hash(ids):
