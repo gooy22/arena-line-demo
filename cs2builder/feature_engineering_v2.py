@@ -135,6 +135,10 @@ def build_features(matches,ranking,rosters,players,min_history=12):
             def avg_last(q,k):
                 z=q[-k:] if q else []
                 return float(np.mean(z)) if z else 0.0
+            def snap_num(row,key):
+                if not row:return np.nan
+                v=row.get(key)
+                return float(v) if v is not None and not pd.isna(v) else np.nan
             hk=tuple(sorted((a,b))); hh=list(h2h[hk])
             hwa=(np.mean(hh) if hh else .5) if hk[0]==a else (1-np.mean(hh) if hh else .5)
             ah=_asof_hist(roi,a0,cutoff);bh=_asof_hist(roi,b0,cutoff)
@@ -178,6 +182,20 @@ def build_features(matches,ranking,rosters,players,min_history=12):
               "rank_snapshot_age_diff":(rank_snapshot_age_a-rank_snapshot_age_b) if not pd.isna(rank_snapshot_age_a) and not pd.isna(rank_snapshot_age_b) else np.nan,
               "roster_snapshot_age_a":roster_snapshot_age_a,"roster_snapshot_age_b":roster_snapshot_age_b,
               "points_log_ratio":(np.log1p(float(ra.get("points")))-np.log1p(float(rb.get("points")))) if ra and rb else np.nan,
+              "starting_rank_value_a":snap_num(ra,"starting_rank_value"),"starting_rank_value_b":snap_num(rb,"starting_rank_value"),
+              "starting_rank_value_diff":(snap_num(ra,"starting_rank_value")-snap_num(rb,"starting_rank_value")) if not pd.isna(snap_num(ra,"starting_rank_value")) and not pd.isna(snap_num(rb,"starting_rank_value")) else np.nan,
+              "h2h_adjustment_a":snap_num(ra,"h2h_adjustment"),"h2h_adjustment_b":snap_num(rb,"h2h_adjustment"),
+              "h2h_adjustment_diff":(snap_num(ra,"h2h_adjustment")-snap_num(rb,"h2h_adjustment")) if not pd.isna(snap_num(ra,"h2h_adjustment")) and not pd.isna(snap_num(rb,"h2h_adjustment")) else np.nan,
+              "bounty_offered_a":snap_num(ra,"bounty_offered"),"bounty_offered_b":snap_num(rb,"bounty_offered"),
+              "bounty_offered_diff":(snap_num(ra,"bounty_offered")-snap_num(rb,"bounty_offered")) if not pd.isna(snap_num(ra,"bounty_offered")) and not pd.isna(snap_num(rb,"bounty_offered")) else np.nan,
+              "bounty_collected_a":snap_num(ra,"bounty_collected"),"bounty_collected_b":snap_num(rb,"bounty_collected"),
+              "bounty_collected_diff":(snap_num(ra,"bounty_collected")-snap_num(rb,"bounty_collected")) if not pd.isna(snap_num(ra,"bounty_collected")) and not pd.isna(snap_num(rb,"bounty_collected")) else np.nan,
+              "opponent_network_a":snap_num(ra,"opponent_network"),"opponent_network_b":snap_num(rb,"opponent_network"),
+              "opponent_network_diff":(snap_num(ra,"opponent_network")-snap_num(rb,"opponent_network")) if not pd.isna(snap_num(ra,"opponent_network")) and not pd.isna(snap_num(rb,"opponent_network")) else np.nan,
+              "lan_wins_a":snap_num(ra,"lan_wins"),"lan_wins_b":snap_num(rb,"lan_wins"),
+              "lan_wins_diff":(snap_num(ra,"lan_wins")-snap_num(rb,"lan_wins")) if not pd.isna(snap_num(ra,"lan_wins")) and not pd.isna(snap_num(rb,"lan_wins")) else np.nan,
+              "vrs_matches_played_a":snap_num(ra,"vrs_matches_played"),"vrs_matches_played_b":snap_num(rb,"vrs_matches_played"),
+              "vrs_matches_played_diff":(snap_num(ra,"vrs_matches_played")-snap_num(rb,"vrs_matches_played")) if not pd.isna(snap_num(ra,"vrs_matches_played")) and not pd.isna(snap_num(rb,"vrs_matches_played")) else np.nan,
               "rank_log_diff":(np.log1p(float(rb.get("rank")))-np.log1p(float(ra.get("rank")))) if ra and rb else np.nan,
               "recent_matches_a":len(wa),"recent_matches_b":len(wb),
               "recent_wr_a":float(np.mean(wa)) if wa else .5,"recent_wr_b":float(np.mean(wb)) if wb else .5,
