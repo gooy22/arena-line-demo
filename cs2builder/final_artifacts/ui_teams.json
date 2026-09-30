@@ -725,7 +725,7 @@
     "team_id": 8536,
     "team_name": "Ground Zero",
     "maps": 244,
-    "status": "PARTIAL"
+    "status": "READY"
   },
   {
     "rank": 105,
@@ -770,24 +770,10 @@
     "status": "READY"
   },
   {
-    "rank": 111,
-    "team_id": 12604,
-    "team_name": "Johnny Speeds",
-    "maps": 489,
-    "status": "READY"
-  },
-  {
     "rank": 112,
     "team_id": 11446,
     "team_name": "Leo",
     "maps": 492,
-    "status": "READY"
-  },
-  {
-    "rank": 113,
-    "team_id": 12380,
-    "team_name": "CYBERSHOKE",
-    "maps": 615,
     "status": "READY"
   },
   {
@@ -917,13 +903,6 @@
     "status": "READY"
   },
   {
-    "rank": 132,
-    "team_id": 13173,
-    "team_name": "Phantom",
-    "maps": 321,
-    "status": "READY"
-  },
-  {
     "rank": 133,
     "team_id": 13683,
     "team_name": "WBT",
@@ -949,13 +928,6 @@
     "team_id": 13667,
     "team_name": "NEXVOID",
     "maps": 142,
-    "status": "READY"
-  },
-  {
-    "rank": 137,
-    "team_id": 12916,
-    "team_name": "Betclic",
-    "maps": 408,
     "status": "READY"
   },
   {
@@ -991,7 +963,7 @@
     "team_id": 7653,
     "team_name": "Isurus",
     "maps": 169,
-    "status": "PARTIAL"
+    "status": "READY"
   },
   {
     "rank": 144,
@@ -1040,6 +1012,34 @@
     "team_id": 6914,
     "team_name": "Without a Roof",
     "maps": 57,
+    "status": "PARTIAL"
+  },
+  {
+    "rank": 151,
+    "team_id": 13877,
+    "team_name": "Noir Verse",
+    "maps": 106,
+    "status": "PARTIAL"
+  },
+  {
+    "rank": 152,
+    "team_id": 12646,
+    "team_name": "Chinggis Warriors",
+    "maps": 362,
+    "status": "READY"
+  },
+  {
+    "rank": 153,
+    "team_id": 13756,
+    "team_name": "ALKA",
+    "maps": 117,
+    "status": "PARTIAL"
+  },
+  {
+    "rank": 154,
+    "team_id": 13571,
+    "team_name": "SINQU",
+    "maps": 36,
     "status": "PARTIAL"
   }
 ]
