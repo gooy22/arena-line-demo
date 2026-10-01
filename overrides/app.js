@@ -519,11 +519,12 @@ function openEditBet(id) {
     if (Number(outcomeType) === 0) return 0;
     if (Number(outcomeType) === 3) return 1;
 
-    const label = String(form.querySelector(`#edit-label-${index}`)?.value || state.label || '').trim().toLowerCase();
-    const team0 = String(state.teams[0] || '').trim().toLowerCase();
-    const team1 = String(state.teams[1] || '').trim().toLowerCase();
-    if (/^(?:п1|p1)$/i.test(label) || (team0 && label === team0)) return 0;
-    if (/^(?:п2|p2)$/i.test(label) || (team1 && label === team1)) return 1;
+    const clean = value => String(value || '').trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').replace(/\s+/g,' ').trim();
+    const label = clean(form.querySelector(`#edit-label-${index}`)?.value || state.label || '');
+    const team0 = clean(state.teams[0] || '');
+    const team1 = clean(state.teams[1] || '');
+    if (/^(?:п1|p1)$/i.test(label) || (team0 && (label === team0 || label.includes(team0)))) return 0;
+    if (/^(?:п2|p2)$/i.test(label) || (team1 && (label === team1 || label.includes(team1)))) return 1;
     return state.chosenSide === 0 || state.chosenSide === 1 ? state.chosenSide : null;
   };
 
@@ -661,6 +662,7 @@ function openEditBet(id) {
       const selectionEdits = selections.map((_,index) => ({
         state:selectionState[index].state,
         winnerIndex:selectionState[index].winnerIndex,
+        manualChosenSide:currentChosenSide(index),
         manualResultStatus:actualOutcomeForSelection(index),
         lineSelection:lineSelectionPayload(selectionState[index].lineSelection),
         marketName:persistedSelectionText(index,'marketName'),
