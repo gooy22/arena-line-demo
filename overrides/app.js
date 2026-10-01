@@ -661,6 +661,7 @@ function openEditBet(id) {
       const selectionEdits = selections.map((_,index) => ({
         state:selectionState[index].state,
         winnerIndex:selectionState[index].winnerIndex,
+        manualResultStatus:actualOutcomeForSelection(index),
         lineSelection:lineSelectionPayload(selectionState[index].lineSelection),
         marketName:persistedSelectionText(index,'marketName'),
         label:persistedSelectionText(index,'label'),
