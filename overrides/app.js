@@ -267,7 +267,7 @@ function openEditBet(id) {
     }
     const marketName=String(selection.marketName || '');
     const label=String(selection.label || '');
-    return {teams,score,winnerIndex,state,marketName,label,originalMarketName:marketName,originalLabel:label,displayMarketName:t(marketName),displayLabel:t(label),odds:Number(selection.odds || 0),lineSelection:null};
+    return {teams,score,winnerIndex,state,chosenSide,marketName,label,originalMarketName:marketName,originalLabel:label,displayMarketName:t(marketName),displayLabel:t(label),odds:Number(selection.odds || 0),lineSelection:null};
   });
 
   const selectionCards = selections.map((selection,index) => {
@@ -299,6 +299,14 @@ function openEditBet(id) {
             </select>
             <div class="edit-line-status" data-edit-line-status="${index}">Завантаження лінії матчу…</div>
           </div>
+
+          <div class="edit-bet-label">Команда в ставці</div>
+          <div class="edit-winner-buttons edit-selection-pick-buttons" data-selection-pick="${index}">
+            <button type="button" class="${state.chosenSide === 0 ? 'selected' : ''}" data-edit-selection-pick="${index}" data-side="0">П1<small>${esc(team1)}</small></button>
+            <button type="button" class="${state.chosenSide === 1 ? 'selected' : ''}" data-edit-selection-pick="${index}" data-side="1">П2<small>${esc(team2)}</small></button>
+          </div>
+          <div class="edit-line-status">Цей вибір працює вручну навіть якщо матч уже завершений і live-лінія недоступна.</div>
+
           <details class="edit-manual-fallback">
             <summary>Ручний ввід</summary>
             <label for="edit-market-${index}">Ринок</label>
@@ -522,6 +530,40 @@ function openEditBet(id) {
       selectionState[index].lineSelection = null;
       selectionState[index].label = value;
       form.querySelectorAll(`[data-edit-score-preset="${index}"]`).forEach(item => item.classList.toggle('selected', item === button));
+      updateSelectionSummary(index);
+      preview();
+    });
+  });
+
+  form.querySelectorAll('[data-edit-selection-pick]').forEach(button => {
+    button.addEventListener('click', () => {
+      const index = Number(button.dataset.editSelectionPick);
+      const side = Number(button.dataset.side);
+      const state = selectionState[index];
+      const team = String(state.teams[side] || (side === 0 ? 'П1' : 'П2')).trim();
+      const currentMarket = String(state.marketName || state.originalMarketName || '').trim();
+      const winnerMarket = /перемож|побед|winner|moneyline|match\s*winner/i.test(currentMarket)
+        ? currentMarket
+        : 'Переможець матчу';
+
+      state.lineSelection = null;
+      state.chosenSide = side;
+      state.marketName = winnerMarket;
+      state.label = team;
+      state.displayMarketName = t(winnerMarket);
+      state.displayLabel = team;
+
+      const marketInput = form.querySelector(`#edit-market-${index}`);
+      const labelInput = form.querySelector(`#edit-label-${index}`);
+      if (marketInput) marketInput.value = state.displayMarketName;
+      if (labelInput) labelInput.value = team;
+
+      form.querySelectorAll(`[data-edit-selection-pick="${index}"]`).forEach(item => item.classList.toggle('selected', item === button));
+      form.querySelectorAll(`[data-edit-score-preset="${index}"]`).forEach(item => item.classList.remove('selected'));
+
+      const statusNode = form.querySelector(`[data-edit-line-status="${index}"]`);
+      if (statusNode) statusNode.textContent = `Ручний вибір: ${team}`;
+
       updateSelectionSummary(index);
       preview();
     });
