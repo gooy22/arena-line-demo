@@ -561,13 +561,23 @@ export class Accounts {
           }
 
           const manualResultStatus = String(edit.manualResultStatus || '');
+          const requestedManualStatus = String(changes.status || '');
+          const manualChosenSide = Number(edit.manualChosenSide);
           let won;
           if (manualResultStatus === 'won' || manualResultStatus === 'lost') {
             won = manualResultStatus === 'won';
+          } else if (requestedManualStatus === 'won' || requestedManualStatus === 'lost') {
+            won = requestedManualStatus === 'won';
           } else {
-            const side = chosenSide(selection);
+            const side = manualChosenSide === 0 || manualChosenSide === 1 ? manualChosenSide : chosenSide(selection);
             if (side !== 0 && side !== 1) {
-              throw new Error(`Не вдалося визначити ручний результат ставки в матчі #${index + 1}`);
+              selection.manualActualResult = {
+                winnerIndex,
+                manual:true,
+                date:new Date().toISOString()
+              };
+              delete selection.settlement;
+              return;
             }
             won = side === winnerIndex;
           }
