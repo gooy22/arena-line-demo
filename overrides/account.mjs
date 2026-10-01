@@ -560,18 +560,25 @@ export class Accounts {
             throw new Error(`Оберіть П1 або П2 як переможця матча #${index + 1}`);
           }
 
-          const side = chosenSide(selection);
-          if (side !== 0 && side !== 1) {
-            throw new Error(`Не вдалося визначити, на П1 чи П2 була ставка в матчі #${index + 1}`);
+          const manualResultStatus = String(edit.manualResultStatus || '');
+          let won;
+          if (manualResultStatus === 'won' || manualResultStatus === 'lost') {
+            won = manualResultStatus === 'won';
+          } else {
+            const side = chosenSide(selection);
+            if (side !== 0 && side !== 1) {
+              throw new Error(`Не вдалося визначити ручний результат ставки в матчі #${index + 1}`);
+            }
+            won = side === winnerIndex;
           }
 
-          const won = side === winnerIndex;
           selection.settlement = {
             ...previousSettlement,
             status:won ? 'won' : 'lost',
             factor:won ? selection.odds : 0,
             winnerIndex,
             manual:true,
+            manualResultStatus:won ? 'won' : 'lost',
             date:new Date().toISOString(),
             ...(score.every(value => value != null) ? {score,periods:[]} : {})
           };
