@@ -299,14 +299,6 @@ function openEditBet(id) {
             </select>
             <div class="edit-line-status" data-edit-line-status="${index}">Завантаження лінії матчу…</div>
           </div>
-
-          <div class="edit-bet-label">Команда в ставці</div>
-          <div class="edit-winner-buttons edit-selection-pick-buttons" data-selection-pick="${index}">
-            <button type="button" class="${state.chosenSide === 0 ? 'selected' : ''}" data-edit-selection-pick="${index}" data-side="0">П1<small>${esc(team1)}</small></button>
-            <button type="button" class="${state.chosenSide === 1 ? 'selected' : ''}" data-edit-selection-pick="${index}" data-side="1">П2<small>${esc(team2)}</small></button>
-          </div>
-          <div class="edit-line-status">Цей вибір працює вручну навіть якщо матч уже завершений і live-лінія недоступна.</div>
-
           <details class="edit-manual-fallback">
             <summary>Ручний ввід</summary>
             <label for="edit-market-${index}">Ринок</label>
@@ -521,6 +513,71 @@ function openEditBet(id) {
     if (summary) summary.textContent = `${market}${label ? ' · ' + label : ''}${Number.isFinite(odds) ? ' · ' + odds.toFixed(2) : ''}`;
   };
 
+  const currentChosenSide = index => {
+    const state = selectionState[index];
+    const outcomeType = state.lineSelection?.outcomeType;
+    if (Number(outcomeType) === 0) return 0;
+    if (Number(outcomeType) === 3) return 1;
+
+    const label = String(form.querySelector(`#edit-label-${index}`)?.value || state.label || '').trim().toLowerCase();
+    const team0 = String(state.teams[0] || '').trim().toLowerCase();
+    const team1 = String(state.teams[1] || '').trim().toLowerCase();
+    if (/^(?:п1|p1)$/i.test(label) || (team0 && label === team0)) return 0;
+    if (/^(?:п2|p2)$/i.test(label) || (team1 && label === team1)) return 1;
+    return state.chosenSide === 0 || state.chosenSide === 1 ? state.chosenSide : null;
+  };
+
+  const actualOutcomeForSelection = index => {
+    const state = selectionState[index];
+    if (state.state === 'open') return 'open';
+    if (state.state === 'void') return 'void';
+
+    if (state.state === 'winner') {
+      const side = currentChosenSide(index);
+      const winner = Number(state.winnerIndex);
+      if ((side !== 0 && side !== 1) || (winner !== 0 && winner !== 1)) return 'open';
+      return side === winner ? 'won' : 'lost';
+    }
+
+    if (state.state === 'score') {
+      const selectedScore = parseExactScore(form.querySelector(`#edit-label-${index}`)?.value || state.label);
+      const score1 = Number(form.querySelector(`#edit-score-${index}-1`)?.value);
+      const score2 = Number(form.querySelector(`#edit-score-${index}-2`)?.value);
+      if (!selectedScore || !Number.isInteger(score1) || !Number.isInteger(score2)) return 'open';
+      return selectedScore[0] === score1 && selectedScore[1] === score2 ? 'won' : 'lost';
+    }
+
+    return 'open';
+  };
+
+  const syncOverallStatusFromActual = () => {
+    if (statusInput.value === 'cashout') return;
+    const outcomes = selectionState.map((_,index) => actualOutcomeForSelection(index));
+    let nextStatus = 'open';
+
+    if (bet.type === 'single') {
+      nextStatus = outcomes[0] || 'open';
+    } else if (bet.type === 'express') {
+      if (outcomes.includes('lost')) nextStatus = 'lost';
+      else if (outcomes.includes('open')) nextStatus = 'open';
+      else if (outcomes.every(value => value === 'void')) nextStatus = 'void';
+      else nextStatus = 'won';
+    } else {
+      if (outcomes.includes('open')) {
+        nextStatus = 'open';
+      } else {
+        const systemSize = Math.max(1, Number(bet.systemSize || 2));
+        const usable = outcomes.filter(value => value !== 'lost').length;
+        const won = outcomes.filter(value => value === 'won').length;
+        nextStatus = usable < systemSize ? 'lost' : won === 0 ? 'void' : 'won';
+      }
+    }
+
+    statusInput.value = nextStatus;
+    cashoutWrap.hidden = true;
+    preview();
+  };
+
   form.querySelectorAll('[data-edit-score-preset]').forEach(button => {
     button.addEventListener('click', () => {
       const index = Number(button.dataset.editScorePreset);
@@ -535,40 +592,6 @@ function openEditBet(id) {
     });
   });
 
-  form.querySelectorAll('[data-edit-selection-pick]').forEach(button => {
-    button.addEventListener('click', () => {
-      const index = Number(button.dataset.editSelectionPick);
-      const side = Number(button.dataset.side);
-      const state = selectionState[index];
-      const team = String(state.teams[side] || (side === 0 ? 'П1' : 'П2')).trim();
-      const currentMarket = String(state.marketName || state.originalMarketName || '').trim();
-      const winnerMarket = /перемож|побед|winner|moneyline|match\s*winner/i.test(currentMarket)
-        ? currentMarket
-        : 'Переможець матчу';
-
-      state.lineSelection = null;
-      state.chosenSide = side;
-      state.marketName = winnerMarket;
-      state.label = team;
-      state.displayMarketName = t(winnerMarket);
-      state.displayLabel = team;
-
-      const marketInput = form.querySelector(`#edit-market-${index}`);
-      const labelInput = form.querySelector(`#edit-label-${index}`);
-      if (marketInput) marketInput.value = state.displayMarketName;
-      if (labelInput) labelInput.value = team;
-
-      form.querySelectorAll(`[data-edit-selection-pick="${index}"]`).forEach(item => item.classList.toggle('selected', item === button));
-      form.querySelectorAll(`[data-edit-score-preset="${index}"]`).forEach(item => item.classList.remove('selected'));
-
-      const statusNode = form.querySelector(`[data-edit-line-status="${index}"]`);
-      if (statusNode) statusNode.textContent = `Ручний вибір: ${team}`;
-
-      updateSelectionSummary(index);
-      preview();
-    });
-  });
-
   form.querySelectorAll('[data-edit-selection-winner]').forEach(button => {
     button.addEventListener('click', () => {
       const index = Number(button.dataset.editSelectionWinner);
@@ -577,6 +600,7 @@ function openEditBet(id) {
       selectionState[index].winnerIndex = side;
       form.querySelectorAll(`[data-edit-selection-winner="${index}"]`).forEach(item => item.classList.toggle('selected', item === button));
       form.querySelectorAll(`[data-edit-selection-state="${index}"]`).forEach(item => item.classList.remove('selected'));
+      syncOverallStatusFromActual();
     });
   });
 
@@ -588,6 +612,7 @@ function openEditBet(id) {
       selectionState[index].winnerIndex = '';
       form.querySelectorAll(`[data-edit-selection-winner="${index}"]`).forEach(item => item.classList.remove('selected'));
       form.querySelectorAll(`[data-edit-selection-state="${index}"]`).forEach(item => item.classList.toggle('selected', item === button));
+      syncOverallStatusFromActual();
     });
   });
 
@@ -624,7 +649,8 @@ function openEditBet(id) {
       preview();
     });
   });
-  form.querySelectorAll('#edit-bet-stake,#edit-cashout,[id^="edit-score-"]').forEach(input => input.addEventListener('input',preview));
+  form.querySelectorAll('#edit-bet-stake,#edit-cashout').forEach(input => input.addEventListener('input',preview));
+  form.querySelectorAll('[id^="edit-score-"]').forEach(input => input.addEventListener('input',syncOverallStatusFromActual));
 
   form.addEventListener('submit', event => {
     event.preventDefault();
