@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CS2 Match Predictor</title>
+  <style>
+    :root{color-scheme:dark;--bg:#090b10;--panel:#11151d;--line:#252c38;--muted:#8995a7;--text:#f5f7fb;--accent:#7df2bd;--danger:#ff7d91}
+    *{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;background:radial-gradient(900px 520px at 12% -10%,#19313b 0,transparent 58%),var(--bg);color:var(--text)}
+    main{width:min(920px,calc(100% - 32px));margin:0 auto;padding:56px 0 80px}.kicker{font-size:12px;font-weight:800;letter-spacing:.16em;color:var(--accent)}
+    h1{font-size:clamp(38px,7vw,72px);line-height:.95;letter-spacing:-.055em;margin:14px 0 14px}.lead{color:var(--muted);max-width:690px;line-height:1.6;margin-bottom:28px}
+    .card{background:rgba(17,21,29,.94);border:1px solid var(--line);border-radius:20px;padding:22px;box-shadow:0 20px 70px rgba(0,0,0,.25)}
+    .grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px} label{display:block;color:#a8b2c1;font-size:12px;margin:0 0 7px}
+    select{width:100%;padding:13px 12px;background:#0b0f15;color:#fff;border:1px solid #2b3441;border-radius:12px;outline:none;font:inherit} select:focus{border-color:#587188}
+    button{width:100%;margin-top:16px;padding:14px 16px;border:0;border-radius:12px;background:var(--accent);color:#07100c;font-weight:850;font-size:15px;cursor:pointer}button:disabled{opacity:.45;cursor:not-allowed}
+    .status{margin-top:14px;color:var(--muted);font-size:13px}.error{color:var(--danger)}.result{display:none;margin-top:18px;border-top:1px solid var(--line);padding-top:18px}
+    .result-grid{display:grid;grid-template-columns:1fr auto 1fr;gap:18px;align-items:center;text-align:center}.team{font-size:18px;font-weight:750}.prob{font-size:42px;font-weight:900;letter-spacing:-.04em;margin-top:5px}.vs{color:#687487;font-weight:800}.winner{margin-top:14px;text-align:center;color:var(--accent);font-weight:800}
+    @media(max-width:720px){.grid{grid-template-columns:1fr}.result-grid{grid-template-columns:1fr}.vs{display:none}main{padding-top:34px}}
+  </style>
+</head>
+<body>
+<main>
+  <div class="kicker">AUTOMATIC INFERENCE PIPELINE</div>
+  <h1>CS2 Match Predictor</h1>
+  <p class="lead">Выбери две команды и карту. Рейтинги, статистика игроков, форма на карте, последние результаты и изменения состава рассчитываются сервером автоматически из локальной базы.</p>
+  <section class="card">
+    <div class="grid">
+      <div><label for="team1">Команда 1</label><select id="team1"></select></div>
+      <div><label for="team2">Команда 2</label><select id="team2"></select></div>
+      <div><label for="map">Карта</label><select id="map"></select></div>
+    </div>
+    <button id="predict" disabled>Рассчитать вероятность</button>
+    <div id="status" class="status">Загрузка локальной базы и модели…</div>
+    <div id="result" class="result">
+      <div class="result-grid">
+        <div><div id="rteam1" class="team"></div><div id="p1" class="prob"></div></div>
+        <div class="vs">VS</div>
+        <div><div id="rteam2" class="team"></div><div id="p2" class="prob"></div></div>
+      </div>
+      <div id="winner" class="winner"></div>
+    </div>
+  </section>
+</main>
+<script>
+const $=id=>document.getElementById(id); let ready=false;
+function fill(el,values){el.innerHTML=values.map(v=>`<option value="${String(v).replaceAll('&','&amp;').replaceAll('"','&quot;')}">${v}</option>`).join('')}
+async function loadOptions(){
+  try{
+    const r=await fetch('/api/options',{cache:'no-store'});
+    if(!r.ok){const s=await fetch('/api/status',{cache:'no-store'}).then(x=>x.json()); $('status').textContent=s.error?`Инициализация не завершена: ${s.error}`:`Автоматическая подготовка данных/модели: ${s.phase}`; setTimeout(loadOptions,5000); return}
+    const o=await r.json(); fill($('team1'),o.teams); fill($('team2'),o.teams); fill($('map'),o.maps); if(o.teams.length>1)$('team2').selectedIndex=1; ready=true; $('predict').disabled=false; $('status').textContent=`Готово: ${o.teams.length} команд, ${o.maps.length} карт. Все метрики сервер подставляет автоматически.`;
+  }catch(e){$('status').textContent='Ошибка связи с сервером';$('status').classList.add('error');setTimeout(loadOptions,5000)}
+}
+$('predict').onclick=async()=>{
+  if(!ready)return; $('predict').disabled=true; $('status').textContent='Расчёт признаков и вероятности…'; $('result').style.display='none';
+  try{
+    const r=await fetch('/predict',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({team1:$('team1').value,team2:$('team2').value,map:$('map').value})});
+    const j=await r.json(); if(!r.ok)throw new Error(typeof j.detail==='string'?j.detail:JSON.stringify(j.detail));
+    $('rteam1').textContent=j.team1;$('rteam2').textContent=j.team2;$('p1').textContent=j.team1_percent.toFixed(1)+'%';$('p2').textContent=j.team2_percent.toFixed(1)+'%';$('winner').textContent='Модель выбирает: '+j.predicted_winner;$('result').style.display='block';$('status').textContent='Расчёт выполнен по локальной базе и сохранённой модели.';
+  }catch(e){$('status').textContent='Ошибка: '+e.message;$('status').classList.add('error')}finally{$('predict').disabled=false}
+};
+loadOptions();
+</script>
+</body>
+</html>

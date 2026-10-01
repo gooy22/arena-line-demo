@@ -1,0 +1,41 @@
+name: CS2 VRS resolver smoke
+on:
+  push:
+    branches: [cs2-dataset-builder]
+    paths:
+      - ".github/workflows/cs2_vrs_smoke.yml"
+      - "cs2builder/vrs_snapshots.py"
+  workflow_dispatch:
+jobs:
+  vrs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cs2-dataset-builder
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pandas requests
+      - name: Clone VRS
+        run: git clone --depth 1 https://github.com/ValveSoftware/counter-strike_regional_standings.git /tmp/vrs
+      - name: Synthetic team-name index
+        run: |
+          mkdir -p /tmp/vrs-test
+          cat > /tmp/vrs-test/maps.csv <<'CSV'
+          mapstatsid,date,team_a_id,team_a_name,team_b_id,team_b_name,team_a_score,team_b_score,winner_team_id,map_name,event,source_url
+          1,2026-09-01,9565,Vitality,7020,Spirit,13,10,9565,mirage,test,x
+          2,2026-09-01,4494,MOUZ,5995,G2,13,10,4494,nuke,test,x
+          3,2026-09-01,6667,FaZe,4608,Natus Vincere,13,10,6667,inferno,test,x
+          CSV
+      - name: Build snapshots
+        run: |
+          python -u cs2builder/vrs_snapshots.py --vrs-root /tmp/vrs --maps /tmp/vrs-test/maps.csv --out /tmp/vrs-out
+          cat /tmp/vrs-out/vrs_summary.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vrs-resolver-smoke
+          path: /tmp/vrs-out/
+          retention-days: 3

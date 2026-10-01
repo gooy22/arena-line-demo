@@ -1,0 +1,71 @@
+name: CS2 publish v7 live state
+
+on:
+  push:
+    branches: [cs2-dataset-builder]
+    paths:
+      - ".github/workflows/cs2_publish_live_state.yml"
+      - "cs2builder/live_inference_v7.py"
+      - "cs2builder/feature_engineering_v2.py"
+      - "cs2builder/final_artifacts/saved_model.joblib"
+      - "cs2builder/final_artifacts/matches.csv"
+      - "cs2builder/final_artifacts/ranking_snapshots.csv"
+      - "cs2builder/final_artifacts/roster_snapshots.csv"
+      - "cs2builder/final_artifacts/player_snapshots.csv"
+      - "cs2builder/final_artifacts/team_aliases.csv"
+      - "cs2builder/final_artifacts/ui_teams.json"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cs2-publish-v7-live-state
+  cancel-in-progress: true
+
+jobs:
+  build-state:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cs2-dataset-builder
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: cs2builder/requirements-inference.txt
+      - name: Install
+        run: pip install -r cs2builder/requirements-inference.txt
+      - name: Build exact live state
+        run: |
+          cd cs2builder
+          rm -f final_artifacts/live_state_v7.joblib
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import live_inference_v7 as live
+          live._bootstrap()
+          assert live.state["ready"], live.state["error"]
+          assert all(x["mismatch_count"] == 0 for x in live.state["parity"])
+          p=live.export_live_state()
+          assert p.stat().st_size < 95_000_000, p.stat().st_size
+          print("LIVE_STATE_OK", json.dumps({
+              "bytes":p.stat().st_size,
+              "teams":len(live.state["teams"]),
+              "profiles":len(live.state["profiles"]),
+              "feature_count":len(live.state["artifact"]["feature_columns"]),
+              "parity":live.state["parity"],
+          }))
+          PY
+      - name: Commit live state
+        run: |
+          git config user.name "cs2-dataset-builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add -f cs2builder/final_artifacts/live_state_v7.joblib
+          git diff --cached --quiet && { echo NO_CHANGES; exit 0; }
+          git commit -m "cs2 v7: publish precomputed live inference state"
+          git pull --rebase origin cs2-dataset-builder
+          git push origin HEAD:cs2-dataset-builder

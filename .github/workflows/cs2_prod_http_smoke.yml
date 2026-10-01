@@ -1,0 +1,24 @@
+name: CS2 production HTTP smoke
+
+on:
+  push:
+    branches: [cs2-dataset-builder]
+    paths:
+      - ".github/workflows/cs2_prod_http_smoke.yml"
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify production API
+        run: |
+          set -euo pipefail
+          BASE="https://cs2-prediction-production.up.railway.app"
+          echo "STATUS_BEGIN"
+          curl -fsS -w "\nHTTP_STATUS=%{http_code}\n" "$BASE/api/status"
+          echo "OPTIONS_BEGIN"
+          curl -fsS -w "\nHTTP_OPTIONS=%{http_code}\n" "$BASE/api/options"
+          echo "PREDICT_BEGIN"
+          curl -fsS -w "\nHTTP_PREDICT=%{http_code}\n"             -H 'content-type: application/json'             -d '{"team1":"Spirit","team2":"Vitality","map":"mirage"}'             "$BASE/predict"

@@ -1,0 +1,40 @@
+name: CS2 HLTV corpus build
+on:
+  push:
+    branches: [cs2-dataset-builder]
+    paths:
+      - ".github/workflows/cs2_hltv_corpus.yml"
+      - "cs2builder/hltv_corpus.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cs2-dataset-builder
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --upgrade pip
+      - run: pip install beautifulsoup4 "scrapling[fetchers]>=0.4.9"
+      - run: patchright install --with-deps chromium
+      - name: Crawl HLTV 2025-2026 map results
+        run: python -u cs2builder/hltv_corpus.py
+      - name: Show summary
+        if: always()
+        run: |
+          test -f cs2builder/raw_artifacts/hltv_summary.json && cat cs2builder/raw_artifacts/hltv_summary.json || true
+      - name: Upload raw corpus
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cs2-hltv-corpus
+          path: cs2builder/raw_artifacts/
+          if-no-files-found: warn
+          retention-days: 14

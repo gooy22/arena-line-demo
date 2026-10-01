@@ -1,0 +1,82 @@
+name: CS2 publish v7 prod assets
+
+on:
+  push:
+    branches: [cs2-dataset-builder]
+    paths:
+      - ".github/workflows/cs2_publish_v7_assets.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: cs2-publish-v7-assets
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cs2-dataset-builder
+          fetch-depth: 0
+
+      - name: Download successful v7 rebuild artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          rm -rf /tmp/cs2-v7
+          mkdir -p /tmp/cs2-v7
+          gh run download 36749421523 -R gooy22/arena-line-demo -n cs2-full-rebuild -D /tmp/cs2-v7
+          find /tmp/cs2-v7 -maxdepth 3 -type f -printf '%p %s\n' | sort
+
+      - name: Publish only production assets
+        run: |
+          set -euo pipefail
+          src=/tmp/cs2-v7/final_artifacts
+          dst=cs2builder/final_artifacts
+          test -s "$src/saved_model.joblib"
+          test -s "$src/matches.csv"
+          test -s "$src/ranking_snapshots.csv"
+          test -s "$src/roster_snapshots.csv"
+          test -s "$src/player_snapshots.csv"
+          mkdir -p "$dst"
+          for f in             saved_model.joblib saved_model_metadata.json build_summary.json             matches.csv ranking_snapshots.csv roster_snapshots.csv player_snapshots.csv             team_aliases.csv coverage_top150.csv ui_teams.json quality_model_metadata.json
+          do
+            if [ -f "$src/$f" ]; then cp -f "$src/$f" "$dst/$f"; fi
+          done
+          rm -f "$dst/saved_model_top150.joblib"
+          echo "PROD_ASSET_SIZES"
+          du -h "$dst/saved_model.joblib" "$dst/matches.csv" "$dst/ranking_snapshots.csv" "$dst/roster_snapshots.csv" "$dst/player_snapshots.csv"
+
+      - name: Verify model metadata
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("cs2builder/final_artifacts/saved_model_metadata.json")
+          d=json.loads(p.read_text())
+          assert d["feature_count"] == 253, d.get("feature_count")
+          h=d["holdout"]
+          assert h["n"] == 6903
+          print("V7_METADATA_OK", json.dumps({
+              "feature_count":d["feature_count"],
+              "holdout_accuracy":h["accuracy"],
+              "holdout_auc":h["roc_auc"],
+              "blend_holdout":d.get("blend_holdout"),
+          }))
+          PY
+
+      - name: Commit compact production assets
+        run: |
+          git config user.name "cs2-dataset-builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add -f             cs2builder/final_artifacts/saved_model.joblib             cs2builder/final_artifacts/saved_model_metadata.json             cs2builder/final_artifacts/build_summary.json             cs2builder/final_artifacts/matches.csv             cs2builder/final_artifacts/ranking_snapshots.csv             cs2builder/final_artifacts/roster_snapshots.csv             cs2builder/final_artifacts/player_snapshots.csv             cs2builder/final_artifacts/team_aliases.csv             cs2builder/final_artifacts/coverage_top150.csv             cs2builder/final_artifacts/ui_teams.json             cs2builder/final_artifacts/quality_model_metadata.json
+          git diff --cached --quiet && { echo "NO_CHANGES"; exit 0; }
+          git commit -m "cs2 v7: publish compact production model assets"
+          git pull --rebase origin cs2-dataset-builder
+          git push origin HEAD:cs2-dataset-builder

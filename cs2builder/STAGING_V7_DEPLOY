@@ -1,0 +1,6 @@
+staging_v7
+smoke_run=36762115341
+parity_checks=6
+feature_count=253
+teams=149
+expected_dockerfile=Dockerfile.inference

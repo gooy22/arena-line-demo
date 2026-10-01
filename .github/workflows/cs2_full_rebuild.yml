@@ -1,0 +1,95 @@
+name: CS2 full leakage-safe rebuild
+on:
+  push:
+    branches: [cs2-dataset-builder]
+    paths:
+      - "cs2builder/START_FULL_REBUILD"
+      - ".github/workflows/cs2_full_rebuild.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cs2-full-rebuild
+  cancel-in-progress: true
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cs2-dataset-builder
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: cs2builder/requirements-final.txt
+      - name: Install ML dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r cs2builder/requirements-final.txt
+      - name: Install scraper fallback only when raw corpus is missing
+        if: ${{ hashFiles('cs2builder/raw_artifacts/hltv_maps_2025_2026.csv') == '' }}
+        run: |
+          pip install beautifulsoup4 "scrapling[fetchers]>=0.4.9"
+          patchright install --with-deps chromium
+      - name: Build or reuse HLTV map corpus
+        run: |
+          if [ -s cs2builder/raw_artifacts/hltv_maps_2025_2026.csv ]; then
+            echo "REUSE_RAW_CORPUS"
+            cat cs2builder/raw_artifacts/hltv_summary.json || true
+          else
+            python -u cs2builder/hltv_corpus.py
+          fi
+      - name: Clone Valve VRS
+        run: |
+          rm -rf /tmp/cs2-vrs
+          git clone --depth 1 https://github.com/ValveSoftware/counter-strike_regional_standings.git /tmp/cs2-vrs
+      - name: Build VRS snapshots
+        run: |
+          rm -rf cs2builder/vrs_artifacts
+          python -u cs2builder/vrs_snapshots.py             --vrs-root /tmp/cs2-vrs             --maps cs2builder/raw_artifacts/hltv_maps_2025_2026.csv             --out cs2builder/vrs_artifacts
+          cat cs2builder/vrs_artifacts/vrs_summary.json
+      - name: Leakage-safe feature build and training
+        run: |
+          rm -rf cs2builder/final_artifacts
+          python -u cs2builder/final_pipeline_v2.py             --raw cs2builder/raw_artifacts/hltv_maps_2025_2026.csv             --vrsdir cs2builder/vrs_artifacts             --out cs2builder/final_artifacts
+      - name: Show final metrics
+        if: always()
+        run: |
+          cat cs2builder/final_artifacts/build_summary.json 2>/dev/null || true
+          cat cs2builder/final_artifacts/saved_model_metadata.json 2>/dev/null || true
+          echo "COVERAGE_COUNTS"
+          python - <<'PY'
+          from pathlib import Path
+          import pandas as pd
+          p=Path("cs2builder/final_artifacts/coverage_top150.csv")
+          if p.exists():
+              x=pd.read_csv(p)
+              print(x.status.value_counts(dropna=False).to_string())
+              print("UI_ELIGIBLE", int(x.ui_eligible.sum()))
+          PY
+      - name: Commit generated datasets and model
+        if: success()
+        run: |
+          git config user.name "cs2-dataset-builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add -f cs2builder/raw_artifacts/ cs2builder/vrs_artifacts/ cs2builder/final_artifacts/
+          git diff --cached --quiet || git commit -m "cs2 v2: publish 2025-2026 ASOF dataset and retrained model"
+          git pull --rebase origin cs2-dataset-builder
+          git push origin HEAD:cs2-dataset-builder
+      - name: Upload final rebuild
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cs2-full-rebuild
+          path: |
+            cs2builder/raw_artifacts/
+            cs2builder/vrs_artifacts/
+            cs2builder/final_artifacts/
+          if-no-files-found: warn
+          retention-days: 14

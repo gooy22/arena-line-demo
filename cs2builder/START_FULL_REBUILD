@@ -1,0 +1,10 @@
+v6 final candidate
+corpus_maps=41665
+asof=snapshot_date<=D-1
+top150_dedicated=true
+top150_oof_soft_voting=true
+roster_aware=true
+vrs_detail_strength=true
+player_distribution=true
+snapshot_freshness=true
+trigger=2026-09-30T17:09Z

@@ -1,0 +1,118 @@
+name: CS2 HLTV Corpus
+
+on:
+  push:
+    branches: [cs2-dataset-builder]
+    paths:
+      - "cs2builder/gha_collect_hltv.py"
+      - ".github/workflows/cs2-corpus.yml"
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - { month: "2025-01", start: "2025-01-01", end: "2025-01-31" }
+          - { month: "2025-02", start: "2025-02-01", end: "2025-02-28" }
+          - { month: "2025-03", start: "2025-03-01", end: "2025-03-31" }
+          - { month: "2025-04", start: "2025-04-01", end: "2025-04-30" }
+          - { month: "2025-05", start: "2025-05-01", end: "2025-05-31" }
+          - { month: "2025-06", start: "2025-06-01", end: "2025-06-30" }
+          - { month: "2025-07", start: "2025-07-01", end: "2025-07-31" }
+          - { month: "2025-08", start: "2025-08-01", end: "2025-08-31" }
+          - { month: "2025-09", start: "2025-09-01", end: "2025-09-30" }
+          - { month: "2025-10", start: "2025-10-01", end: "2025-10-31" }
+          - { month: "2025-11", start: "2025-11-01", end: "2025-11-30" }
+          - { month: "2025-12", start: "2025-12-01", end: "2025-12-31" }
+          - { month: "2026-01", start: "2026-01-01", end: "2026-01-31" }
+          - { month: "2026-02", start: "2026-02-01", end: "2026-02-28" }
+          - { month: "2026-03", start: "2026-03-01", end: "2026-03-31" }
+          - { month: "2026-04", start: "2026-04-01", end: "2026-04-30" }
+          - { month: "2026-05", start: "2026-05-01", end: "2026-05-31" }
+          - { month: "2026-06", start: "2026-06-01", end: "2026-06-30" }
+          - { month: "2026-07", start: "2026-07-01", end: "2026-07-31" }
+          - { month: "2026-08", start: "2026-08-01", end: "2026-08-31" }
+          - { month: "2026-09", start: "2026-09-01", end: "2026-09-30" }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install collector
+        run: |
+          python -m pip install --upgrade pip
+          pip install beautifulsoup4 scrapling[fetchers]
+          python -m playwright install --with-deps chromium
+      - name: Collect month
+        env:
+          MONTH: ${{ matrix.month }}
+          START_DATE: ${{ matrix.start }}
+          END_DATE: ${{ matrix.end }}
+          OUT_DIR: out
+        run: python cs2builder/gha_collect_hltv.py
+      - name: Upload month
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hltv-${{ matrix.month }}
+          path: out/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  merge:
+    if: always()
+    needs: scrape
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download monthly artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: hltv-*
+          path: months
+          merge-multiple: true
+      - name: Merge and summarize
+        run: |
+          python - <<'PY'
+          import csv, glob, json, pathlib
+          from collections import Counter
+          out={}
+          errors=[]
+          for p in glob.glob("months/hltv_*.csv"):
+              with open(p,encoding="utf-8") as f:
+                  for r in csv.DictReader(f):
+                      if not r.get("mapstats_id"): continue
+                      out[int(r["mapstats_id"])]=r
+          for p in glob.glob("months/summary_*.json"):
+              x=json.load(open(p,encoding="utf-8"))
+              if x.get("error"): errors.append(x)
+          rows=sorted(out.values(),key=lambda r:(r["date"],int(r["mapstats_id"])))
+          pathlib.Path("final").mkdir(exist_ok=True)
+          if rows:
+              with open("final/hltv_maps_2025_2026.csv","w",newline="",encoding="utf-8") as f:
+                  w=csv.DictWriter(f,fieldnames=list(rows[0]));w.writeheader();w.writerows(rows)
+          cov=Counter()
+          for r in rows:
+              cov[int(r["team_a_id"])]+=1;cov[int(r["team_b_id"])]+=1
+          s={
+            "unique_map_rows":len(rows),
+            "date_min":min((r["date"] for r in rows),default=None),
+            "date_max":max((r["date"] for r in rows),default=None),
+            "unique_teams":len(cov),
+            "teams_12plus":sum(v>=12 for v in cov.values()),
+            "teams_40plus":sum(v>=40 for v in cov.values()),
+            "failed_months":[x["month"] for x in errors],
+            "top_coverage":cov.most_common(30),
+          }
+          open("final/hltv_summary.json","w",encoding="utf-8").write(json.dumps(s,ensure_ascii=False,indent=2))
+          print("HLTV_MERGED",json.dumps(s,ensure_ascii=False))
+          PY
+      - name: Upload merged corpus
+        uses: actions/upload-artifact@v4
+        with:
+          name: hltv-corpus-2025-2026
+          path: final/
+          retention-days: 7

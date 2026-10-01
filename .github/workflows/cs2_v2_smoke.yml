@@ -1,0 +1,35 @@
+name: CS2 v2 smoke
+on:
+  push:
+    branches: [cs2-dataset-builder]
+    paths:
+      - ".github/workflows/cs2_v2_smoke.yml"
+      - "cs2builder/vrs_snapshots.py"
+      - "cs2builder/feature_engineering_v2.py"
+      - "cs2builder/final_pipeline_v2.py"
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cs2-dataset-builder
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          pip install -r cs2builder/requirements-final.txt
+          pip install beautifulsoup4 "scrapling[fetchers]>=0.4.9"
+      - name: Compile
+        run: python -m py_compile cs2builder/vrs_snapshots.py cs2builder/feature_engineering_v2.py cs2builder/final_pipeline_v2.py cs2builder/hltv_corpus.py
+      - name: Import
+        run: |
+          cd cs2builder
+          python - <<'PY'
+          import vrs_snapshots, feature_engineering_v2, final_pipeline_v2, hltv_corpus
+          print("V2_IMPORT_OK")
+          PY
