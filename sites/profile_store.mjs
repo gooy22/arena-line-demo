@@ -35,7 +35,7 @@ function withLock(email,fn) {
 export function validateProfile(profile) {
   if(!profile||typeof profile!=='object'||Array.isArray(profile)) throw new Error('Invalid profile');
   const email=safeEmail(profile.email);
-  if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) throw new Error('Invalid profile email');
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('Invalid profile email');
   if(!/^[a-f0-9]{64}$/i.test(String(profile.hash||''))) throw new Error('Invalid profile credential');
   if(!Number.isSafeInteger(profile.balance)||profile.balance<0||profile.balance>999999999999) throw new Error('Invalid profile balance');
   if(!Array.isArray(profile.payments)||profile.payments.length>10000) throw new Error('Invalid payments');
