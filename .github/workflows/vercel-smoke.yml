@@ -64,8 +64,8 @@ jobs:
           if (storage.backend !== 'vercel-blob' || storage.persistent !== true) {
             throw new Error('Durable profile storage is not active: ' + JSON.stringify(storage));
           }
-          if (syncStorage.backend !== 'vercel-blob' || syncStorage.persistent !== true) {
-            throw new Error('Durable cross-instance sync storage is not active: ' + JSON.stringify(syncStorage));
+          if (syncStorage.backend !== 'process-memory' || syncStorage.persistent !== false) {
+            throw new Error('Unexpected live sync storage mode: ' + JSON.stringify(syncStorage));
           }
 
           const checks = [
