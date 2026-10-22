@@ -1,6 +1,7 @@
 import http from 'node:http';
 import { Readable } from 'node:stream';
 import { readFile } from 'node:fs/promises';
+import { get as blobGet, put as blobPut } from '@vercel/blob';
 import app from './dist/server/index.js';
 import { augmentSettlements, completedHistory, probeResultsSource } from './results_bridge.mjs';
 import { readProfile, loginProfile, syncProfile, profileStorageStatus, changeProfilePassword } from './profile_store.mjs';
@@ -129,6 +130,82 @@ function pruneSyncedEvents() {
     const rows=[...syncedEvents.entries()].sort((a,b)=>(a[1].syncedAt||0)-(b[1].syncedAt||0));
     for (const [id] of rows.slice(0,syncedEvents.size-5000)) syncedEvents.delete(id);
   }
+}
+
+const SHARED_SYNC_STATE_PATH = 'arena-line/state/sync-state.json';
+let sharedSyncEtag = '';
+const hasBlobStore = () => Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+
+async function refreshSharedSyncState() {
+  if (!hasBlobStore()) return false;
+  const result = await blobGet(SHARED_SYNC_STATE_PATH,{access:'private',useCache:false});
+  if (!result) {
+    sharedSyncEtag = '';
+    return false;
+  }
+  if (result.statusCode !== 200) throw new Error('Unable to read shared sync state: ' + result.statusCode);
+  const state = JSON.parse(await new Response(result.stream).text());
+  if (!Array.isArray(state.events)) throw new Error('Invalid shared sync state');
+  syncedEvents.clear();
+  for (const event of state.events.slice(-5000)) {
+    const id = safeString(event?.id,64);
+    if (/^[A-Za-z0-9:_-]{1,64}$/.test(id)) syncedEvents.set(id,event);
+  }
+  if (state.syncMeta && typeof state.syncMeta === 'object') {
+    syncMeta = {...syncMeta,...state.syncMeta};
+  }
+  sharedSyncEtag = String(result.blob?.etag || '');
+  return true;
+}
+
+async function persistSharedSyncState({rows=[],metaPatch={}}={}) {
+  if (!hasBlobStore()) return {persistent:false};
+
+  const applyIncoming = () => {
+    for (const raw of rows) {
+      const event = safeEvent(raw);
+      if (event) syncedEvents.set(event.id,event);
+    }
+    syncMeta = {...syncMeta,...metaPatch};
+    pruneSyncedEvents();
+  };
+
+  const save = async () => {
+    const payload = JSON.stringify({
+      version:1,
+      updatedAt:Date.now(),
+      events:[...syncedEvents.values()],
+      syncMeta
+    });
+    const result = await blobPut(SHARED_SYNC_STATE_PATH,payload,{
+      access:'private',
+      allowOverwrite:true,
+      contentType:'application/json',
+      cacheControlMaxAge:0,
+      ...(sharedSyncEtag ? {ifMatch:sharedSyncEtag} : {})
+    });
+    sharedSyncEtag = String(result.etag || '');
+  };
+
+  try {
+    await save();
+    return {persistent:true};
+  } catch (error) {
+    const conflict = error?.name === 'BlobPreconditionFailedError' || error?.status === 412 || error?.statusCode === 412;
+    if (!conflict) throw error;
+    await refreshSharedSyncState();
+    applyIncoming();
+    await save();
+    return {persistent:true,recoveredConflict:true};
+  }
+}
+
+function syncStorageStatus() {
+  const persistent = hasBlobStore();
+  return {
+    backend:persistent ? 'vercel-blob' : 'process-memory',
+    persistent
+  };
 }
 
 function eventForSettlement(event) {
@@ -1498,11 +1575,13 @@ const server=http.createServer(async (req,res)=>{
     }
 
     if (url.pathname === '/health') {
+      await refreshSharedSyncState();
       const profileStorage=await profileStorageStatus();
+      const syncStorage=syncStorageStatus();
       return json(res,200,{
         ok:true,
         source:'arena-line-parik-sync-v4',
-        runtime:'parik-feed + synced-file-profile + flexible-bet-editor + multi-esports-settlement',
+        runtime:'parik-feed + durable-blob-sync-state + synced-file-profile + flexible-bet-editor + multi-esports-settlement',
         sync:{
           lastClientAt:syncMeta.lastClientAt || null,
           source:syncMeta.source || null,
@@ -1514,7 +1593,8 @@ const server=http.createServer(async (req,res)=>{
           telemetry:syncMeta.telemetry
         },
         resultsSource,
-        profileStorage
+        profileStorage,
+        syncStorage
       });
     }
 
@@ -1675,6 +1755,7 @@ const server=http.createServer(async (req,res)=>{
 
     if (url.pathname === '/api/sync/telemetry') {
       if (method !== 'POST') return json(res,405,{ok:false,error:'Method not allowed'});
+      await refreshSharedSyncState();
       const body=await readBody(req,16_000);
       const value=JSON.parse(body.toString('utf8') || '{}');
       const telemetry={
@@ -1694,12 +1775,14 @@ const server=http.createServer(async (req,res)=>{
       };
       syncMeta.telemetry=telemetry;
       syncMeta.lastClientAt=Date.now();
+      await persistSharedSyncState({metaPatch:{telemetry,lastClientAt:syncMeta.lastClientAt}});
       console.log('FEED_TELEMETRY '+JSON.stringify(telemetry));
       return json(res,200,{ok:true});
     }
 
     if (url.pathname === '/api/sync/events') {
       if (method !== 'POST') return json(res,405,{ok:false,error:'Method not allowed'});
+      await refreshSharedSyncState();
       const body=await readBody(req,1_500_000);
       const value=JSON.parse(body.toString('utf8') || '{}');
       if (!Array.isArray(value.rows) || value.rows.length > 250) return json(res,400,{ok:false,error:'Invalid rows'});
@@ -1710,8 +1793,7 @@ const server=http.createServer(async (req,res)=>{
         syncedEvents.set(event.id,event);
         accepted++;
       }
-      syncMeta={
-        ...syncMeta,
+      const metaPatch={
         lastClientAt:Date.now(),
         source:safeString(value.source,500),
         sport:safeString(value.sport,20),
@@ -1719,7 +1801,9 @@ const server=http.createServer(async (req,res)=>{
         revision:Number(value.revision || 0),
         received:accepted
       };
+      syncMeta={...syncMeta,...metaPatch};
       pruneSyncedEvents();
+      await persistSharedSyncState({rows:value.rows,metaPatch});
       scheduleMediaWarm([...syncedEvents.values()]);
       console.log('FEED_SYNC '+JSON.stringify({
         source:syncMeta.source,
@@ -1734,6 +1818,7 @@ const server=http.createServer(async (req,res)=>{
 
     if (url.pathname === '/api/sync/status') {
       if (method !== 'GET') return json(res,405,{ok:false,error:'Method not allowed'});
+      await refreshSharedSyncState();
       const ids=(url.searchParams.get('ids') || '').split(',').filter(Boolean).slice(0,100);
       const events=ids.length
         ? ids.map(id=>syncedEvents.get(id)).filter(Boolean)
@@ -1743,6 +1828,7 @@ const server=http.createServer(async (req,res)=>{
 
     if (url.pathname === '/api/settlements') {
       if (method !== 'POST') return json(res,405,{error:'Method not allowed'});
+      await refreshSharedSyncState();
       const body=await readBody(req,64_000);
       const merged=await mergedSettlements(body,req);
       return json(res,merged.status,merged.body);
@@ -1750,6 +1836,7 @@ const server=http.createServer(async (req,res)=>{
 
     if (url.pathname === '/api/results') {
       if (method !== 'GET') return json(res,405,{error:'Method not allowed'});
+      await refreshSharedSyncState();
       const ids=(url.searchParams.get('ids') || '').split(',').filter(Boolean).slice(0,100);
       const events=ids.map(id=>syncedEvents.get(String(id))).filter(Boolean).map(eventForSettlement);
       if (!events.length) return json(res,200,[]);
@@ -1759,6 +1846,7 @@ const server=http.createServer(async (req,res)=>{
 
     if (url.pathname === '/api/completed') {
       if (method !== 'GET') return json(res,405,{error:'Method not allowed'});
+      await refreshSharedSyncState();
       const competitor=url.searchParams.get('competitor') || '';
       if (!/^\d{1,16}$/.test(competitor)) return json(res,400,{error:'Invalid competitor'});
       const team=teamMetaByProviderId(competitor);
