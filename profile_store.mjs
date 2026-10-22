@@ -106,7 +106,7 @@ async function atomicWrite(email, profile) {
       blobEtags.set(key,String(result.etag || ''));
       return;
     } catch (error) {
-      if (error?.name === 'BlobPreconditionFailedError' || error?.status === 412 || error?.statusCode === 412) {
+      if (error?.name === 'BlobPreconditionFailedError' || error?.status === 412 || error?.statusCode === 412 || /precondition failed|etag mismatch/i.test(String(error?.message || error))) {
         const conflict = new Error('Profile conflict');
         conflict.statusCode = 409;
         conflict.profile = await readProfile(key).catch(() => null);
