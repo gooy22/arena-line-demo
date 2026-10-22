@@ -6,6 +6,36 @@ const SESSION = 'arena-session-v1';
 const HASH = 'ed2d59a0e72ca1446a5a9f29e8901b59ed32cb779132055220400527ca2531bc';
 const PROFILE_API = '/api/profile';
 const clone = value => typeof structuredClone === 'function' ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+const isAccountId = value => {
+  const id = String(value || '');
+  return /^[1-9]\\d{8}$/.test(id) && new Set(id).size === 9;
+};
+function createAccountId(used = new Set()) {
+  for (let attempt = 0; attempt < 128; attempt++) {
+    const digits = Array.from({length:10},(_,digit)=>String(digit));
+    for (let index = digits.length - 1; index > 0; index--) {
+      const random = new Uint32Array(1);
+      crypto.getRandomValues(random);
+      const other = random[0] % (index + 1);
+      [digits[index],digits[other]] = [digits[other],digits[index]];
+    }
+    const id = digits.slice(0,9).join('');
+    if (id[0] !== '0' && new Set(id).size === 9 && !used.has(id)) return id;
+  }
+  throw new Error('Не удалось создать уникальный ID аккаунта');
+}
+function normalizeAccountIds(data) {
+  const used = new Set();
+  let changed = false;
+  for (const account of data) {
+    if (!isAccountId(account.id) || used.has(String(account.id))) {
+      account.id = createAccountId(used);
+      changed = true;
+    }
+    used.add(String(account.id));
+  }
+  return changed;
+}
 const accountStamp = account => {
   account.updatedAt = new Date().toISOString();
   account.profileRevision = Math.max(0, Number(account.profileRevision || 0)) + 1;
@@ -125,6 +155,10 @@ export class Accounts {
       const data = JSON.parse(raw);
       if (!Array.isArray(data) || data.some(a => !a.email || !Number.isSafeInteger(a.balance) || a.balance < 0 || !Array.isArray(a.payments))) throw new Error('Не удалось прочитать данные профиля');
       data.forEach(a => { if (!Array.isArray(a.bets)) a.bets = []; });
+      if (normalizeAccountIds(data)) {
+        this._write(data);
+        data.forEach(account => this._queueSync(account));
+      }
       return data;
     }
     let balance = INITIAL_BALANCE;
@@ -132,7 +166,7 @@ export class Accounts {
       const legacy = JSON.parse(this.storage.getItem('line-demo-profile-v1'));
       if (legacy && Number.isSafeInteger(legacy.balance) && legacy.balance >= 0) balance = legacy.balance;
     } catch { /* Ignore obsolete prototype data. */ }
-    const data = [{ id: 'AL100001', email: EMAIL, firstName: 'Роман', lastName: 'Тополя', hash: HASH, balance, payments: [], bets: [] }];
+    const data = [{ id: createAccountId(), email: EMAIL, firstName: 'Роман', lastName: 'Тополя', hash: HASH, balance, payments: [], bets: [] }];
     this._write(data);
     return data;
   }
@@ -189,7 +223,7 @@ export class Accounts {
       if (error?.message === 'Этот аккаунт уже создан. Войдите по почте и паролю.') throw error;
     }
 
-    const account = { id: crypto.randomUUID().slice(0, 8).toUpperCase(), email, firstName, lastName, hash, balance: 0, payments: [], bets: [], profileRevision:0, updatedAt:new Date().toISOString() };
+    const account = { id: createAccountId(new Set(data.map(item => String(item.id)))), email, firstName, lastName, hash, balance: 0, payments: [], bets: [], profileRevision:0, updatedAt:new Date().toISOString() };
     data.push(account);
     this._persist(data, account);
     this.storage.setItem(SESSION, email);
