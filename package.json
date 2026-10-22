@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node server.mjs"
-  }
+    "start": "node server.mjs",
+    "check:sites": "node --check sites/worker.mjs && node --check sites/profile_store.mjs"
+  },
+  "main": "sites/worker.mjs"
 }
