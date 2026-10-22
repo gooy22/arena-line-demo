@@ -181,7 +181,7 @@ async function persistSharedSyncState({rows=[],metaPatch={}}={}) {
       access:'private',
       allowOverwrite:true,
       contentType:'application/json',
-      cacheControlMaxAge:0,
+      cacheControlMaxAge:60,
       ...(sharedSyncEtag ? {ifMatch:sharedSyncEtag} : {})
     });
     sharedSyncEtag = String(result.etag || '');
