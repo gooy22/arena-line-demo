@@ -198,6 +198,32 @@ jobs:
             console.log('PASS browser document', JSON.stringify({status:response.status(),title,bodyChars:bodyText.length,bodyPreview:bodyText.slice(0,700),viewport:'390x844'}));
             console.log('Live feed offline message visible after 18s:',feedOfflineVisible);
             console.log('PASS app assets', JSON.stringify({appScriptLoaded,cssLoaded,resourceCount:resources.length}));
+
+            await page.route('**/api/profile**', route => route.abort());
+            const testEmail = 'browser-id-smoke@example.invalid';
+            await page.evaluate(email => {
+              localStorage.setItem('arena-accounts-v1', JSON.stringify([{
+                id:'AL100001',email,firstName:'Test',lastName:'Account',
+                hash:'a'.repeat(64),balance:0,payments:[],bets:[]
+              }]));
+              localStorage.setItem('arena-session-v1', email);
+              location.hash = '#profile';
+            }, testEmail);
+            await page.reload({waitUntil:'domcontentloaded',timeout:45000});
+            await page.waitForFunction(() => {
+              const layer = document.querySelector('#profile-layer');
+              return layer && !layer.hidden;
+            }, {timeout:10000});
+            const profileText = await page.locator('#profile-content').innerText();
+            const migratedId = await page.evaluate(() => JSON.parse(localStorage.getItem('arena-accounts-v1'))[0].id);
+            if (!/^[1-9]\\d{8}$/.test(migratedId) || new Set(migratedId).size !== 9) {
+              throw new Error('Legacy profile did not migrate to nine unique digits: ' + migratedId);
+            }
+            if (!profileText.includes('ID ' + migratedId)) {
+              throw new Error('The profile UI does not display the migrated account ID: ' + migratedId);
+            }
+            console.log('PASS browser account ID migration', migratedId);
+
             console.log('Same-origin HTTP errors:', JSON.stringify(httpErrors.slice(0,20)));
             console.log('Browser console errors (diagnostic only):', JSON.stringify(consoleErrors.slice(0,10)));
             console.log('Failed requests (diagnostic only):', JSON.stringify(failedRequests.slice(0,10)));
