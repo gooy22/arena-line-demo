@@ -189,8 +189,8 @@ jobs:
             try {
               const feedResponse = await fetch(base + '/feed.mjs');
               const feedSource = await feedResponse.text();
-              const key = feedSource.match(/PUBLIC_API_KEY\\s*=\\s*['"]([^'"]+)['"]/)?.[1];
-              const brand = feedSource.match(/BRAND\\s*=\\s*['"]([^'"]+)['"]/)?.[1] || 'PRJ4';
+              const key = feedSource.match(/PUBLIC_API_KEY\s*=\s*['"]([^'"]+)['"]/)?.[1];
+              const brand = feedSource.match(/BRAND\s*=\s*['"]([^'"]+)['"]/)?.[1] || 'PRJ4';
               if (key) {
                 const probeOrigin = async origin => {
                   const probePage = await browser.newPage();
