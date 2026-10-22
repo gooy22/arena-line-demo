@@ -6,7 +6,8 @@ const PRIMARY_DIR = process.env.PROFILE_DIR || '/data/profiles';
 const FALLBACK_DIR = '/tmp/arena-line-profiles';
 const BLOB_PREFIX = 'arena-line/profiles/';
 const blobEtags = new Map();
-const useBlobStorage = () => process.env.ARENA_PROFILE_STORE === 'blob' || Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+const hasBlobCredentials = () => Boolean(process.env.BLOB_READ_WRITE_TOKEN || (process.env.BLOB_STORE_ID && process.env.VERCEL_OIDC_TOKEN));
+const useBlobStorage = () => process.env.ARENA_PROFILE_STORE === 'blob' || hasBlobCredentials();
 const blobPath = email => BLOB_PREFIX + fileName(email);
 
 let directory = PRIMARY_DIR;
@@ -175,8 +176,8 @@ export async function syncProfile(incoming, bearerHash) {
 
 export async function profileStorageStatus() {
   if (useBlobStorage()) {
-    if (!process.env.BLOB_READ_WRITE_TOKEN) {
-      return {directory:'vercel-blob:profiles',persistent:false,backend:'vercel-blob',error:'BLOB_READ_WRITE_TOKEN missing'};
+    if (!hasBlobCredentials()) {
+      return {directory:'vercel-blob:profiles',persistent:false,backend:'vercel-blob',error:'Vercel Blob credentials missing'};
     }
     try {
       await get('arena-line/health-probe.json',{access:'private',useCache:false});
