@@ -145,7 +145,7 @@ jobs:
 
           page.on('pageerror', error => pageErrors.push(String(error?.stack || error?.message || error)));
           page.on('console', message => {
-            if (message.type() === 'error') consoleErrors.push(message.text().replace(/X-Api-Key=[^&'\\s]+/g,'X-Api-Key=[redacted]').slice(0,300));
+            if (message.type() === 'error') consoleErrors.push(message.text().replace(/X-Api-Key=[^&'\s]+/g,'X-Api-Key=[redacted]').slice(0,300));
           });
           page.on('requestfailed', request => {
             failedRequests.push({url:request.url(),error:request.failure()?.errorText || 'request failed'});
