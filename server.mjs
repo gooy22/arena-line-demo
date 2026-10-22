@@ -151,9 +151,13 @@ async function refreshSharedSyncState() {
     const id = safeString(event?.id,64);
     if (/^[A-Za-z0-9:_-]{1,64}$/.test(id)) syncedEvents.set(id,event);
   }
+  const localTelemetry = syncMeta.telemetry;
+  const localLastClientAt = Number(syncMeta.lastClientAt || 0);
   if (state.syncMeta && typeof state.syncMeta === 'object') {
     syncMeta = {...syncMeta,...state.syncMeta};
   }
+  if (localTelemetry) syncMeta.telemetry = localTelemetry;
+  if (localLastClientAt > Number(syncMeta.lastClientAt || 0)) syncMeta.lastClientAt = localLastClientAt;
   sharedSyncEtag = String(result.blob?.etag || '');
   return true;
 }
@@ -1763,7 +1767,6 @@ const server=http.createServer(async (req,res)=>{
 
     if (url.pathname === '/api/sync/telemetry') {
       if (method !== 'POST') return json(res,405,{ok:false,error:'Method not allowed'});
-      await refreshSharedSyncState();
       const body=await readBody(req,16_000);
       const value=JSON.parse(body.toString('utf8') || '{}');
       const telemetry={
@@ -1783,9 +1786,8 @@ const server=http.createServer(async (req,res)=>{
       };
       syncMeta.telemetry=telemetry;
       syncMeta.lastClientAt=Date.now();
-      await persistSharedSyncState({metaPatch:{telemetry,lastClientAt:syncMeta.lastClientAt}});
       console.log('FEED_TELEMETRY '+JSON.stringify(telemetry));
-      return json(res,200,{ok:true});
+      return json(res,200,{ok:true,persistent:false});
     }
 
     if (url.pathname === '/api/sync/events') {
