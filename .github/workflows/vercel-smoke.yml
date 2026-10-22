@@ -216,7 +216,7 @@ jobs:
             }, {timeout:10000});
             const profileText = await page.locator('#profile-content').innerText();
             const migratedId = await page.evaluate(() => JSON.parse(localStorage.getItem('arena-accounts-v1'))[0].id);
-            if (!/^[1-9]\\d{8}$/.test(migratedId) || new Set(migratedId).size !== 9) {
+            if (!/^[1-9]\d{8}$/.test(migratedId) || new Set(migratedId).size !== 9) {
               throw new Error('Legacy profile did not migrate to nine unique digits: ' + migratedId);
             }
             if (!profileText.includes('ID ' + migratedId)) {
