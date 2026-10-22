@@ -139,7 +139,7 @@ jobs:
           });
           const responseCapturePromises = [];
           page.on('response', response => {
-            if (response.status() >= 400 && response.url().startsWith(base))
+            if (response.status() >= 400 && response.url().startsWith(base)) {
               const record = {status:response.status(),url:response.url(),body:''};
               httpErrors.push(record);
               responseCapturePromises.push(response.text().then(text => { record.body = text.slice(0,400); }).catch(() => {}));
