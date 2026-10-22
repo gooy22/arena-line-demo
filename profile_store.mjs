@@ -11,7 +11,7 @@ const useBlobStorage = () => process.env.ARENA_PROFILE_STORE === 'blob' || hasBl
 const blobPath = email => BLOB_PREFIX + fileName(email);
 const isAccountId = value => {
   const id = String(value || '');
-  return /^[1-9]\\d{8}$/.test(id) && new Set(id).size === 9;
+  return /^[1-9]\d{8}$/.test(id) && new Set(id).size === 9;
 };
 function createAccountId(used = new Set()) {
   for (let attempt = 0; attempt < 128; attempt++) {
