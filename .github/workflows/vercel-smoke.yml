@@ -23,11 +23,9 @@ jobs:
       - name: Check public production routes
         env:
           BASE_URL: https://arena-line-demo-vercel.vercel.app
-          DEPLOYMENT_URL: https://arena-line-demo-vercel-mrl0uc2ae-sanekganggsta-1320s-projects.vercel.app
         run: |
           node --input-type=module <<'NODE'
-          let base = process.env.BASE_URL;
-          const deploymentBase = process.env.DEPLOYMENT_URL;
+          const base = process.env.BASE_URL;
           const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
           async function request(path, options = {}) {
@@ -133,13 +131,11 @@ jobs:
       - name: Open the live site and check browser runtime
         env:
           BASE_URL: https://arena-line-demo-vercel.vercel.app
-          DEPLOYMENT_URL: https://arena-line-demo-vercel-ja8tytxfd-sanekganggsta-1320s-projects.vercel.app
         run: |
           node --input-type=module <<'NODE'
           import { chromium } from 'playwright';
 
-          let base = process.env.BASE_URL;
-          const deploymentBase = process.env.DEPLOYMENT_URL;
+          const base = process.env.BASE_URL;
           const browser = await chromium.launch({headless:true});
           const page = await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1});
           const pageErrors = [];
@@ -161,19 +157,11 @@ jobs:
           });
 
           try {
-            let response = await page.goto(base, {waitUntil:'domcontentloaded',timeout:45000});
+            const response = await page.goto(base, {waitUntil:'domcontentloaded',timeout:45000});
             if (!response || response.status() !== 200) {
-              const stableBody = response ? await response.text().catch(() => '') : '';
-              console.log('Stable domain main response:', JSON.stringify({status:response?.status() ?? null,body:stableBody.slice(0,600)}));
-              if (deploymentBase) {
-                base = deploymentBase;
-                response = await page.goto(base, {waitUntil:'domcontentloaded',timeout:45000});
-                const directBody = response ? await response.text().catch(() => '') : '';
-                console.log('Direct deployment main response:', JSON.stringify({status:response?.status() ?? null,body:directBody.slice(0,600)}));
-              }
-            }
-            if (!response || response.status() !== 200) {
-              throw new Error('Main document did not return HTTP 200: ' + (response?.status() ?? 'no response'));
+              const body = response ? await response.text().catch(() => '') : '';
+              console.log('Stable domain main response:', JSON.stringify({status:response?.status() ?? null,body:body.slice(0,600)}));
+              throw new Error('Stable main document did not return HTTP 200: ' + (response?.status() ?? 'no response'));
             }
             await page.waitForTimeout(8000);
 
