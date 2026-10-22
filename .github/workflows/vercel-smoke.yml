@@ -10,6 +10,8 @@ on:
       - "package.json"
       - "dist/**"
       - "overrides/**"
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -22,7 +24,7 @@ jobs:
     steps:
       - name: Check public production routes
         env:
-          BASE_URL: https://arena-line-demo.vercel.app
+          BASE_URL: https://arena-line-demo-vercel.vercel.app
         run: |
           node --input-type=module <<'NODE'
           const base = process.env.BASE_URL;
