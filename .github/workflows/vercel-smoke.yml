@@ -119,10 +119,13 @@ jobs:
       - name: Open the live site and check browser runtime
         env:
           BASE_URL: https://arena-line-demo-vercel.vercel.app
+          DEPLOYMENT_URL: https://arena-line-demo-vercel-ja8tytxfd-sanekganggsta-1320s-projects.vercel.app
         run: |
           node --input-type=module <<'NODE'
           import { chromium } from 'playwright';
 
+          let base = process.env.BASE_URL;
+          const deploymentBase = process.env.DEPLOYMENT_URL;
           const browser = await chromium.launch({headless:true});
           const page = await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1});
           const pageErrors = [];
@@ -181,6 +184,55 @@ jobs:
             console.log('Same-origin HTTP errors:', JSON.stringify(httpErrors.slice(0,20)));
             console.log('Browser console errors (diagnostic only):', JSON.stringify(consoleErrors.slice(0,10)));
             console.log('Failed requests (diagnostic only):', JSON.stringify(failedRequests.slice(0,10)));
+
+            // Compare upstream authorization from the new Vercel origin against known origins.
+            try {
+              const feedResponse = await fetch(base + '/feed.mjs');
+              const feedSource = await feedResponse.text();
+              const key = feedSource.match(/PUBLIC_API_KEY\\s*=\\s*['"]([^'"]+)['"]/)?.[1];
+              const brand = feedSource.match(/BRAND\\s*=\\s*['"]([^'"]+)['"]/)?.[1] || 'PRJ4';
+              if (key) {
+                const probeOrigin = async origin => {
+                  const probePage = await browser.newPage();
+                  const consoleSignals = [];
+                  probePage.on('console', message => {
+                    if (message.type() === 'error' && /Unexpected response code: 403/.test(message.text())) consoleSignals.push('websocket-403');
+                  });
+                  try {
+                    const pageResponse = await probePage.goto(origin,{waitUntil:'domcontentloaded',timeout:25000});
+                    const outcome = await probePage.evaluate(({brand,key}) => new Promise(resolve => {
+                      let finished = false;
+                      let timer;
+                      let socket;
+                      const finish = value => {
+                        if (finished) return;
+                        finished = true;
+                        clearTimeout(timer);
+                        try { socket?.close(); } catch {}
+                        resolve(value);
+                      };
+                      socket = new WebSocket('wss://parik24.pro/direct-feed/feed?brand=' + encodeURIComponent(brand) + '&X-Api-Key=' + encodeURIComponent(key));
+                      timer = setTimeout(() => finish('timeout'),7000);
+                      socket.addEventListener('open',() => finish('open'),{once:true});
+                      socket.addEventListener('error',() => finish('error'),{once:true});
+                    }),{brand,key});
+                    return {pageStatus:pageResponse?.status() ?? null,websocket:outcome,observed403:consoleSignals.length>0};
+                  } catch (error) {
+                    return {websocket:'unavailable',error:String(error?.message || error).slice(0,160)};
+                  } finally {
+                    await probePage.close();
+                  }
+                };
+                const oldSite = await probeOrigin('https://arena-line-demo.sanekganggsta.chatgpt.site');
+                const providerOrigin = await probeOrigin('https://parik24.pro');
+                console.log('Feed origin diagnostic (status only):',JSON.stringify({oldSite,providerOrigin}));
+              } else {
+                console.log('Feed origin diagnostic skipped: public feed config was not found');
+              }
+            } catch (error) {
+              console.log('Feed origin diagnostic unavailable:',String(error?.message || error).slice(0,200));
+            }
+
             if (httpErrors.some(item => item.status >= 500)) throw new Error('Same-origin HTTP 5xx responses: ' + JSON.stringify(httpErrors.filter(item => item.status >= 500)));
           } finally {
             await browser.close();
