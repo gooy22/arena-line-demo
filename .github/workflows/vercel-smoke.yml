@@ -145,7 +145,7 @@ jobs:
 
           page.on('pageerror', error => pageErrors.push(String(error?.stack || error?.message || error)));
           page.on('console', message => {
-            if (message.type() === 'error') consoleErrors.push(message.text().slice(0,300));
+            if (message.type() === 'error') consoleErrors.push(message.text().replace(/X-Api-Key=[^&'\\s]+/g,'X-Api-Key=[redacted]').slice(0,300));
           });
           page.on('requestfailed', request => {
             failedRequests.push({url:request.url(),error:request.failure()?.errorText || 'request failed'});
@@ -163,7 +163,7 @@ jobs:
               console.log('Stable domain main response:', JSON.stringify({status:response?.status() ?? null,body:body.slice(0,600)}));
               throw new Error('Stable main document did not return HTTP 200: ' + (response?.status() ?? 'no response'));
             }
-            await page.waitForTimeout(8000);
+            await page.waitForTimeout(18000);
 
             const title = await page.title();
             const bodyText = await page.locator('body').innerText().catch(() => '');
@@ -177,7 +177,9 @@ jobs:
             if (!cssLoaded) throw new Error('Main application stylesheet did not load');
             if (pageErrors.length) throw new Error('Browser JavaScript exceptions: ' + JSON.stringify(pageErrors.slice(0,5)));
 
+            const feedOfflineVisible = /Немає з.?єднання з джерелом матчів|джерело матчів.*недоступн|потік матчів.*недоступн/i.test(bodyText);
             console.log('PASS browser document', JSON.stringify({status:response.status(),title,bodyChars:bodyText.length,bodyPreview:bodyText.slice(0,700),viewport:'390x844'}));
+            console.log('Live feed offline message visible after 18s:',feedOfflineVisible);
             console.log('PASS app assets', JSON.stringify({appScriptLoaded,cssLoaded,resourceCount:resources.length}));
             console.log('Same-origin HTTP errors:', JSON.stringify(httpErrors.slice(0,20)));
             console.log('Browser console errors (diagnostic only):', JSON.stringify(consoleErrors.slice(0,10)));
