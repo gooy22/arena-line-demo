@@ -6,7 +6,7 @@ const PRIMARY_DIR = process.env.PROFILE_DIR || '/data/profiles';
 const FALLBACK_DIR = '/tmp/arena-line-profiles';
 const BLOB_PREFIX = 'arena-line/profiles/';
 const blobEtags = new Map();
-const useBlobStorage = () => process.env.ARENA_PROFILE_STORE === 'blob' || process.env.VERCEL === '1' || Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+const useBlobStorage = () => process.env.ARENA_PROFILE_STORE === 'blob' || Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 const blobPath = email => BLOB_PREFIX + fileName(email);
 
 let directory = PRIMARY_DIR;
@@ -175,11 +175,20 @@ export async function syncProfile(incoming, bearerHash) {
 
 export async function profileStorageStatus() {
   if (useBlobStorage()) {
-    return {
-      directory:'vercel-blob:profiles',
-      persistent:Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.VERCEL === '1'),
-      backend:'vercel-blob'
-    };
+    if (!process.env.BLOB_READ_WRITE_TOKEN) {
+      return {directory:'vercel-blob:profiles',persistent:false,backend:'vercel-blob',error:'BLOB_READ_WRITE_TOKEN missing'};
+    }
+    try {
+      await get('arena-line/health-probe.json',{access:'private',useCache:false});
+      return {directory:'vercel-blob:profiles',persistent:true,backend:'vercel-blob'};
+    } catch (error) {
+      return {
+        directory:'vercel-blob:profiles',
+        persistent:false,
+        backend:'vercel-blob',
+        error:String(error?.message || error).slice(0,200)
+      };
+    }
   }
   await ensureDir();
   let persistent = false;
