@@ -134,7 +134,7 @@ function pruneSyncedEvents() {
 
 const SHARED_SYNC_STATE_PATH = 'arena-line/state/sync-state.json';
 let sharedSyncEtag = '';
-const hasBlobStore = () => Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+const hasBlobStore = () => Boolean(process.env.BLOB_READ_WRITE_TOKEN || (process.env.BLOB_STORE_ID && process.env.VERCEL_OIDC_TOKEN));
 
 async function refreshSharedSyncState() {
   if (!hasBlobStore()) return false;
