@@ -1,8 +1,13 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { createHash, timingSafeEqual } from 'node:crypto';
+import { get, put } from '@vercel/blob';
 
 const PRIMARY_DIR = process.env.PROFILE_DIR || '/data/profiles';
 const FALLBACK_DIR = '/tmp/arena-line-profiles';
+const BLOB_PREFIX = 'arena-line/profiles/';
+const blobEtags = new Map();
+const useBlobStorage = () => process.env.ARENA_PROFILE_STORE === 'blob' || process.env.VERCEL === '1' || Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+const blobPath = email => BLOB_PREFIX + fileName(email);
 
 let directory = PRIMARY_DIR;
 let readyPromise = null;
@@ -64,7 +69,18 @@ export function validateProfile(profile) {
 }
 
 export async function readProfile(email) {
-  const path = await pathFor(email);
+  const key = safeEmail(email);
+  if (useBlobStorage()) {
+    const result = await get(blobPath(key),{access:'private',useCache:false});
+    if (!result || result.statusCode !== 200) {
+      blobEtags.delete(key);
+      return null;
+    }
+    blobEtags.set(key,String(result.blob?.etag || ''));
+    return validateProfile(JSON.parse(await new Response(result.stream).text()));
+  }
+
+  const path = await pathFor(key);
   try {
     const value = JSON.parse(await readFile(path,'utf8'));
     return validateProfile(value);
@@ -75,7 +91,31 @@ export async function readProfile(email) {
 }
 
 async function atomicWrite(email, profile) {
-  const path = await pathFor(email);
+  const key = safeEmail(email);
+  if (useBlobStorage()) {
+    const expectedEtag = blobEtags.get(key) || '';
+    try {
+      const result = await put(blobPath(key),JSON.stringify(profile,null,2),{
+        access:'private',
+        allowOverwrite:true,
+        contentType:'application/json',
+        cacheControlMaxAge:60,
+        ...(expectedEtag ? {ifMatch:expectedEtag} : {})
+      });
+      blobEtags.set(key,String(result.etag || ''));
+      return;
+    } catch (error) {
+      if (error?.name === 'BlobPreconditionFailedError' || error?.status === 412 || error?.statusCode === 412) {
+        const conflict = new Error('Profile conflict');
+        conflict.statusCode = 409;
+        conflict.profile = await readProfile(key).catch(() => null);
+        throw conflict;
+      }
+      throw error;
+    }
+  }
+
+  const path = await pathFor(key);
   const temp = path + '.tmp-' + process.pid + '-' + Date.now();
   await writeFile(temp,JSON.stringify(profile,null,2),{mode:0o600});
   await rename(temp,path);
@@ -134,13 +174,20 @@ export async function syncProfile(incoming, bearerHash) {
 }
 
 export async function profileStorageStatus() {
+  if (useBlobStorage()) {
+    return {
+      directory:'vercel-blob:profiles',
+      persistent:Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.VERCEL === '1'),
+      backend:'vercel-blob'
+    };
+  }
   await ensureDir();
   let persistent = false;
   try {
     const mounts = await readFile('/proc/mounts','utf8');
     persistent = mounts.split('\n').some(line => line.split(' ')[1] === '/data');
   } catch {}
-  return {directory,persistent};
+  return {directory,persistent,backend:'filesystem'};
 }
 
 
