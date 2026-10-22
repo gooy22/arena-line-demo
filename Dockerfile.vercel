@@ -1,0 +1,15 @@
+FROM node:22-alpine
+
+ENV NODE_ENV=production
+ENV ARENA_SKIP_FRONTEND_SELFTEST=1
+ENV ARENA_PROFILE_STORE=blob
+
+WORKDIR /app
+
+COPY package.json ./
+RUN npm install --omit=dev --no-audit --no-fund
+
+COPY . .
+
+EXPOSE 3000
+CMD ["npm","start"]

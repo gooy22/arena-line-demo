@@ -131,6 +131,10 @@ function pruneSyncedEvents() {
   }
 }
 
+function syncStorageStatus() {
+  return {backend:'process-memory',persistent:false};
+}
+
 function eventForSettlement(event) {
   return {
     eventId:event.id,
@@ -1404,9 +1408,10 @@ async function mergedSettlements(bodyBuffer, req) {
 }
 
 const server=http.createServer(async (req,res)=>{
+  let url;
   try {
     const method=req.method || 'GET';
-    const url=new URL(req.url || '/','http://localhost');
+    url=new URL(req.url || '/','http://localhost');
 
     if (url.pathname === '/api/media/team' && method === 'GET') {
       const id=safeString(url.searchParams.get('id'),32);
@@ -1498,11 +1503,13 @@ const server=http.createServer(async (req,res)=>{
     }
 
     if (url.pathname === '/health') {
+      
       const profileStorage=await profileStorageStatus();
+      const syncStorage=syncStorageStatus();
       return json(res,200,{
         ok:true,
         source:'arena-line-parik-sync-v4',
-        runtime:'parik-feed + synced-file-profile + flexible-bet-editor + multi-esports-settlement',
+        runtime:'parik-feed + process-memory-sync + blob-profile-store + flexible-bet-editor + multi-esports-settlement',
         sync:{
           lastClientAt:syncMeta.lastClientAt || null,
           source:syncMeta.source || null,
@@ -1514,7 +1521,8 @@ const server=http.createServer(async (req,res)=>{
           telemetry:syncMeta.telemetry
         },
         resultsSource,
-        profileStorage
+        profileStorage,
+        syncStorage
       });
     }
 
@@ -1695,11 +1703,12 @@ const server=http.createServer(async (req,res)=>{
       syncMeta.telemetry=telemetry;
       syncMeta.lastClientAt=Date.now();
       console.log('FEED_TELEMETRY '+JSON.stringify(telemetry));
-      return json(res,200,{ok:true});
+      return json(res,200,{ok:true,persistent:false});
     }
 
     if (url.pathname === '/api/sync/events') {
       if (method !== 'POST') return json(res,405,{ok:false,error:'Method not allowed'});
+      
       const body=await readBody(req,1_500_000);
       const value=JSON.parse(body.toString('utf8') || '{}');
       if (!Array.isArray(value.rows) || value.rows.length > 250) return json(res,400,{ok:false,error:'Invalid rows'});
@@ -1710,8 +1719,7 @@ const server=http.createServer(async (req,res)=>{
         syncedEvents.set(event.id,event);
         accepted++;
       }
-      syncMeta={
-        ...syncMeta,
+      const metaPatch={
         lastClientAt:Date.now(),
         source:safeString(value.source,500),
         sport:safeString(value.sport,20),
@@ -1719,7 +1727,9 @@ const server=http.createServer(async (req,res)=>{
         revision:Number(value.revision || 0),
         received:accepted
       };
+      syncMeta={...syncMeta,...metaPatch};
       pruneSyncedEvents();
+      
       scheduleMediaWarm([...syncedEvents.values()]);
       console.log('FEED_SYNC '+JSON.stringify({
         source:syncMeta.source,
@@ -1734,6 +1744,7 @@ const server=http.createServer(async (req,res)=>{
 
     if (url.pathname === '/api/sync/status') {
       if (method !== 'GET') return json(res,405,{ok:false,error:'Method not allowed'});
+      
       const ids=(url.searchParams.get('ids') || '').split(',').filter(Boolean).slice(0,100);
       const events=ids.length
         ? ids.map(id=>syncedEvents.get(id)).filter(Boolean)
@@ -1743,6 +1754,7 @@ const server=http.createServer(async (req,res)=>{
 
     if (url.pathname === '/api/settlements') {
       if (method !== 'POST') return json(res,405,{error:'Method not allowed'});
+      
       const body=await readBody(req,64_000);
       const merged=await mergedSettlements(body,req);
       return json(res,merged.status,merged.body);
@@ -1750,6 +1762,7 @@ const server=http.createServer(async (req,res)=>{
 
     if (url.pathname === '/api/results') {
       if (method !== 'GET') return json(res,405,{error:'Method not allowed'});
+      
       const ids=(url.searchParams.get('ids') || '').split(',').filter(Boolean).slice(0,100);
       const events=ids.map(id=>syncedEvents.get(String(id))).filter(Boolean).map(eventForSettlement);
       if (!events.length) return json(res,200,[]);
@@ -1759,6 +1772,7 @@ const server=http.createServer(async (req,res)=>{
 
     if (url.pathname === '/api/completed') {
       if (method !== 'GET') return json(res,405,{error:'Method not allowed'});
+      
       const competitor=url.searchParams.get('competitor') || '';
       if (!/^\d{1,16}$/.test(competitor)) return json(res,400,{error:'Invalid competitor'});
       const team=teamMetaByProviderId(competitor);
@@ -1806,6 +1820,7 @@ server.listen(port,'0.0.0.0',()=>{
     console.error('RESULTS_SOURCE_ERROR '+JSON.stringify(resultsSource));
   });
 
+  if (process.env.ARENA_SKIP_FRONTEND_SELFTEST !== '1') {
   setTimeout(async()=>{
     const base='http://127.0.0.1:'+port;
     const checks=[];
@@ -1946,4 +1961,5 @@ server.listen(port,'0.0.0.0',()=>{
       console.error('FRONTEND_SELFTEST_ERROR '+String(error?.stack||error));
     }
   },1200);
+  }
 });

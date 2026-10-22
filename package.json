@@ -3,6 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node server.mjs"
+    "start": "node server.mjs",
+    "test:account-ids": "node scripts/test-account-ids.mjs"
+  },
+  "dependencies": {
+    "@vercel/blob": "^2.3.0"
   }
 }
