@@ -10,8 +10,6 @@ on:
       - "package.json"
       - "dist/**"
       - "overrides/**"
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -108,13 +106,14 @@ jobs:
   browser-smoke:
     needs: smoke
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.55.0-noble
     timeout-minutes: 10
     steps:
-      - name: Install Chromium and Playwright
+      - name: Install Playwright client
         run: |
           npm init -y
           npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps chromium
       - name: Open the live site and check browser runtime
         env:
           BASE_URL: https://arena-line-demo-vercel.vercel.app
