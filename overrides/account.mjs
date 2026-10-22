@@ -8,7 +8,7 @@ const PROFILE_API = '/api/profile';
 const clone = value => typeof structuredClone === 'function' ? structuredClone(value) : JSON.parse(JSON.stringify(value));
 const isAccountId = value => {
   const id = String(value || '');
-  return /^[1-9]\\d{8}$/.test(id) && new Set(id).size === 9;
+  return /^[1-9]\d{8}$/.test(id) && new Set(id).size === 9;
 };
 function createAccountId(used = new Set()) {
   for (let attempt = 0; attempt < 128; attempt++) {
