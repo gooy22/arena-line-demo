@@ -187,19 +187,26 @@ async function persistSharedSyncState({rows=[],metaPatch={}}={}) {
     sharedSyncEtag = String(result.etag || '');
   };
 
-  try {
-    await save();
-    return {persistent:true};
-  } catch (error) {
-    const conflict = error?.name === 'BlobPreconditionFailedError' || error?.status === 412 || error?.statusCode === 412;
-    if (!conflict) throw error;
-    await refreshSharedSyncState();
-    applyIncoming();
-    await save();
-    return {persistent:true,recoveredConflict:true};
+  let recoveredConflict = false;
+  for (let attempt=0; attempt<5; attempt++) {
+    try {
+      await save();
+      return {persistent:true,recoveredConflict};
+    } catch (error) {
+      const message = String(error?.message || error);
+      const conflict = error?.name === 'BlobPreconditionFailedError'
+        || error?.status === 412
+        || error?.statusCode === 412
+        || /precondition failed|etag mismatch/i.test(message);
+      if (!conflict || attempt === 4) throw error;
+      recoveredConflict = true;
+      await refreshSharedSyncState();
+      applyIncoming();
+      await new Promise(resolve => setTimeout(resolve,25*(attempt+1)+Math.floor(Math.random()*40)));
+    }
   }
+  return {persistent:true,recoveredConflict};
 }
-
 function syncStorageStatus() {
   const persistent = hasBlobStore();
   return {
