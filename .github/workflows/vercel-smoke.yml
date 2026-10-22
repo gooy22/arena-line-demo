@@ -127,6 +127,7 @@ jobs:
           const pageErrors = [];
           const consoleErrors = [];
           const failedRequests = [];
+          const httpErrors = [];
 
           page.on('pageerror', error => pageErrors.push(String(error?.stack || error?.message || error)));
           page.on('console', message => {
@@ -134,6 +135,11 @@ jobs:
           });
           page.on('requestfailed', request => {
             failedRequests.push({url:request.url(),error:request.failure()?.errorText || 'request failed'});
+          });
+          page.on('response', response => {
+            if (response.status() >= 400 && response.url().startsWith(process.env.BASE_URL)) {
+              httpErrors.push({status:response.status(),url:response.url()});
+            }
           });
 
           try {
@@ -155,10 +161,12 @@ jobs:
             if (!cssLoaded) throw new Error('Main application stylesheet did not load');
             if (pageErrors.length) throw new Error('Browser JavaScript exceptions: ' + JSON.stringify(pageErrors.slice(0,5)));
 
-            console.log('PASS browser document', JSON.stringify({status:response.status(),title,bodyChars:bodyText.length,viewport:'390x844'}));
+            console.log('PASS browser document', JSON.stringify({status:response.status(),title,bodyChars:bodyText.length,bodyPreview:bodyText.slice(0,700),viewport:'390x844'}));
             console.log('PASS app assets', JSON.stringify({appScriptLoaded,cssLoaded,resourceCount:resources.length}));
+            console.log('Same-origin HTTP errors:', JSON.stringify(httpErrors.slice(0,20)));
             console.log('Browser console errors (diagnostic only):', JSON.stringify(consoleErrors.slice(0,10)));
             console.log('Failed requests (diagnostic only):', JSON.stringify(failedRequests.slice(0,10)));
+            if (httpErrors.some(item => item.status >= 500)) throw new Error('Same-origin HTTP 5xx responses: ' + JSON.stringify(httpErrors.filter(item => item.status >= 500)));
           } finally {
             await browser.close();
           }
