@@ -1481,9 +1481,10 @@ async function mergedSettlements(bodyBuffer, req) {
 }
 
 const server=http.createServer(async (req,res)=>{
+  let url;
   try {
     const method=req.method || 'GET';
-    const url=new URL(req.url || '/','http://localhost');
+    url=new URL(req.url || '/','http://localhost');
 
     if (url.pathname === '/api/media/team' && method === 'GET') {
       const id=safeString(url.searchParams.get('id'),32);
@@ -1876,7 +1877,7 @@ const server=http.createServer(async (req,res)=>{
   } catch(error) {
     console.error('Arena Line runtime error',error?.stack || error);
     const detail=safeString(error?.message || error,240);
-    const diagnostic=url.pathname.startsWith('/api/sync/') ? {diagnostic:detail} : {};
+    const diagnostic=url?.pathname?.startsWith('/api/sync/') ? {diagnostic:detail} : {};
     return json(res,500,{ok:false,error:'Arena Line server error',...diagnostic});
   }
 });
