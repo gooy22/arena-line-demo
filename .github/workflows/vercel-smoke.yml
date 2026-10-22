@@ -104,3 +104,62 @@ jobs:
             resultsSource: health.json.resultsSource
           }));
           NODE
+
+  browser-smoke:
+    needs: smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Install Chromium and Playwright
+        run: |
+          npm init -y
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Open the live site and check browser runtime
+        env:
+          BASE_URL: https://arena-line-demo-vercel.vercel.app
+        run: |
+          node --input-type=module <<'NODE'
+          import { chromium } from 'playwright';
+
+          const browser = await chromium.launch({headless:true});
+          const page = await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1});
+          const pageErrors = [];
+          const consoleErrors = [];
+          const failedRequests = [];
+
+          page.on('pageerror', error => pageErrors.push(String(error?.stack || error?.message || error)));
+          page.on('console', message => {
+            if (message.type() === 'error') consoleErrors.push(message.text().slice(0,300));
+          });
+          page.on('requestfailed', request => {
+            failedRequests.push({url:request.url(),error:request.failure()?.errorText || 'request failed'});
+          });
+
+          try {
+            const response = await page.goto(process.env.BASE_URL, {waitUntil:'domcontentloaded',timeout:45000});
+            if (!response || response.status() !== 200) {
+              throw new Error('Main document did not return HTTP 200: ' + (response?.status() ?? 'no response'));
+            }
+            await page.waitForTimeout(8000);
+
+            const title = await page.title();
+            const bodyText = await page.locator('body').innerText().catch(() => '');
+            const resources = await page.evaluate(() => performance.getEntriesByType('resource').map(item => item.name));
+            const appScriptLoaded = resources.some(url => url.includes('/v112/app.js'));
+            const cssLoaded = resources.some(url => url.includes('/v112/theme.css'));
+
+            if (title !== 'Arena Line') throw new Error('Unexpected page title: ' + JSON.stringify(title));
+            if (bodyText.trim().length < 80) throw new Error('The rendered page is blank or unexpectedly short: ' + bodyText.length + ' chars');
+            if (!appScriptLoaded) throw new Error('Main application JavaScript did not load');
+            if (!cssLoaded) throw new Error('Main application stylesheet did not load');
+            if (pageErrors.length) throw new Error('Browser JavaScript exceptions: ' + JSON.stringify(pageErrors.slice(0,5)));
+
+            console.log('PASS browser document', JSON.stringify({status:response.status(),title,bodyChars:bodyText.length,viewport:'390x844'}));
+            console.log('PASS app assets', JSON.stringify({appScriptLoaded,cssLoaded,resourceCount:resources.length}));
+            console.log('Browser console errors (diagnostic only):', JSON.stringify(consoleErrors.slice(0,10)));
+            console.log('Failed requests (diagnostic only):', JSON.stringify(failedRequests.slice(0,10)));
+          } finally {
+            await browser.close();
+          }
+          NODE
