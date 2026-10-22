@@ -10,13 +10,28 @@ on:
       - "package.json"
       - "dist/**"
       - "overrides/**"
+      - "scripts/**"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
+  account-id-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install server dependency
+        run: npm install --no-save @vercel/blob@^2.3.0
+      - name: Verify account ID generation, uniqueness, and stability
+        run: npm run test:account-ids
+
   smoke:
+    needs: account-id-test
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
