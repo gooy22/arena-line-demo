@@ -1620,7 +1620,7 @@ async function handle(req,res,originalRequest,env,ctx) {
 
     if (url.pathname === '/api/profile/login') {
       if (method !== 'POST') return json(res,405,{ok:false,error:'Method not allowed'});
-      const body=JSON.parse((await readBody(req,32_000)).toString('utf8') || '{}');
+      const body=JSON.parse(new TextDecoder().decode(await readBody(req,32_000)) || '{}');
       const email=safeString(body.email,200).trim().toLowerCase();
       const hash=safeString(body.hash,80);
       if (!email || !/^[a-f0-9]{64}$/i.test(hash)) return json(res,400,{ok:false,error:'Invalid credentials'});
@@ -1646,7 +1646,7 @@ async function handle(req,res,originalRequest,env,ctx) {
     if (url.pathname === '/api/profile/password') {
       if (method !== 'POST') return json(res,405,{ok:false,error:'Method not allowed'});
       const oldHash=bearer(req);
-      const body=JSON.parse((await readBody(req,32_000)).toString('utf8') || '{}');
+      const body=JSON.parse(new TextDecoder().decode(await readBody(req,32_000)) || '{}');
       const email=safeString(body.email,200).trim().toLowerCase();
       const newHash=safeString(body.newHash,80);
       if (!email || !/^[a-f0-9]{64}$/i.test(oldHash) || !/^[a-f0-9]{64}$/i.test(newHash)) {
@@ -1666,7 +1666,7 @@ async function handle(req,res,originalRequest,env,ctx) {
       if (method !== 'POST') return json(res,405,{ok:false,error:'Method not allowed'});
       const hash=bearer(req);
       if (!/^[a-f0-9]{64}$/i.test(hash)) return json(res,401,{ok:false,error:'Unauthorized'});
-      const body=JSON.parse((await readBody(req,2_100_000)).toString('utf8') || '{}');
+      const body=JSON.parse(new TextDecoder().decode(await readBody(req,2_100_000)) || '{}');
       try {
         const profile=await syncProfile(env,body.profile,hash);
         console.log('PROFILE_SYNC '+JSON.stringify({
@@ -1687,7 +1687,7 @@ async function handle(req,res,originalRequest,env,ctx) {
       if (method !== 'POST') return json(res,405,{ok:false,error:'Method not allowed'});
       const body=await readBody(req,12_000);
       let value={};
-      try{value=JSON.parse(body.toString('utf8') || '{}');}catch{}
+      try{value=JSON.parse(new TextDecoder().decode(body) || '{}');}catch{}
       const diagnostic={
         kind:safeString(value.kind,60),
         message:safeString(value.message,2000),
@@ -1706,7 +1706,7 @@ async function handle(req,res,originalRequest,env,ctx) {
     if (url.pathname === '/api/sync/telemetry') {
       if (method !== 'POST') return json(res,405,{ok:false,error:'Method not allowed'});
       const body=await readBody(req,16_000);
-      const value=JSON.parse(body.toString('utf8') || '{}');
+      const value=JSON.parse(new TextDecoder().decode(body) || '{}');
       const telemetry={
         kind:safeString(value.kind,50),
         endpoint:safeString(value.endpoint,500),
@@ -1732,7 +1732,7 @@ async function handle(req,res,originalRequest,env,ctx) {
     if (url.pathname === '/api/sync/events') {
       if (method !== 'POST') return json(res,405,{ok:false,error:'Method not allowed'});
       const body=await readBody(req,1_500_000);
-      const value=JSON.parse(body.toString('utf8') || '{}');
+      const value=JSON.parse(new TextDecoder().decode(body) || '{}');
       if (!Array.isArray(value.rows) || value.rows.length > 250) return json(res,400,{ok:false,error:'Invalid rows'});
       let accepted=0;
       const persistence=[];
