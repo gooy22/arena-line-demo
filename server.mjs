@@ -1806,6 +1806,7 @@ server.listen(port,'0.0.0.0',()=>{
     console.error('RESULTS_SOURCE_ERROR '+JSON.stringify(resultsSource));
   });
 
+  if (process.env.ARENA_SKIP_FRONTEND_SELFTEST !== '1') {
   setTimeout(async()=>{
     const base='http://127.0.0.1:'+port;
     const checks=[];
@@ -1946,4 +1947,5 @@ server.listen(port,'0.0.0.0',()=>{
       console.error('FRONTEND_SELFTEST_ERROR '+String(error?.stack||error));
     }
   },1200);
+  }
 });
