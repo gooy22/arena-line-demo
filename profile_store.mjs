@@ -1,6 +1,6 @@
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
-import { createHash, timingSafeEqual } from 'node:crypto';
-import { get, put } from '@vercel/blob';
+import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { createHash, randomInt, timingSafeEqual } from 'node:crypto';
+import { get, list, put } from '@vercel/blob';
 
 const PRIMARY_DIR = process.env.PROFILE_DIR || '/data/profiles';
 const FALLBACK_DIR = '/tmp/arena-line-profiles';
@@ -9,6 +9,54 @@ const blobEtags = new Map();
 const hasBlobCredentials = () => Boolean(process.env.BLOB_READ_WRITE_TOKEN || (process.env.BLOB_STORE_ID && process.env.VERCEL_OIDC_TOKEN));
 const useBlobStorage = () => process.env.ARENA_PROFILE_STORE === 'blob' || hasBlobCredentials();
 const blobPath = email => BLOB_PREFIX + fileName(email);
+const isAccountId = value => {
+  const id = String(value || '');
+  return /^[1-9]\\d{8}$/.test(id) && new Set(id).size === 9;
+};
+function createAccountId(used = new Set()) {
+  for (let attempt = 0; attempt < 128; attempt++) {
+    const digits = Array.from({length:10},(_,digit)=>String(digit));
+    for (let index = digits.length - 1; index > 0; index--) {
+      const other = randomInt(index + 1);
+      [digits[index],digits[other]] = [digits[other],digits[index]];
+    }
+    const id = digits.slice(0,9).join('');
+    if (id[0] !== '0' && new Set(id).size === 9 && !used.has(id)) return id;
+  }
+  throw new Error('Unable to allocate a unique 9-digit account ID');
+}
+async function collectAccountIds(excludeEmail = '') {
+  const ids = new Set();
+  const excludedPath = excludeEmail ? blobPath(excludeEmail) : '';
+  if (useBlobStorage()) {
+    let cursor;
+    do {
+      const page = await list({prefix:BLOB_PREFIX,limit:1000,...(cursor ? {cursor} : {})});
+      for (const blob of page.blobs || []) {
+        if (blob.pathname === excludedPath) continue;
+        const result = await get(blob.pathname,{access:'private',useCache:false});
+        if (!result || result.statusCode !== 200) throw new Error('Unable to verify existing account IDs');
+        const profile = JSON.parse(await new Response(result.stream).text());
+        if (profile?.id != null) ids.add(String(profile.id));
+      }
+      cursor = page.cursor;
+    } while (page.hasMore && cursor);
+    return ids;
+  }
+  const directory = await ensureDir();
+  const names = await readdir(directory);
+  const excludedName = excludeEmail ? fileName(excludeEmail) : '';
+  for (const name of names) {
+    if (!name.endsWith('.json') || name === excludedName) continue;
+    try {
+      const profile = JSON.parse(await readFile(directory + '/' + name,'utf8'));
+      if (profile?.id != null) ids.add(String(profile.id));
+    } catch {
+      throw new Error('Unable to verify existing account IDs');
+    }
+  }
+  return ids;
+}
 
 let directory = PRIMARY_DIR;
 let readyPromise = null;
@@ -133,9 +181,18 @@ function withLock(email, fn) {
 }
 
 export async function loginProfile(email, hash) {
-  const profile = await readProfile(email);
-  if (!profile || !safeEqual(profile.hash,hash)) return null;
-  return profile;
+  return withLock(email,async () => {
+    const profile = await readProfile(email);
+    if (!profile || !safeEqual(profile.hash,hash)) return null;
+    if (!isAccountId(profile.id)) {
+      const used = await collectAccountIds(email);
+      profile.id = createAccountId(used);
+      profile.profileRevision = Math.max(0,Number(profile.profileRevision || 0)) + 1;
+      profile.updatedAt = new Date().toISOString();
+      await atomicWrite(email,profile);
+    }
+    return profile;
+  });
 }
 
 export async function syncProfile(incoming, bearerHash) {
@@ -155,6 +212,13 @@ export async function syncProfile(incoming, bearerHash) {
     }
 
     if (current) {
+      if (!isAccountId(current.id)) {
+        const used = await collectAccountIds(clean.email);
+        current.id = createAccountId(used);
+        current.profileRevision = Math.max(0,Number(current.profileRevision || 0)) + 1;
+        current.updatedAt = new Date().toISOString();
+        await atomicWrite(clean.email,current);
+      }
       const currentRevision = Number(current.profileRevision || 0);
       const incomingRevision = Number(clean.profileRevision || 0);
       if (currentRevision > incomingRevision) {
@@ -163,8 +227,11 @@ export async function syncProfile(incoming, bearerHash) {
         error.profile = current;
         throw error;
       }
+      clean.id = current.id;
       clean.profileRevision = Math.max(currentRevision,incomingRevision) + 1;
     } else {
+      const used = await collectAccountIds();
+      if (!isAccountId(clean.id) || used.has(clean.id)) clean.id = createAccountId(used);
       clean.profileRevision = Math.max(1,Number(clean.profileRevision || 0));
     }
 
