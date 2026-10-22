@@ -108,14 +108,14 @@ jobs:
             method:'POST',
             headers:{'content-type':'application/json'},
             body:JSON.stringify({
-              kind:'ci-storage-probe',endpoint:'github-actions',state:'smoke',
+              kind:'ci-route-probe',endpoint:'github-actions',state:'smoke',
               sport:'CS',stage:'live',events:0,watched:0,markets:0,code:0,
-              reason:'',subscription:'',message:'Production storage write probe',at:Date.now()
+              reason:'',subscription:'',message:'Production route probe',at:Date.now()
             })
           });
-          console.log('SYNC_TELEMETRY_WRITE_PROBE', telemetryProbe.response.status, telemetryProbe.text.slice(0,400));
+          console.log('SYNC_TELEMETRY_ROUTE_PROBE', telemetryProbe.response.status, telemetryProbe.text.slice(0,400));
           if (telemetryProbe.response.status !== 200 || telemetryProbe.json?.ok !== true) {
-            throw new Error('Production sync storage write failed: ' + telemetryProbe.response.status + ' ' + telemetryProbe.text.slice(0,400));
+            throw new Error('Production sync telemetry route failed: ' + telemetryProbe.response.status + ' ' + telemetryProbe.text.slice(0,400));
           }
           NODE
 
