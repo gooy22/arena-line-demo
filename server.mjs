@@ -1875,7 +1875,9 @@ const server=http.createServer(async (req,res)=>{
     Readable.fromWeb(response.body).pipe(res);
   } catch(error) {
     console.error('Arena Line runtime error',error?.stack || error);
-    return json(res,500,{ok:false,error:'Arena Line server error'});
+    const detail=safeString(error?.message || error,240);
+    const diagnostic=url.pathname.startsWith('/api/sync/') ? {diagnostic:detail} : {};
+    return json(res,500,{ok:false,error:'Arena Line server error',...diagnostic});
   }
 });
 
