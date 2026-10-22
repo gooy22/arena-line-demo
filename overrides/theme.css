@@ -2585,3 +2585,18 @@ body.bet-detail-open .bet-detail-footer{
 .edit-manual-fallback .edit-odds{
   margin-bottom:4px!important;
 }
+
+/* Remove stray rectangular focus frames caused by pointer/touch clicks.
+   Preserve a clear, rounded focus indicator for keyboard navigation. */
+:where(button,[role="button"],a,summary,select,input,textarea):focus:not(:focus-visible) {
+  outline: none !important;
+  box-shadow: none !important;
+}
+:where(input[type="radio"],input[type="checkbox"]):focus {
+  outline: none !important;
+}
+:where(input[type="radio"],input[type="checkbox"]):focus-visible {
+  outline: none !important;
+  box-shadow: 0 0 0 2px var(--surface,#fff), 0 0 0 4px var(--yellow,#f2f740) !important;
+  border-radius: 50%;
+}
