@@ -13,4 +13,6 @@ jobs:
         with:
           node-version: 22
       - name: Check Sites entrypoint syntax
-        run: npm run check:sites
+        run: |
+          npm run check:sites
+          npm run test:sites
