@@ -135,9 +135,12 @@ jobs:
           page.on('requestfailed', request => {
             failedRequests.push({url:request.url(),error:request.failure()?.errorText || 'request failed'});
           });
+          const responseCapturePromises = [];
           page.on('response', response => {
             if (response.status() >= 400 && response.url().startsWith(process.env.BASE_URL)) {
-              httpErrors.push({status:response.status(),url:response.url()});
+              const record = {status:response.status(),url:response.url(),body:''};
+              httpErrors.push(record);
+              responseCapturePromises.push(response.text().then(text => { record.body = text.slice(0,400); }).catch(() => {}));
             }
           });
 
@@ -148,6 +151,7 @@ jobs:
             }
             await page.waitForTimeout(8000);
 
+            await Promise.all(responseCapturePromises);
             const title = await page.title();
             const bodyText = await page.locator('body').innerText().catch(() => '');
             const resources = await page.evaluate(() => performance.getEntriesByType('resource').map(item => item.name));
