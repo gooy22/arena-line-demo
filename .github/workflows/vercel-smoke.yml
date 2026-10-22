@@ -1,0 +1,99 @@
+name: Vercel production smoke test
+
+on:
+  push:
+    branches: [vercel-deploy]
+    paths:
+      - ".github/workflows/vercel-smoke.yml"
+      - "server.mjs"
+      - "profile_store.mjs"
+      - "package.json"
+      - "dist/**"
+      - "overrides/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check public production routes
+        env:
+          BASE_URL: https://arena-line-demo.vercel.app
+        run: |
+          node --input-type=module <<'NODE'
+          const base = process.env.BASE_URL;
+          const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+          async function request(path, options = {}) {
+            const response = await fetch(base + path, {
+              redirect: 'follow',
+              signal: AbortSignal.timeout(15000),
+              ...options,
+            });
+            const text = await response.text();
+            let json = null;
+            try { json = JSON.parse(text); } catch {}
+            return { response, text, json };
+          }
+
+          let health;
+          let lastError;
+          for (let attempt = 1; attempt <= 8; attempt++) {
+            try {
+              health = await request('/health');
+              if (health.response.status === 200 && health.json?.ok === true) break;
+              lastError = new Error('/health returned ' + health.response.status + ': ' + health.text.slice(0, 300));
+            } catch (error) {
+              lastError = error;
+            }
+            await sleep(5000);
+          }
+
+          if (!health || health.response.status !== 200 || health.json?.ok !== true) {
+            throw new Error('Production health check failed: ' + (lastError?.message || 'no valid response'));
+          }
+
+          const storage = health.json.profileStorage || {};
+          if (storage.backend !== 'vercel-blob' || storage.persistent !== true) {
+            throw new Error('Durable profile storage is not active: ' + JSON.stringify(storage));
+          }
+
+          const checks = [
+            { path: '/', status: 200, type: 'text/html', includes: 'Arena Line' },
+            { path: '/v112/app.js', status: 200, type: 'javascript' },
+            { path: '/v112/theme.css', status: 200, type: 'text/css' },
+            { path: '/manifest.webmanifest', status: 200, type: 'manifest' },
+            { path: '/api/sync/status', status: 200, type: 'json' },
+          ];
+
+          for (const check of checks) {
+            const { response, text, json } = await request(check.path);
+            const type = (response.headers.get('content-type') || '').toLowerCase();
+            if (response.status !== check.status) {
+              throw new Error(check.path + ' expected ' + check.status + ', got ' + response.status + ': ' + text.slice(0, 200));
+            }
+            if (check.type === 'javascript' && !type.includes('javascript')) throw new Error(check.path + ' wrong content-type: ' + type);
+            if (check.type === 'text/css' && !type.includes('text/css')) throw new Error(check.path + ' wrong content-type: ' + type);
+            if (check.type === 'html' && !type.includes('text/html')) throw new Error(check.path + ' wrong content-type: ' + type);
+            if (check.type === 'manifest' && !type.includes('json')) throw new Error(check.path + ' wrong content-type: ' + type);
+            if (check.type === 'json' && (!type.includes('json') || json?.ok !== true)) throw new Error(check.path + ' did not return valid API JSON: ' + text.slice(0, 200));
+            if (check.includes && !text.includes(check.includes)) throw new Error(check.path + ' missing expected page text');
+            console.log('PASS', check.path, response.status, type, text.length + ' bytes');
+          }
+
+          const auth = await request('/api/profile?email=smoke%40example.invalid');
+          if (auth.response.status !== 401 || auth.json?.error !== 'Unauthorized') {
+            throw new Error('Profile endpoint did not enforce auth as expected: ' + auth.response.status + ' ' + auth.text.slice(0, 200));
+          }
+          console.log('PASS profile auth guard', auth.response.status);
+          console.log('PASS /health', JSON.stringify({
+            source: health.json.source,
+            runtime: health.json.runtime,
+            profileStorage: storage,
+            resultsSource: health.json.resultsSource
+          }));
+          NODE
